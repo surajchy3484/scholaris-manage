@@ -14,7 +14,119 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      attendance: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          school_id: string
+          status: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          school_id: string
+          status: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          school_id?: string
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schools: {
+        Row: {
+          created_at: string
+          id: string
+          location: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      students: {
+        Row: {
+          class: string
+          created_at: string
+          division: string
+          id: string
+          name: string
+          photo_url: string | null
+          roll_number: string
+          school_id: string
+          student_code: string
+          updated_at: string
+        }
+        Insert: {
+          class: string
+          created_at?: string
+          division: string
+          id?: string
+          name: string
+          photo_url?: string | null
+          roll_number: string
+          school_id: string
+          student_code: string
+          updated_at?: string
+        }
+        Update: {
+          class?: string
+          created_at?: string
+          division?: string
+          id?: string
+          name?: string
+          photo_url?: string | null
+          roll_number?: string
+          school_id?: string
+          student_code?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
