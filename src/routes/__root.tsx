@@ -70,20 +70,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Scholaris — School Management & Attendance" },
+      { title: "Dashboard — Scholaris" },
       {
         name: "description",
         content:
-          "Manage schools, students, and daily attendance with a clean, modern workspace. Import/export students, capture photos, and track reports.",
+          "All your schools in one place.",
       },
-      { property: "og:title", content: "Scholaris — School Management & Attendance" },
+      { property: "og:title", content: "Dashboard — Scholaris" },
       {
         property: "og:description",
         content:
-          "A modern workspace for schools to manage students and attendance.",
+          "All your schools in one place.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Dashboard — Scholaris" },
+      { name: "twitter:description", content: "All your schools in one place." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4abcf4b6-0d2b-4d20-98ae-c150d68028f3/id-preview-295903e0--cc90d495-f9b5-4bed-aad1-c4d52efaac77.lovable.app-1783762067691.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4abcf4b6-0d2b-4d20-98ae-c150d68028f3/id-preview-295903e0--cc90d495-f9b5-4bed-aad1-c4d52efaac77.lovable.app-1783762067691.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
