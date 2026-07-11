@@ -1,24 +1,201 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { Plus, Search, School as SchoolIcon, ArrowUpDown, Users } from "lucide-react";
+import { toast } from "sonner";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
+import { supabase } from "@/integrations/supabase/client";
+import type { School } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { AddSchoolDialog } from "@/components/add-school-dialog";
+import { SchoolCard } from "@/components/school-card";
+
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "Dashboard — Scholaris" },
+      { name: "description", content: "All your schools in one place." },
+    ],
+  }),
+  component: Dashboard,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+type SchoolWithCount = School & { student_count: number };
+
+async function fetchSchools(): Promise<SchoolWithCount[]> {
+  const { data: schools, error } = await supabase
+    .from("schools")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  const { data: students } = await supabase.from("students").select("school_id");
+  const counts = new Map<string, number>();
+  (students ?? []).forEach((s: { school_id: string }) => {
+    counts.set(s.school_id, (counts.get(s.school_id) ?? 0) + 1);
+  });
+  return (schools ?? []).map((s) => ({ ...s, student_count: counts.get(s.id) ?? 0 }));
+}
+
+function Dashboard() {
+  const [addOpen, setAddOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<"newest" | "name" | "students">("newest");
+  const qc = useQueryClient();
+
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["schools"],
+    queryFn: fetchSchools,
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("schools").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["schools"] });
+      toast.success("School deleted");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const filtered = data
+    .filter(
+      (s) =>
+        s.name.toLowerCase().includes(query.toLowerCase()) ||
+        s.location.toLowerCase().includes(query.toLowerCase()),
+    )
+    .sort((a, b) => {
+      if (sort === "name") return a.name.localeCompare(b.name);
+      if (sort === "students") return b.student_count - a.student_count;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+  const totalStudents = data.reduce((n, s) => n + s.student_count, 0);
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+      {/* Hero stats */}
+      <motion.section
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="mb-8 grid gap-4 sm:grid-cols-2"
+      >
+        <Card className="relative overflow-hidden border-none bg-gradient-to-br from-primary to-primary-glow p-6 text-primary-foreground shadow-elegant">
+          <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+          <div className="relative">
+            <div className="flex items-center gap-2 text-primary-foreground/80">
+              <SchoolIcon className="h-4 w-4" />
+              <span className="text-xs font-medium uppercase tracking-wider">Total Schools</span>
+            </div>
+            <div className="mt-3 font-display text-5xl font-bold">{data.length}</div>
+            <p className="mt-1 text-sm text-primary-foreground/80">
+              {totalStudents} students across all campuses
+            </p>
+          </div>
+        </Card>
+
+        <Card className="flex items-center justify-between border-warm/40 bg-warm/40 p-6 shadow-soft">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-warm-foreground/70">
+              Ready to grow?
+            </p>
+            <h2 className="mt-1 font-display text-2xl font-bold text-warm-foreground">
+              Add a new school
+            </h2>
+            <p className="mt-1 text-sm text-warm-foreground/80">
+              Unlimited campuses. Each with its own students &amp; attendance.
+            </p>
+          </div>
+          <Button size="lg" onClick={() => setAddOpen(true)} className="shrink-0 shadow-elegant">
+            <Plus className="h-4 w-4" />
+            Add School
+          </Button>
+        </Card>
+      </motion.section>
+
+      {/* Controls */}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="font-display text-2xl font-bold">Your Schools</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search schools..."
+              className="w-full pl-9 sm:w-64"
+            />
+          </div>
+          <Select value={sort} onValueChange={(v) => setSort(v as typeof sort)}>
+            <SelectTrigger className="w-full sm:w-44">
+              <ArrowUpDown className="h-4 w-4" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest first</SelectItem>
+              <SelectItem value="name">Name (A–Z)</SelectItem>
+              <SelectItem value="students">Most students</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* List */}
+      {isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-44 animate-pulse rounded-xl bg-muted" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <Card className="flex flex-col items-center gap-3 border-dashed p-12 text-center">
+          <div className="grid h-14 w-14 place-items-center rounded-full bg-accent">
+            <Users className="h-6 w-6 text-accent-foreground" />
+          </div>
+          <h3 className="font-display text-lg font-semibold">No schools yet</h3>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Add your first school to start managing students and attendance.
+          </p>
+          <Button onClick={() => setAddOpen(true)} className="mt-1">
+            <Plus className="h-4 w-4" />
+            Add School
+          </Button>
+        </Card>
+      ) : (
+        <motion.div
+          layout
+          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        >
+          {filtered.map((s, i) => (
+            <motion.div
+              key={s.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04 }}
+            >
+              <SchoolCard
+                school={s}
+                onDelete={() => del.mutate(s.id)}
+                onUpdated={() => qc.invalidateQueries({ queryKey: ["schools"] })}
+              />
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+
+      <AddSchoolDialog open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }
