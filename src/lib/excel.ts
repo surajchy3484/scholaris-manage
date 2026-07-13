@@ -74,26 +74,60 @@ export function downloadSampleTemplate() {
 export type StudentExportRow = {
   student_id: string;
   name: string;
+  school_name: string;
   class: string;
   division: string;
   roll_number: string;
   attendance_percentage: number;
-  photo_ref: string;
+  photo_url: string;
+  created_at: string;
+  updated_at: string;
 };
 
-export function exportStudentsToExcel(schoolName: string, rows: StudentExportRow[]) {
-  const shaped = rows.map((r) => ({
+function shapeRows(rows: StudentExportRow[]) {
+  return rows.map((r) => ({
     "Student ID": r.student_id,
     "Student Name": r.name,
+    "School Name": r.school_name,
     Class: r.class,
     Division: r.division,
     "Roll Number": r.roll_number,
     "Attendance %": r.attendance_percentage,
-    "Photo Path": r.photo_ref,
+    "Photo URL": r.photo_url,
+    "Created Date": r.created_at ? new Date(r.created_at).toISOString().slice(0, 10) : "",
+    "Updated Date": r.updated_at ? new Date(r.updated_at).toISOString().slice(0, 10) : "",
   }));
+}
+
+function makeWorkbookWithHyperlinks(shaped: ReturnType<typeof shapeRows>) {
   const ws = XLSX.utils.json_to_sheet(shaped);
+  // Convert Photo URL cells to real hyperlinks so clicking opens the image.
+  const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
+  // Locate the "Photo URL" column
+  let photoCol = -1;
+  for (let C = range.s.c; C <= range.e.c; C++) {
+    const addr = XLSX.utils.encode_cell({ r: 0, c: C });
+    if (ws[addr]?.v === "Photo URL") {
+      photoCol = C;
+      break;
+    }
+  }
+  if (photoCol >= 0) {
+    for (let R = range.s.r + 1; R <= range.e.r; R++) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: photoCol });
+      const cell = ws[addr];
+      if (cell && typeof cell.v === "string" && /^https?:\/\//.test(cell.v)) {
+        cell.l = { Target: cell.v, Tooltip: "Open photo" };
+      }
+    }
+  }
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Students");
+  return wb;
+}
+
+export function exportStudentsToExcel(schoolName: string, rows: StudentExportRow[]) {
+  const wb = makeWorkbookWithHyperlinks(shapeRows(rows));
   const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   saveAs(new Blob([buf], { type: "application/octet-stream" }), `${schoolName}-students.xlsx`);
 }
@@ -104,27 +138,18 @@ export async function exportStudentsAsZip(
   students: Student[],
 ) {
   const zip = new JSZip();
-  const photoRows = rows.map((r) => {
+  const patched = rows.map((r) => {
     const s = students.find((s) => s.student_code === r.student_id);
+    // For students whose photo is still a local data URL (pre-Drive), embed
+    // in the zip and point Photo URL at the local relative path.
     if (s?.photo_url?.startsWith("data:")) {
       const filename = `photos/${r.student_id}.jpg`;
       zip.file(filename, dataUrlToBlob(s.photo_url));
-      return { ...r, photo_ref: filename };
+      return { ...r, photo_url: filename };
     }
     return r;
   });
-  const shaped = photoRows.map((r) => ({
-    "Student ID": r.student_id,
-    "Student Name": r.name,
-    Class: r.class,
-    Division: r.division,
-    "Roll Number": r.roll_number,
-    "Attendance %": r.attendance_percentage,
-    "Photo Path": r.photo_ref,
-  }));
-  const ws = XLSX.utils.json_to_sheet(shaped);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Students");
+  const wb = makeWorkbookWithHyperlinks(shapeRows(patched));
   const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   zip.file("students.xlsx", buf);
   const blob = await zip.generateAsync({ type: "blob" });

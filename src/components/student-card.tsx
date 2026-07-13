@@ -23,6 +23,8 @@ import { PhotoPicker } from "./photo-picker";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { uploadPhotoToDrive } from "@/lib/drive.functions";
 
 export function StudentCard({
   student,
@@ -38,12 +40,19 @@ export function StudentCard({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const qc = useQueryClient();
+  const uploadPhoto = useServerFn(uploadPhotoToDrive);
 
   const setPhoto = useMutation({
     mutationFn: async (dataUrl: string | null) => {
+      let photoUrl = dataUrl;
+      if (photoUrl && photoUrl.startsWith("data:")) {
+        const filename = `${student.student_code}-${student.name.replace(/\s+/g, "_")}.jpg`;
+        const res = await uploadPhoto({ data: { dataUrl: photoUrl, filename } });
+        photoUrl = res.url;
+      }
       const { error } = await supabase
         .from("students")
-        .update({ photo_url: dataUrl })
+        .update({ photo_url: photoUrl })
         .eq("id", student.id);
       if (error) throw error;
     },
@@ -69,6 +78,7 @@ export function StudentCard({
               alt={student.name}
               className="h-full w-full object-cover"
               loading="lazy"
+              referrerPolicy="no-referrer"
             />
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 border-2 border-dashed border-border text-muted-foreground">

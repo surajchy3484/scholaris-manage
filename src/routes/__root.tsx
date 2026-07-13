@@ -4,17 +4,20 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { GraduationCap, Settings as SettingsIcon, Moon, Sun } from "lucide-react";
+import { GraduationCap, Settings as SettingsIcon, Moon, Sun, LogOut } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/use-theme";
+import { useAuth, logoutLocal } from "@/lib/auth";
+import { toast } from "sonner";
 
 function NotFoundComponent() {
   return (
@@ -126,6 +129,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function Header() {
   const { theme, toggle } = useTheme();
+  const router = useRouter();
   return (
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -150,22 +154,63 @@ function Header() {
               <span className="hidden sm:inline">Settings</span>
             </Link>
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              logoutLocal();
+              toast.success("Signed out");
+              router.navigate({ to: "/login", replace: true });
+            }}
+            aria-label="Sign out"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline">Sign out</span>
+          </Button>
         </div>
       </div>
     </header>
   );
 }
 
+function AuthGate({ children }: { children: ReactNode }) {
+  const { isAuthed, ready } = useAuth();
+  const router = useRouter();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const onLogin = pathname === "/login";
+
+  useEffect(() => {
+    if (!ready) return;
+    if (!isAuthed && !onLogin) {
+      router.navigate({
+        to: "/login",
+        search: { redirect: pathname },
+        replace: true,
+      });
+    }
+  }, [ready, isAuthed, onLogin, pathname, router]);
+
+  // Once we've hydrated and know the user is not signed in on a protected
+  // route, hide the content instantly (redirect is running). Before hydration
+  // we render children so the initial paint matches SSR.
+  if (ready && !isAuthed && !onLogin) return null;
+  return <>{children}</>;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const onLogin = pathname === "/login";
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-background text-foreground">
-        <Header />
-        <main>
-          <Outlet />
-        </main>
-      </div>
+      <AuthGate>
+        <div className="min-h-screen bg-background text-foreground">
+          {!onLogin && <Header />}
+          <main>
+            <Outlet />
+          </main>
+        </div>
+      </AuthGate>
       <Toaster position="top-right" richColors />
     </QueryClientProvider>
   );
