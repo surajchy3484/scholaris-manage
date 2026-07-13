@@ -138,11 +138,14 @@ function SchoolDetail() {
       return {
         student_id: s.student_code,
         name: s.name,
+        school_name: school.name,
         class: s.class,
         division: s.division,
         roll_number: s.roll_number,
         attendance_percentage: pct,
-        photo_ref: s.photo_url ? "(embedded)" : "",
+        photo_url: s.photo_url && /^https?:\/\//.test(s.photo_url) ? s.photo_url : "",
+        created_at: s.created_at,
+        updated_at: s.updated_at,
       };
     });
     if (zipFmt) {

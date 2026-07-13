@@ -1,12 +1,13 @@
 import { useRef } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Moon, Sun, Download, Upload, Info } from "lucide-react";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { ArrowLeft, Moon, Sun, Download, Upload, Info, LogOut } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useTheme } from "@/hooks/use-theme";
 import { backupDatabase, restoreDatabase } from "@/lib/backup";
+import { logoutLocal, useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -17,6 +18,8 @@ export const Route = createFileRoute("/settings")({
 
 function SettingsPage() {
   const { theme, setTheme } = useTheme();
+  const { session } = useAuth();
+  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function onBackup() {
@@ -104,6 +107,27 @@ function SettingsPage() {
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             Restore replaces all data. Take a backup first if you're unsure.
           </div>
+        </Card>
+
+        <Card className="p-5">
+          <div className="mb-3">
+            <h2 className="font-display text-lg font-semibold">Account</h2>
+            <p className="text-sm text-muted-foreground">
+              Signed in as{" "}
+              <span className="font-mono text-foreground">{session?.user ?? "—"}</span>.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              logoutLocal();
+              toast.success("Signed out");
+              router.navigate({ to: "/login", replace: true });
+            }}
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </Button>
         </Card>
 
         <Card className="p-5">
