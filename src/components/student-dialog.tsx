@@ -166,6 +166,7 @@ export function StudentDialog({
         });
         if (error) throw error;
       } else {
+        const prevUrl = rest.student.photo_url;
         const { error } = await supabase
           .from("students")
           .update({
@@ -177,6 +178,13 @@ export function StudentDialog({
           })
           .eq("id", rest.student.id);
         if (error) throw error;
+        // Best-effort: delete old Drive file if photo changed.
+        if (prevUrl && prevUrl !== photoUrl) {
+          const oldId = extractDriveFileId(prevUrl);
+          if (oldId) {
+            deletePhotoFromDrive({ data: { fileId: oldId } }).catch(() => {});
+          }
+        }
       }
     },
     onSuccess: () => {
