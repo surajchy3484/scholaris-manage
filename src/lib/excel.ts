@@ -102,7 +102,6 @@ function shapeRows(rows: StudentExportRow[]) {
 
 function makeWorkbookWithHyperlinks(shaped: ReturnType<typeof shapeRows>) {
   const ws = XLSX.utils.json_to_sheet(shaped);
-  // Convert Photo URL cells to real hyperlinks so clicking opens the image.
   const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
   // Locate the "Photo URL" column
   let photoCol = -1;
@@ -117,8 +116,16 @@ function makeWorkbookWithHyperlinks(shaped: ReturnType<typeof shapeRows>) {
     for (let R = range.s.r + 1; R <= range.e.r; R++) {
       const addr = XLSX.utils.encode_cell({ r: R, c: photoCol });
       const cell = ws[addr];
-      if (cell && typeof cell.v === "string" && /^https?:\/\//.test(cell.v)) {
-        cell.l = { Target: cell.v, Tooltip: "Open photo" };
+      const raw = cell && typeof cell.v === "string" ? cell.v : "";
+      if (raw && /^https?:\/\//.test(raw)) {
+        // Display "View Image" but link to the exact Drive image URL.
+        ws[addr] = {
+          t: "s",
+          v: "View Image",
+          l: { Target: raw, Tooltip: "Open student photo" },
+        };
+      } else {
+        ws[addr] = { t: "s", v: "No Photo" };
       }
     }
   }
