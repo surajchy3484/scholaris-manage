@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
+import FileSaver from "file-saver";
+const { saveAs } = FileSaver;
 import JSZip from "jszip";
 import type { Student } from "./types";
 import { dataUrlToBlob } from "./photo";
