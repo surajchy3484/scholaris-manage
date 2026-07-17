@@ -325,6 +325,7 @@ function SchoolDetail() {
           mode="add"
           schoolId={schoolId}
           schoolName={school.name}
+          schoolCode={school.code}
         />
       )}
       {editStudent && (

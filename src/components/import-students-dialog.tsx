@@ -5,7 +5,7 @@ import { Upload, Download, AlertCircle, CheckCircle2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { School } from "@/lib/types";
-import { generateStudentCode } from "@/lib/student-id";
+import { formatStudentCode, nextStudentCode } from "@/lib/student-id";
 import { parseImportFile, downloadSampleTemplate, type ImportRow } from "@/lib/excel";
 import {
   Dialog,
@@ -68,9 +68,13 @@ export function ImportStudentsDialog({
     mutationFn: async () => {
       const valid = rows.filter((r) => r._errors.length === 0);
       if (!valid.length) throw new Error("No valid rows to import");
-      const payload = valid.map((r) => ({
+      // Get current max sequence for this school, then assign sequentially.
+      const first = await nextStudentCode(school.id, school.code);
+      // parse starting seq from first
+      const startSeq = parseInt(first.split("-STU")[1], 10);
+      const payload = valid.map((r, i) => ({
         school_id: school.id,
-        student_code: generateStudentCode(school.name),
+        student_code: formatStudentCode(school.code, startSeq + i),
         name: r.name,
         class: r.class,
         division: r.division,

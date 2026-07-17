@@ -15,11 +15,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PhotoPicker } from "./photo-picker";
-import { generateStudentCode } from "@/lib/student-id";
-import { uploadPhotoToDrive } from "@/lib/drive.functions";
+import { nextStudentCode } from "@/lib/student-id";
+import { uploadPhotoToDrive, deletePhotoFromDrive, extractDriveFileId } from "@/lib/drive.functions";
 import type { Student } from "@/lib/types";
 
-type Mode = { mode: "add"; schoolId: string; schoolName: string } | { mode: "edit"; student: Student };
+type Mode =
+  | { mode: "add"; schoolId: string; schoolName: string; schoolCode: string }
+  | { mode: "edit"; student: Student };
 
 type Errors = Partial<Record<"name" | "class" | "division" | "roll" | "photo", string>>;
 
@@ -63,7 +65,11 @@ export function StudentDialog({
       setDivision("");
       setRoll("");
       setPhoto(null);
-      setCode(generateStudentCode(rest.schoolName));
+      setCode("");
+      // Compute next sequential ID for this school.
+      nextStudentCode(rest.schoolId, rest.schoolCode)
+        .then(setCode)
+        .catch(() => setCode(`${rest.schoolCode}-STU000001`));
     }
   }, [open, rest]);
 
@@ -115,8 +121,9 @@ export function StudentDialog({
           .limit(1);
         if (codeErr) throw codeErr;
         if (codeDupes && codeDupes.length > 0) {
-          // Extremely unlikely; regenerate silently.
-          setCode(generateStudentCode(rest.mode === "add" ? rest.schoolName : ""));
+          // Extremely unlikely; regenerate.
+          const nextCode = await nextStudentCode(rest.schoolId, rest.schoolCode);
+          setCode(nextCode);
           throw new Error("Student ID collision — please save again.");
         }
       }
@@ -159,6 +166,7 @@ export function StudentDialog({
         });
         if (error) throw error;
       } else {
+        const prevUrl = rest.student.photo_url;
         const { error } = await supabase
           .from("students")
           .update({
@@ -170,6 +178,13 @@ export function StudentDialog({
           })
           .eq("id", rest.student.id);
         if (error) throw error;
+        // Best-effort: delete old Drive file if photo changed.
+        if (prevUrl && prevUrl !== photoUrl) {
+          const oldId = extractDriveFileId(prevUrl);
+          if (oldId) {
+            deletePhotoFromDrive({ data: { fileId: oldId } }).catch(() => {});
+          }
+        }
       }
     },
     onSuccess: () => {

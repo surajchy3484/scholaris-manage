@@ -2,6 +2,7 @@ export type School = {
   id: string;
   name: string;
   location: string;
+  code: string;
   created_at: string;
   updated_at: string;
 };

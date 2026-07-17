@@ -24,7 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { uploadPhotoToDrive } from "@/lib/drive.functions";
+import { uploadPhotoToDrive, deletePhotoFromDrive, extractDriveFileId } from "@/lib/drive.functions";
 
 export function StudentCard({
   student,
@@ -44,6 +44,7 @@ export function StudentCard({
 
   const setPhoto = useMutation({
     mutationFn: async (dataUrl: string | null) => {
+      const prevUrl = student.photo_url;
       let photoUrl = dataUrl;
       if (photoUrl && photoUrl.startsWith("data:")) {
         const filename = `${student.student_code}-${student.name.replace(/\s+/g, "_")}.jpg`;
@@ -55,6 +56,11 @@ export function StudentCard({
         .update({ photo_url: photoUrl })
         .eq("id", student.id);
       if (error) throw error;
+      // Best-effort: delete previous Drive file if it changed.
+      if (prevUrl && prevUrl !== photoUrl) {
+        const oldId = extractDriveFileId(prevUrl);
+        if (oldId) deletePhotoFromDrive({ data: { fileId: oldId } }).catch(() => {});
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["students"] });
