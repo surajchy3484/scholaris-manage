@@ -65,7 +65,11 @@ export function StudentDialog({
       setDivision("");
       setRoll("");
       setPhoto(null);
-      setCode(generateStudentCode(rest.schoolName));
+      setCode("");
+      // Compute next sequential ID for this school.
+      nextStudentCode(rest.schoolId, rest.schoolCode)
+        .then(setCode)
+        .catch(() => setCode(`${rest.schoolCode}-STU000001`));
     }
   }, [open, rest]);
 
@@ -117,8 +121,9 @@ export function StudentDialog({
           .limit(1);
         if (codeErr) throw codeErr;
         if (codeDupes && codeDupes.length > 0) {
-          // Extremely unlikely; regenerate silently.
-          setCode(generateStudentCode(rest.mode === "add" ? rest.schoolName : ""));
+          // Extremely unlikely; regenerate.
+          const nextCode = await nextStudentCode(rest.schoolId, rest.schoolCode);
+          setCode(nextCode);
           throw new Error("Student ID collision — please save again.");
         }
       }
