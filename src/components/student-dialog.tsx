@@ -71,7 +71,8 @@ export function StudentDialog({
         .then(setCode)
         .catch(() => setCode(`${rest.schoolCode}-STU000001`));
     }
-  }, [open, rest]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isEdit, isEdit ? rest.student.id : rest.schoolId]);
 
   function validate(): Errors {
     const e: Errors = {};
