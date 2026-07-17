@@ -28,7 +28,8 @@ export function AddSchoolDialog({
 
   const create = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("schools").insert({ name, location });
+      // `code` is auto-assigned by a DB trigger (SCH001, SCH002, ...); pass empty string.
+      const { error } = await supabase.from("schools").insert({ name, location, code: "" });
       if (error) throw error;
     },
     onSuccess: () => {
