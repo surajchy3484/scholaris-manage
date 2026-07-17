@@ -15,11 +15,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PhotoPicker } from "./photo-picker";
-import { generateStudentCode } from "@/lib/student-id";
-import { uploadPhotoToDrive } from "@/lib/drive.functions";
+import { nextStudentCode } from "@/lib/student-id";
+import { uploadPhotoToDrive, deletePhotoFromDrive, extractDriveFileId } from "@/lib/drive.functions";
 import type { Student } from "@/lib/types";
 
-type Mode = { mode: "add"; schoolId: string; schoolName: string } | { mode: "edit"; student: Student };
+type Mode =
+  | { mode: "add"; schoolId: string; schoolName: string; schoolCode: string }
+  | { mode: "edit"; student: Student };
 
 type Errors = Partial<Record<"name" | "class" | "division" | "roll" | "photo", string>>;
 
