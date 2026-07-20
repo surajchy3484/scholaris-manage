@@ -58,6 +58,7 @@ function SchoolDetail() {
   const [q, setQ] = useState("");
   const [filterClass, setFilterClass] = useState("all");
   const [filterDiv, setFilterDiv] = useState("all");
+  const [sortBy, setSortBy] = useState<"roll-asc" | "roll-desc" | "name-asc" | "name-desc">("roll-asc");
 
   const { data: school } = useQuery({
     queryKey: ["school", schoolId],
@@ -109,20 +110,48 @@ function SchoolDetail() {
     [students, filterClass],
   );
 
-  const filtered = students.filter((s) => {
-    if (filterClass !== "all" && s.class !== filterClass) return false;
-    if (filterDiv !== "all" && s.division !== filterDiv) return false;
-    if (q) {
-      const t = q.toLowerCase();
-      if (
-        !s.name.toLowerCase().includes(t) &&
-        !s.student_code.toLowerCase().includes(t) &&
-        !s.roll_number.toLowerCase().includes(t)
-      )
-        return false;
-    }
-    return true;
-  });
+  const filtered = useMemo(() => {
+    const list = students.filter((s) => {
+      if (filterClass !== "all" && s.class !== filterClass) return false;
+      if (filterDiv !== "all" && s.division !== filterDiv) return false;
+      if (q) {
+        const t = q.toLowerCase();
+        if (
+          !s.name.toLowerCase().includes(t) &&
+          !s.student_code.toLowerCase().includes(t) &&
+          !s.roll_number.toLowerCase().includes(t)
+        )
+          return false;
+      }
+      return true;
+    });
+
+    const sortRoll = (a: string, b: string) => {
+      const an = parseInt(a, 10);
+      const bn = parseInt(b, 10);
+      const aIsNum = !Number.isNaN(an);
+      const bIsNum = !Number.isNaN(bn);
+      if (aIsNum && bIsNum) return an - bn;
+      if (aIsNum) return -1;
+      if (bIsNum) return 1;
+      return a.localeCompare(b);
+    };
+
+    return [...list].sort((a, b) => {
+      switch (sortBy) {
+        case "roll-asc":
+          return sortRoll(a.roll_number, b.roll_number);
+        case "roll-desc":
+          return sortRoll(b.roll_number, a.roll_number);
+        case "name-asc":
+          return a.name.localeCompare(b.name);
+        case "name-desc":
+          return b.name.localeCompare(a.name);
+        default:
+          return 0;
+      }
+    });
+  }, [students, filterClass, filterDiv, q, sortBy]);
 
   async function handleExport(zipFmt: boolean) {
     if (!school) return;
@@ -273,6 +302,17 @@ function SchoolDetail() {
                     Div {d}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="roll-asc">Roll No. (Low → High)</SelectItem>
+                <SelectItem value="roll-desc">Roll No. (High → Low)</SelectItem>
+                <SelectItem value="name-asc">Name (A → Z)</SelectItem>
+                <SelectItem value="name-desc">Name (Z → A)</SelectItem>
               </SelectContent>
             </Select>
           </div>
