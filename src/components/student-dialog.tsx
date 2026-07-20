@@ -334,11 +334,12 @@ export function ViewStudentDialog({
           <div className="h-32 w-32 overflow-hidden rounded-full bg-muted ring-4 ring-accent">
             {student.photo_url ? (
               <img
-                src={student.photo_url}
+                src={toDisplayablePhotoUrl(student.photo_url) ?? ""}
                 alt={student.name}
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"
               />
+
             ) : (
               <div className="grid h-full w-full place-items-center text-muted-foreground">
                 No Photo
