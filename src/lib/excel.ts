@@ -4,6 +4,7 @@ const { saveAs } = FileSaver;
 import JSZip from "jszip";
 import type { Student } from "./types";
 import { dataUrlToBlob } from "./photo";
+import { extractDriveFileId } from "./drive.functions";
 
 export type ImportRow = {
   name: string;
