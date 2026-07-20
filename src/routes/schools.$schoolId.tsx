@@ -304,6 +304,17 @@ function SchoolDetail() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="roll-asc">Roll No. (Low → High)</SelectItem>
+                <SelectItem value="roll-desc">Roll No. (High → Low)</SelectItem>
+                <SelectItem value="name-asc">Name (A → Z)</SelectItem>
+                <SelectItem value="name-desc">Name (Z → A)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {isLoading ? (
