@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { fileToCompressedDataUrl } from "@/lib/photo";
+import { toDisplayablePhotoUrl as normalizeDriveUrl } from "@/lib/drive.functions";
 import { cn } from "@/lib/utils";
 
 export function PhotoPicker({
@@ -48,7 +49,7 @@ export function PhotoPicker({
           aria-label="Change photo"
         >
           {value ? (
-            <img src={value} alt="Student" className="h-full w-full object-cover" />
+            <img src={value.startsWith("data:") ? value : (normalizeDriveUrl(value) ?? "")} alt="Student" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
               <User className="h-6 w-6" />

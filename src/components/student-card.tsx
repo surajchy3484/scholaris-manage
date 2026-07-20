@@ -24,7 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { uploadPhotoToDrive, deletePhotoFromDrive, extractDriveFileId } from "@/lib/drive.functions";
+import { uploadPhotoToDrive, deletePhotoFromDrive, extractDriveFileId, toDisplayablePhotoUrl } from "@/lib/drive.functions";
 
 export function StudentCard({
   student,
@@ -80,12 +80,13 @@ export function StudentCard({
         >
           {student.photo_url ? (
             <img
-              src={student.photo_url}
+              src={toDisplayablePhotoUrl(student.photo_url) ?? ""}
               alt={student.name}
               className="h-full w-full object-cover"
               loading="lazy"
               referrerPolicy="no-referrer"
             />
+
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 border-2 border-dashed border-border text-muted-foreground">
               <User className="h-5 w-5" />

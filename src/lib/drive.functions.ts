@@ -144,5 +144,17 @@ export function extractDriveFileId(url: string | null | undefined): string | nul
   if (m1) return m1[1];
   const m2 = /\/file\/d\/([A-Za-z0-9_-]+)/.exec(url);
   if (m2) return m2[1];
+  const m3 = /lh3\.googleusercontent\.com\/d\/([A-Za-z0-9_-]+)/.exec(url);
+  if (m3) return m3[1];
   return null;
+}
+
+// Convert any Google Drive URL variant to a URL that reliably embeds in
+// <img> tags and opens the raw image in a new browser tab. Non-Drive URLs
+// pass through untouched.
+export function toDisplayablePhotoUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const id = extractDriveFileId(url);
+  if (id) return `https://lh3.googleusercontent.com/d/${id}=w800`;
+  return url;
 }
