@@ -119,11 +119,16 @@ function makeWorkbookWithHyperlinks(shaped: ReturnType<typeof shapeRows>) {
       const cell = ws[addr];
       const raw = cell && typeof cell.v === "string" ? cell.v : "";
       if (raw && /^https?:\/\//.test(raw)) {
-        // Display "View Image" but link to the exact Drive image URL.
+        // Normalize any Drive URL variant to a link that opens the exact
+        // image in a new browser tab. Non-Drive https URLs pass through.
+        const fileId = extractDriveFileId(raw);
+        const target = fileId
+          ? `https://lh3.googleusercontent.com/d/${fileId}=w1600`
+          : raw;
         ws[addr] = {
           t: "s",
           v: "View Image",
-          l: { Target: raw, Tooltip: "Open student photo" },
+          l: { Target: target, Tooltip: "Open student photo" },
         };
       } else {
         ws[addr] = { t: "s", v: "No Photo" };
