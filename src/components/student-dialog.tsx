@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PhotoPicker } from "./photo-picker";
 import { nextStudentCode } from "@/lib/student-id";
-import { uploadPhotoToDrive, deletePhotoFromDrive, extractDriveFileId } from "@/lib/drive.functions";
+import { uploadPhotoToDrive, deletePhotoFromDrive, extractDriveFileId, toDisplayablePhotoUrl } from "@/lib/drive.functions";
 import type { Student } from "@/lib/types";
 
 type Mode =
