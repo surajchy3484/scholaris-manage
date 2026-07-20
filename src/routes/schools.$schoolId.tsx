@@ -58,6 +58,7 @@ function SchoolDetail() {
   const [q, setQ] = useState("");
   const [filterClass, setFilterClass] = useState("all");
   const [filterDiv, setFilterDiv] = useState("all");
+  const [sortBy, setSortBy] = useState<"roll-asc" | "roll-desc" | "name-asc" | "name-desc">("roll-asc");
 
   const { data: school } = useQuery({
     queryKey: ["school", schoolId],
