@@ -111,7 +111,9 @@ export const uploadPhotoToDrive = createServerFn({ method: "POST" })
 
     return {
       fileId,
-      url: `https://drive.google.com/uc?export=view&id=${fileId}`,
+      // lh3 serves the raw image reliably — works as <img src> in the app
+      // and opens the exact image in a new browser tab when clicked.
+      url: `https://lh3.googleusercontent.com/d/${fileId}=w1200`,
       viewUrl: `https://drive.google.com/file/d/${fileId}/view`,
     };
   });
