@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { fileToCompressedDataUrl } from "@/lib/photo";
+import { toDisplayablePhotoUrl as normalizeDriveUrl } from "@/lib/drive.functions";
 import { cn } from "@/lib/utils";
 
 export function PhotoPicker({
