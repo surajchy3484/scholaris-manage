@@ -103,6 +103,23 @@ function SchoolDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const removeImage = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("schools")
+        .update({ image_url: null })
+        .eq("id", schoolId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["school", schoolId] });
+      qc.invalidateQueries({ queryKey: ["schools"] });
+      toast.success("School image removed");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   const classes = useMemo(
     () => Array.from(new Set(students.map((s) => s.class))).sort(),
     [students],
