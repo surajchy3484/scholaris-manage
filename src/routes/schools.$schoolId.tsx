@@ -13,7 +13,12 @@ import {
   MapPin,
   FileSpreadsheet,
   FileArchive,
+  Pencil,
+  ImageOff,
+  School as SchoolIcon,
 } from "lucide-react";
+import { EditSchoolDialog } from "@/components/add-school-dialog";
+
 
 import { supabase } from "@/integrations/supabase/client";
 import type { School, Student, AttendanceRecord } from "@/lib/types";
@@ -59,11 +64,13 @@ function SchoolDetail() {
   const [filterClass, setFilterClass] = useState("all");
   const [filterDiv, setFilterDiv] = useState("all");
   const [sortBy, setSortBy] = useState<"roll-asc" | "roll-desc" | "name-asc" | "name-desc">("roll-asc");
+  const [editSchoolOpen, setEditSchoolOpen] = useState(false);
 
   const { data: school } = useQuery({
     queryKey: ["school", schoolId],
     queryFn: async (): Promise<School> => {
       const { data, error } = await supabase.from("schools").select("*").eq("id", schoolId).single();
+
       if (error) throw error;
       if (!data) throw notFound();
       return data;
@@ -95,6 +102,23 @@ function SchoolDetail() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const removeImage = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("schools")
+        .update({ image_url: null })
+        .eq("id", schoolId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["school", schoolId] });
+      qc.invalidateQueries({ queryKey: ["schools"] });
+      toast.success("School image removed");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const classes = useMemo(
     () => Array.from(new Set(students.map((s) => s.class))).sort(),
@@ -209,8 +233,24 @@ function SchoolDetail() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-6"
       >
-        <Card className="flex flex-col gap-4 overflow-hidden bg-gradient-to-br from-primary/95 to-primary-glow p-6 text-primary-foreground sm:flex-row sm:items-center sm:justify-between">
-          <div>
+        <Card className="flex flex-col gap-5 overflow-hidden bg-gradient-to-br from-primary/95 to-primary-glow p-6 text-primary-foreground sm:flex-row sm:items-center">
+          <div
+            className="relative shrink-0 overflow-hidden rounded-2xl bg-white/15 ring-1 ring-white/20 backdrop-blur-sm"
+            style={{ width: 160, height: 160 }}
+          >
+            {school.image_url ? (
+              <img
+                src={school.image_url}
+                alt={school.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <SchoolIcon className="h-16 w-16 text-primary-foreground/80" />
+              </div>
+            )}
+          </div>
+          <div className="flex-1">
             <p className="text-xs font-medium uppercase tracking-widest text-primary-foreground/70">
               School
             </p>
@@ -219,18 +259,47 @@ function SchoolDetail() {
               <MapPin className="h-4 w-4" />
               {school.location}
             </p>
-          </div>
-          <div className="flex items-center gap-3 rounded-xl bg-white/15 px-5 py-3 backdrop-blur-sm">
-            <Users className="h-6 w-6" />
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-primary-foreground/75">
-                Total students
+            <div className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2 backdrop-blur-sm">
+              <Users className="h-5 w-5" />
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-primary-foreground/75">
+                  Total students
+                </div>
+                <div className="font-display text-xl font-bold leading-none">{students.length}</div>
               </div>
-              <div className="font-display text-2xl font-bold">{students.length}</div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setEditSchoolOpen(true)}
+              >
+                <Pencil className="h-4 w-4" />
+                {school.image_url ? "Change Image" : "Add Image"}
+              </Button>
+              {school.image_url && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => removeImage.mutate()}
+                  disabled={removeImage.isPending}
+                >
+                  <ImageOff className="h-4 w-4" />
+                  Remove Image
+                </Button>
+              )}
             </div>
           </div>
         </Card>
       </motion.div>
+
+      <EditSchoolDialog
+        school={school}
+        open={editSchoolOpen}
+        onOpenChange={setEditSchoolOpen}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["school", schoolId] })}
+      />
+
 
       <Tabs defaultValue="students" className="space-y-4">
         <TabsList className="flex w-full flex-wrap gap-1 bg-muted p-1 sm:w-auto">
