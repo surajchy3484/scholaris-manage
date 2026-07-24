@@ -13,7 +13,12 @@ import {
   MapPin,
   FileSpreadsheet,
   FileArchive,
+  Pencil,
+  ImageOff,
+  School as SchoolIcon,
 } from "lucide-react";
+import { EditSchoolDialog } from "@/components/add-school-dialog";
+
 
 import { supabase } from "@/integrations/supabase/client";
 import type { School, Student, AttendanceRecord } from "@/lib/types";
