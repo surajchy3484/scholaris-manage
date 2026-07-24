@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { PhotoPicker } from "@/components/photo-picker";
 import type { School } from "@/lib/types";
 
 export function AddSchoolDialog({
@@ -24,12 +25,15 @@ export function AddSchoolDialog({
 }) {
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const qc = useQueryClient();
 
   const create = useMutation({
     mutationFn: async () => {
       // `code` is auto-assigned by a DB trigger (SCH001, SCH002, ...); pass empty string.
-      const { error } = await supabase.from("schools").insert({ name, location, code: "" });
+      const { error } = await supabase
+        .from("schools")
+        .insert({ name, location, code: "", image_url: imageUrl });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -37,6 +41,7 @@ export function AddSchoolDialog({
       toast.success("School added");
       setName("");
       setLocation("");
+      setImageUrl(null);
       onOpenChange(false);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -58,6 +63,10 @@ export function AddSchoolDialog({
           <DialogDescription>Create a new school. You can add students afterwards.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label>School Image</Label>
+            <PhotoPicker value={imageUrl} onChange={setImageUrl} size={112} />
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="school-name">School Name</Label>
             <Input
@@ -104,16 +113,20 @@ export function EditSchoolDialog({
 }) {
   const [name, setName] = useState(school.name);
   const [location, setLocation] = useState(school.location);
+  const [imageUrl, setImageUrl] = useState<string | null>(school.image_url);
+  const qc = useQueryClient();
 
   const update = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
         .from("schools")
-        .update({ name, location })
+        .update({ name, location, image_url: imageUrl })
         .eq("id", school.id);
       if (error) throw error;
     },
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["schools"] });
+      qc.invalidateQueries({ queryKey: ["school", school.id] });
       toast.success("School updated");
       onSaved?.();
       onOpenChange(false);
@@ -128,6 +141,10 @@ export function EditSchoolDialog({
           <DialogTitle>Edit school</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label>School Image</Label>
+            <PhotoPicker value={imageUrl} onChange={setImageUrl} size={112} />
+          </div>
           <div className="space-y-1.5">
             <Label>School Name</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} />
