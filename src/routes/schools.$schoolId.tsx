@@ -64,11 +64,13 @@ function SchoolDetail() {
   const [filterClass, setFilterClass] = useState("all");
   const [filterDiv, setFilterDiv] = useState("all");
   const [sortBy, setSortBy] = useState<"roll-asc" | "roll-desc" | "name-asc" | "name-desc">("roll-asc");
+  const [editSchoolOpen, setEditSchoolOpen] = useState(false);
 
   const { data: school } = useQuery({
     queryKey: ["school", schoolId],
     queryFn: async (): Promise<School> => {
       const { data, error } = await supabase.from("schools").select("*").eq("id", schoolId).single();
+
       if (error) throw error;
       if (!data) throw notFound();
       return data;
