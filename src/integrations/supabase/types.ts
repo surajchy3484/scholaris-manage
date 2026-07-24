@@ -61,6 +61,7 @@ export type Database = {
           code: string
           created_at: string
           id: string
+          image_url: string | null
           location: string
           name: string
           updated_at: string
@@ -69,6 +70,7 @@ export type Database = {
           code: string
           created_at?: string
           id?: string
+          image_url?: string | null
           location: string
           name: string
           updated_at?: string
@@ -77,6 +79,7 @@ export type Database = {
           code?: string
           created_at?: string
           id?: string
+          image_url?: string | null
           location?: string
           name?: string
           updated_at?: string
