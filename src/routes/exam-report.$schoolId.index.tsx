@@ -38,7 +38,7 @@ import {
   type PerfStatus,
 } from "@/lib/exam";
 
-export const Route = createFileRoute("/exam-report/$schoolId")({
+export const Route = createFileRoute("/exam-report/$schoolId/")({
   head: () => ({
     meta: [
       { title: "School Exam Dashboard — Scholaris" },
