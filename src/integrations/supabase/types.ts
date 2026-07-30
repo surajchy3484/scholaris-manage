@@ -56,6 +56,45 @@ export type Database = {
           },
         ]
       }
+      exam_scores: {
+        Row: {
+          academic_year: string
+          created_at: string
+          exam_type: string
+          id: string
+          remarks: string | null
+          school_id: string
+          score: number
+          student_id: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          academic_year?: string
+          created_at?: string
+          exam_type?: string
+          id?: string
+          remarks?: string | null
+          school_id: string
+          score?: number
+          student_id: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          academic_year?: string
+          created_at?: string
+          exam_type?: string
+          id?: string
+          remarks?: string | null
+          school_id?: string
+          score?: number
+          student_id?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       schools: {
         Row: {
           code: string
@@ -91,6 +130,7 @@ export type Database = {
           class: string
           created_at: string
           division: string
+          enrollment_date: string | null
           id: string
           name: string
           photo_url: string | null
@@ -103,6 +143,7 @@ export type Database = {
           class: string
           created_at?: string
           division: string
+          enrollment_date?: string | null
           id?: string
           name: string
           photo_url?: string | null
@@ -115,6 +156,7 @@ export type Database = {
           class?: string
           created_at?: string
           division?: string
+          enrollment_date?: string | null
           id?: string
           name?: string
           photo_url?: string | null
