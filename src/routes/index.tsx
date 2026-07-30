@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Plus, Search, School as SchoolIcon, ArrowUpDown, Users } from "lucide-react";
+import { Plus, Search, School as SchoolIcon, ArrowUpDown, Users, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -123,6 +123,32 @@ function Dashboard() {
             Add School
           </Button>
         </Card>
+
+        <Link to="/exam-report" className="sm:col-span-2">
+          <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
+            <Card className="relative flex items-center justify-between overflow-hidden border-none bg-gradient-to-br from-[oklch(0.62_0.24_305)] to-[oklch(0.7_0.16_210)] p-6 text-primary-foreground shadow-elegant">
+              <div className="absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+              <div className="relative">
+                <div className="flex items-center gap-2 text-primary-foreground/80">
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="text-xs font-medium uppercase tracking-wider">Analytics</span>
+                </div>
+                <h2 className="mt-1 font-display text-2xl font-bold">📊 Exam Report</h2>
+                <p className="mt-1 text-sm text-primary-foreground/85">
+                  Attendance, ICA &amp; IMF performance across every school, class and student.
+                </p>
+              </div>
+              <Button
+                size="lg"
+                variant="secondary"
+                className="relative shrink-0 shadow-elegant"
+                asChild
+              >
+                <span>Open</span>
+              </Button>
+            </Card>
+          </motion.div>
+        </Link>
       </motion.section>
 
       {/* Controls */}

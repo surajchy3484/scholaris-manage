@@ -17,6 +17,7 @@ export type Student = {
   division: string;
   roll_number: string;
   photo_url: string | null;
+  enrollment_date: string | null;
   created_at: string;
   updated_at: string;
 };
