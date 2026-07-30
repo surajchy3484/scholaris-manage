@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExamReportIndexRouteImport } from './routes/exam-report.index'
 import { Route as SchoolsSchoolIdRouteImport } from './routes/schools.$schoolId'
 import { Route as ExamReportSchoolIdIndexRouteImport } from './routes/exam-report.$schoolId.index'
+import { Route as ExamReportSchoolIdStudentsRouteImport } from './routes/exam-report.$schoolId.students'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -46,6 +47,12 @@ const ExamReportSchoolIdIndexRoute = ExamReportSchoolIdIndexRouteImport.update({
   path: '/exam-report/$schoolId/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExamReportSchoolIdStudentsRoute =
+  ExamReportSchoolIdStudentsRouteImport.update({
+    id: '/exam-report/$schoolId/students',
+    path: '/exam-report/$schoolId/students',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -53,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/schools/$schoolId': typeof SchoolsSchoolIdRoute
   '/exam-report/': typeof ExamReportIndexRoute
+  '/exam-report/$schoolId/students': typeof ExamReportSchoolIdStudentsRoute
   '/exam-report/$schoolId/': typeof ExamReportSchoolIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +69,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/schools/$schoolId': typeof SchoolsSchoolIdRoute
   '/exam-report': typeof ExamReportIndexRoute
+  '/exam-report/$schoolId/students': typeof ExamReportSchoolIdStudentsRoute
   '/exam-report/$schoolId': typeof ExamReportSchoolIdIndexRoute
 }
 export interface FileRoutesById {
@@ -70,6 +79,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/schools/$schoolId': typeof SchoolsSchoolIdRoute
   '/exam-report/': typeof ExamReportIndexRoute
+  '/exam-report/$schoolId/students': typeof ExamReportSchoolIdStudentsRoute
   '/exam-report/$schoolId/': typeof ExamReportSchoolIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +90,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/schools/$schoolId'
     | '/exam-report/'
+    | '/exam-report/$schoolId/students'
     | '/exam-report/$schoolId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +99,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/schools/$schoolId'
     | '/exam-report'
+    | '/exam-report/$schoolId/students'
     | '/exam-report/$schoolId'
   id:
     | '__root__'
@@ -96,6 +108,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/schools/$schoolId'
     | '/exam-report/'
+    | '/exam-report/$schoolId/students'
     | '/exam-report/$schoolId/'
   fileRoutesById: FileRoutesById
 }
@@ -105,6 +118,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SchoolsSchoolIdRoute: typeof SchoolsSchoolIdRoute
   ExamReportIndexRoute: typeof ExamReportIndexRoute
+  ExamReportSchoolIdStudentsRoute: typeof ExamReportSchoolIdStudentsRoute
   ExamReportSchoolIdIndexRoute: typeof ExamReportSchoolIdIndexRoute
 }
 
@@ -152,6 +166,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExamReportSchoolIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/exam-report/$schoolId/students': {
+      id: '/exam-report/$schoolId/students'
+      path: '/exam-report/$schoolId/students'
+      fullPath: '/exam-report/$schoolId/students'
+      preLoaderRoute: typeof ExamReportSchoolIdStudentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -161,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SchoolsSchoolIdRoute: SchoolsSchoolIdRoute,
   ExamReportIndexRoute: ExamReportIndexRoute,
+  ExamReportSchoolIdStudentsRoute: ExamReportSchoolIdStudentsRoute,
   ExamReportSchoolIdIndexRoute: ExamReportSchoolIdIndexRoute,
 }
 export const routeTree = rootRouteImport
