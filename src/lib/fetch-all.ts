@@ -1,5 +1,3 @@
-import type { PostgrestFilterBuilder } from "@postgrest/postgrest-js";
-
 /**
  * PostgREST caps a single request at 1000 rows. Anything that must reflect the
  * *whole* table (student counts, exam aggregates) has to page through the
@@ -19,5 +17,3 @@ export async function fetchAllRows<T>(
   }
   return out;
 }
-
-export type { PostgrestFilterBuilder };
