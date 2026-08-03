@@ -37,7 +37,7 @@ export function SchoolCard({
 
   return (
     <>
-      <Card className="group relative flex h-full flex-col overflow-hidden p-0 transition-all hover:-translate-y-0.5 hover:shadow-elegant">
+      <Card className="group relative flex h-full min-w-0 flex-col overflow-hidden p-0 transition-all hover:-translate-y-0.5 hover:shadow-elegant">
         <div className="absolute right-3 top-3 z-10">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -65,7 +65,7 @@ export function SchoolCard({
           to="/schools/$schoolId"
           params={{ schoolId: school.id }}
           aria-label={`Open ${school.name}`}
-          className="flex flex-1 cursor-pointer items-start gap-4 p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-accent/40"
+          className="flex min-w-0 flex-1 cursor-pointer items-start gap-4 p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-accent/40"
         >
           <div
             className="relative aspect-square w-24 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-primary/90 to-primary-glow text-primary-foreground shadow-soft sm:w-[140px]"
