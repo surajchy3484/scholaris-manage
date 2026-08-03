@@ -312,14 +312,17 @@ function StudentExamDashboard() {
                 className="h-full cursor-pointer overflow-hidden border-border/60 p-4 shadow-soft transition-all hover:border-primary/40 hover:shadow-elegant focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.995]"
               >
                 <div className="flex items-start gap-3">
-                  <Checkbox
-                    checked={selectedIds.includes(s.id)}
-                    onCheckedChange={(c) =>
-                      setSelectedIds((prev) =>
-                        c ? [...prev, s.id] : prev.filter((id) => id !== s.id),
-                      )
-                    }
-                  />
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      aria-label={`Select ${s.name}`}
+                      checked={selectedIds.includes(s.id)}
+                      onCheckedChange={(c) =>
+                        setSelectedIds((prev) =>
+                          c ? [...prev, s.id] : prev.filter((id) => id !== s.id),
+                        )
+                      }
+                    />
+                  </span>
                   <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-muted ring-2 ring-accent">
                     {s.photo_url ? (
                       <img
