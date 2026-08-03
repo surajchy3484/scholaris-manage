@@ -37,7 +37,7 @@ export function SchoolCard({
 
   return (
     <>
-      <Card className="group relative flex h-full flex-col gap-4 overflow-hidden p-5 transition-all hover:-translate-y-0.5 hover:shadow-elegant">
+      <Card className="group relative flex h-full flex-col overflow-hidden p-0 transition-all hover:-translate-y-0.5 hover:shadow-elegant">
         <div className="absolute right-3 top-3 z-10">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -61,15 +61,20 @@ export function SchoolCard({
           </DropdownMenu>
         </div>
 
-        <div className="flex items-start gap-4">
+        <Link
+          to="/schools/$schoolId"
+          params={{ schoolId: school.id }}
+          aria-label={`Open ${school.name}`}
+          className="flex flex-1 cursor-pointer items-start gap-4 p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-accent/40"
+        >
           <div
-            className="relative shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-primary/90 to-primary-glow text-primary-foreground shadow-soft"
-            style={{ width: 140, height: 140 }}
+            className="relative aspect-square w-24 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-primary/90 to-primary-glow text-primary-foreground shadow-soft sm:w-[140px]"
           >
             {school.image_url ? (
               <img
                 src={school.image_url}
                 alt={school.name}
+                loading="lazy"
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -82,7 +87,9 @@ export function SchoolCard({
             )}
           </div>
           <div className="min-w-0 flex-1 pr-8">
-            <h3 className="truncate font-display text-lg font-semibold">{school.name}</h3>
+            <h3 className="truncate font-display text-lg font-semibold group-hover:text-primary">
+              {school.name}
+            </h3>
             <p className="mt-0.5 flex items-center gap-1 truncate text-sm text-muted-foreground">
               <MapPin className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{school.location}</span>
@@ -92,17 +99,9 @@ export function SchoolCard({
               {school.student_count} students
             </div>
           </div>
-        </div>
-
-        <div className="mt-auto flex items-center justify-end">
-          <Button asChild size="sm" variant="secondary">
-            <Link to="/schools/$schoolId" params={{ schoolId: school.id }}>
-              Open
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
+        </Link>
       </Card>
+
 
       <EditSchoolDialog school={school} open={editOpen} onOpenChange={setEditOpen} onSaved={onUpdated} />
 
