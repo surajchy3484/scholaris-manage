@@ -112,7 +112,7 @@ export function ReportTable({
                 <TableHead
                   key={c}
                   onClick={() => toggleSort(c)}
-                  className="cursor-pointer select-none whitespace-nowrap font-semibold"
+                  className="sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap bg-muted/95 font-semibold backdrop-blur"
                 >
                   <span className="inline-flex items-center gap-1">
                     {c}
