@@ -104,7 +104,7 @@ export function ReportTable({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="max-h-[70vh] overflow-auto">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
