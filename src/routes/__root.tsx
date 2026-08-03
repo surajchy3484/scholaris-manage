@@ -348,6 +348,7 @@ function RootComponent() {
       <AuthGate>
         <div className="min-h-screen bg-background text-foreground">
           {!onLogin && <Header />}
+          {!onLogin && pathname !== "/" && <PageNav />}
           <main>
             <Outlet />
           </main>
