@@ -104,7 +104,7 @@ export function ReportTable({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="max-h-[70vh] overflow-auto">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -112,7 +112,7 @@ export function ReportTable({
                 <TableHead
                   key={c}
                   onClick={() => toggleSort(c)}
-                  className="cursor-pointer select-none whitespace-nowrap font-semibold"
+                  className="sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap bg-muted/95 font-semibold backdrop-blur"
                 >
                   <span className="inline-flex items-center gap-1">
                     {c}
@@ -139,7 +139,18 @@ export function ReportTable({
                 <TableRow
                   key={i}
                   onClick={() => onRowClick?.(r)}
-                  className={onRowClick ? "cursor-pointer" : undefined}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  onKeyDown={(e) => {
+                    if (onRowClick && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      onRowClick(r);
+                    }
+                  }}
+                  className={
+                    onRowClick
+                      ? "cursor-pointer transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none active:bg-accent"
+                      : undefined
+                  }
                 >
                   {cols.map((c) => (
                     <TableCell key={c} className="whitespace-nowrap">

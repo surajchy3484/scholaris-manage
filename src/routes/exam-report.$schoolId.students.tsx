@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Download,
-  Eye,
+  
   FileSpreadsheet,
   Pencil,
   Plus,
@@ -166,7 +166,7 @@ function StudentExamDashboard() {
     return (
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">
         <Skeleton className="h-10 w-72 rounded-lg" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-56 rounded-xl" />
           ))}
@@ -290,7 +290,7 @@ function StudentExamDashboard() {
           </p>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-3">
           {students.map((s, i) => (
             <motion.div
               key={s.id}
@@ -299,16 +299,30 @@ function StudentExamDashboard() {
               transition={{ delay: Math.min(i * 0.02, 0.3) }}
               whileHover={{ y: -3 }}
             >
-              <Card className="h-full overflow-hidden border-border/60 p-4 shadow-soft">
+              <Card
+                role="button"
+                tabIndex={0}
+                onClick={() => setViewing(s)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setViewing(s);
+                  }
+                }}
+                className="h-full cursor-pointer overflow-hidden border-border/60 p-4 shadow-soft transition-all hover:border-primary/40 hover:shadow-elegant focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.995]"
+              >
                 <div className="flex items-start gap-3">
-                  <Checkbox
-                    checked={selectedIds.includes(s.id)}
-                    onCheckedChange={(c) =>
-                      setSelectedIds((prev) =>
-                        c ? [...prev, s.id] : prev.filter((id) => id !== s.id),
-                      )
-                    }
-                  />
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      aria-label={`Select ${s.name}`}
+                      checked={selectedIds.includes(s.id)}
+                      onCheckedChange={(c) =>
+                        setSelectedIds((prev) =>
+                          c ? [...prev, s.id] : prev.filter((id) => id !== s.id),
+                        )
+                      }
+                    />
+                  </span>
                   <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-muted ring-2 ring-accent">
                     {s.photo_url ? (
                       <img
@@ -348,13 +362,27 @@ function StudentExamDashboard() {
                 </div>
 
                 <div className="mt-3 flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setViewing(s)}>
-                    <Eye className="h-3.5 w-3.5" /> View
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setEditing(s)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 flex-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditing(s);
+                    }}
+                  >
                     <Pencil className="h-3.5 w-3.5" /> Edit
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => setPendingDelete([s])}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9"
+                    aria-label={`Delete ${s.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPendingDelete([s]);
+                    }}
+                  >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>

@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "./fetch-all";
 import type { School, Student } from "./types";
 
 /**
@@ -97,14 +98,21 @@ type ScoreRow = {
 };
 
 export async function fetchExamData(): Promise<ExamData> {
-  const [schoolsRes, studentsRes, attendanceRes, scoresRes] = await Promise.all([
+  const [schoolsRes, studentRows, attendanceRows, scoreRows] = await Promise.all([
     supabase.from("schools").select("*").order("name"),
-    supabase.from("students").select("*"),
-    supabase.from("attendance").select("student_id,status"),
-    supabase.from("exam_scores").select("student_id,exam_type,score,remarks"),
+    fetchAllRows<Student>((from, to) => supabase.from("students").select("*").range(from, to)),
+    fetchAllRows<{ student_id: string; status: string }>((from, to) =>
+      supabase.from("attendance").select("student_id,status").range(from, to),
+    ),
+    fetchAllRows<ScoreRow>((from, to) =>
+      supabase.from("exam_scores").select("student_id,exam_type,score,remarks").range(from, to),
+    ),
   ]);
   if (schoolsRes.error) throw schoolsRes.error;
-  if (studentsRes.error) throw studentsRes.error;
+  const studentsRes = { data: studentRows };
+  const attendanceRes = { data: attendanceRows };
+  const scoresRes = { data: scoreRows };
+
 
   const schools = (schoolsRes.data ?? []) as School[];
   const schoolById = new Map(schools.map((s) => [s.id, s]));

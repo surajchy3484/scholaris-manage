@@ -33,7 +33,7 @@ export function StatCard({
       whileHover={{ y: -4 }}
     >
       <Card
-        className={`relative h-full overflow-hidden border-none bg-gradient-to-br p-5 shadow-elegant ${TONES[tone]}`}
+        className={`relative h-full min-w-0 overflow-hidden border-none bg-gradient-to-br p-5 shadow-elegant ${TONES[tone]}`}
       >
         <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/15 blur-2xl" />
         <div className="relative">
