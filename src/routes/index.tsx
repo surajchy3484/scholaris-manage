@@ -38,9 +38,14 @@ async function fetchSchools(): Promise<SchoolWithCount[]> {
     .select("*")
     .order("created_at", { ascending: false });
   if (error) throw error;
-  const { data: students } = await supabase.from("students").select("school_id");
+
+  // PostgREST returns at most 1000 rows per request — page through the table so
+  // the totals stay correct for large datasets.
+  const students = await fetchAllRows<{ school_id: string }>((from, to) =>
+    supabase.from("students").select("school_id").range(from, to),
+  );
   const counts = new Map<string, number>();
-  (students ?? []).forEach((s: { school_id: string }) => {
+  students.forEach((s) => {
     counts.set(s.school_id, (counts.get(s.school_id) ?? 0) + 1);
   });
   return (schools ?? []).map((s) => ({ ...s, student_count: counts.get(s.id) ?? 0 }));
