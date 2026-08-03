@@ -299,7 +299,18 @@ function StudentExamDashboard() {
               transition={{ delay: Math.min(i * 0.02, 0.3) }}
               whileHover={{ y: -3 }}
             >
-              <Card className="h-full overflow-hidden border-border/60 p-4 shadow-soft">
+              <Card
+                role="button"
+                tabIndex={0}
+                onClick={() => setViewing(s)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setViewing(s);
+                  }
+                }}
+                className="h-full cursor-pointer overflow-hidden border-border/60 p-4 shadow-soft transition-all hover:border-primary/40 hover:shadow-elegant focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.995]"
+              >
                 <div className="flex items-start gap-3">
                   <Checkbox
                     checked={selectedIds.includes(s.id)}
