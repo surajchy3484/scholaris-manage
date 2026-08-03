@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "./fetch-all";
 import type { School, Student } from "./types";
 
 /**
