@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AddSchoolDialog } from "@/components/add-school-dialog";
+import { fetchAllRows } from "@/lib/fetch-all";
 import { SchoolCard } from "@/components/school-card";
 
 export const Route = createFileRoute("/")({
