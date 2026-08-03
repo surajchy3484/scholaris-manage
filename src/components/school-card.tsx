@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { MapPin, Users, MoreVertical, Pencil, Trash2, ArrowRight, School as SchoolIcon } from "lucide-react";
+import { MapPin, Users, MoreVertical, Pencil, Trash2, School as SchoolIcon } from "lucide-react";
 
 import type { School } from "@/lib/types";
 import { Card } from "@/components/ui/card";
