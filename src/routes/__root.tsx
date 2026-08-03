@@ -8,8 +8,26 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
-import { GraduationCap, Settings as SettingsIcon, Moon, Sun, LogOut } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  GraduationCap,
+  Settings as SettingsIcon,
+  Moon,
+  Sun,
+  LogOut,
+  Users,
+  BarChart3,
+  ChevronDown,
+  Menu,
+} from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { PageNav } from "@/components/page-nav";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
