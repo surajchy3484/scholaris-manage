@@ -359,13 +359,27 @@ function StudentExamDashboard() {
                 </div>
 
                 <div className="mt-3 flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setViewing(s)}>
-                    <Eye className="h-3.5 w-3.5" /> View
-                  </Button>
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setEditing(s)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 flex-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditing(s);
+                    }}
+                  >
                     <Pencil className="h-3.5 w-3.5" /> Edit
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => setPendingDelete([s])}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9"
+                    aria-label={`Delete ${s.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPendingDelete([s]);
+                    }}
+                  >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
