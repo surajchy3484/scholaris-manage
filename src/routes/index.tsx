@@ -96,7 +96,7 @@ function Dashboard() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        className="mb-8 grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-3"
       >
         <Card className="relative overflow-hidden border-none bg-gradient-to-br from-primary to-primary-glow p-5 text-primary-foreground shadow-elegant sm:p-6">
           <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
@@ -194,7 +194,7 @@ function Dashboard() {
 
       {/* List */}
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-44 animate-pulse rounded-xl bg-muted" />
           ))}
@@ -216,7 +216,7 @@ function Dashboard() {
       ) : (
         <motion.div
           layout
-          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          className="grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-3"
         >
           {filtered.map((s, i) => (
             <motion.div
