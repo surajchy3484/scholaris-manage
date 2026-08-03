@@ -166,7 +166,7 @@ function StudentExamDashboard() {
     return (
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">
         <Skeleton className="h-10 w-72 rounded-lg" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-56 rounded-xl" />
           ))}
@@ -290,7 +290,7 @@ function StudentExamDashboard() {
           </p>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-3">
           {students.map((s, i) => (
             <motion.div
               key={s.id}

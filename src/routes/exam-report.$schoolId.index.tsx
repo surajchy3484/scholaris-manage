@@ -86,7 +86,7 @@ function SchoolExamDashboard() {
     return (
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">
         <Skeleton className="h-10 w-64 rounded-lg" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 7 }).map((_, i) => (
             <Skeleton key={i} className="h-28 rounded-xl" />
           ))}
@@ -144,7 +144,7 @@ function SchoolExamDashboard() {
         </div>
       </motion.div>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={SchoolIcon} label="School" value={school.name} hint={school.code} tone="primary" />
         <StatCard icon={Users} label="Total Students" value={students.length} tone="violet" delay={0.05} />
         <StatCard
