@@ -96,23 +96,35 @@ function Dashboard() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="mb-8 grid gap-4 sm:grid-cols-2"
+        className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
       >
-        <Card className="relative overflow-hidden border-none bg-gradient-to-br from-primary to-primary-glow p-6 text-primary-foreground shadow-elegant">
+        <Card className="relative overflow-hidden border-none bg-gradient-to-br from-primary to-primary-glow p-5 text-primary-foreground shadow-elegant sm:p-6">
           <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
           <div className="relative">
             <div className="flex items-center gap-2 text-primary-foreground/80">
               <SchoolIcon className="h-4 w-4" />
               <span className="text-xs font-medium uppercase tracking-wider">Total Schools</span>
             </div>
-            <div className="mt-3 font-display text-5xl font-bold">{data.length}</div>
-            <p className="mt-1 text-sm text-primary-foreground/80">
-              {totalStudents} students across all campuses
-            </p>
+            <div className="mt-3 font-display text-5xl font-bold sm:text-6xl">{data.length}</div>
+            <p className="mt-1 text-sm text-primary-foreground/80">Active campuses</p>
           </div>
         </Card>
 
-        <Card className="flex items-center justify-between border-warm/40 bg-warm/40 p-6 shadow-soft">
+        <Card className="relative overflow-hidden border-none bg-gradient-to-br from-[oklch(0.62_0.24_305)] to-[oklch(0.58_0.22_265)] p-5 text-primary-foreground shadow-elegant sm:p-6">
+          <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+          <div className="relative">
+            <div className="flex items-center gap-2 text-primary-foreground/80">
+              <Users className="h-4 w-4" />
+              <span className="text-xs font-medium uppercase tracking-wider">Total Students</span>
+            </div>
+            <div className="mt-3 font-display text-5xl font-bold sm:text-6xl">
+              {totalStudents.toLocaleString()}
+            </div>
+            <p className="mt-1 text-sm text-primary-foreground/80">Across all campuses</p>
+          </div>
+        </Card>
+
+        <Card className="flex flex-col justify-between gap-4 border-warm/40 bg-warm/40 p-5 shadow-soft sm:p-6">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-warm-foreground/70">
               Ready to grow?
@@ -124,15 +136,18 @@ function Dashboard() {
               Unlimited campuses. Each with its own students &amp; attendance.
             </p>
           </div>
-          <Button size="lg" onClick={() => setAddOpen(true)} className="shrink-0 shadow-elegant">
+          <Button size="lg" onClick={() => setAddOpen(true)} className="w-full shadow-elegant sm:w-auto sm:self-start">
             <Plus className="h-4 w-4" />
             Add School
           </Button>
         </Card>
 
-        <Link to="/exam-report" className="sm:col-span-2">
-          <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
-            <Card className="relative flex items-center justify-between overflow-hidden border-none bg-gradient-to-br from-[oklch(0.62_0.24_305)] to-[oklch(0.7_0.16_210)] p-6 text-primary-foreground shadow-elegant">
+        <Link
+          to="/exam-report"
+          className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:col-span-2 lg:col-span-3"
+        >
+          <motion.div whileHover={{ y: -4 }} whileTap={{ scale: 0.995 }} transition={{ duration: 0.2 }}>
+            <Card className="relative cursor-pointer overflow-hidden border-none bg-gradient-to-br from-[oklch(0.62_0.24_305)] to-[oklch(0.7_0.16_210)] p-5 text-primary-foreground shadow-elegant transition-shadow hover:shadow-elegant sm:p-6">
               <div className="absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
               <div className="relative">
                 <div className="flex items-center gap-2 text-primary-foreground/80">
@@ -144,18 +159,11 @@ function Dashboard() {
                   Attendance, ICA &amp; IMF performance across every school, class and student.
                 </p>
               </div>
-              <Button
-                size="lg"
-                variant="secondary"
-                className="relative shrink-0 shadow-elegant"
-                asChild
-              >
-                <span>Open</span>
-              </Button>
             </Card>
           </motion.div>
         </Link>
       </motion.section>
+
 
       {/* Controls */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
