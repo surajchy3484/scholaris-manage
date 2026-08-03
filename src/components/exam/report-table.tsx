@@ -139,7 +139,18 @@ export function ReportTable({
                 <TableRow
                   key={i}
                   onClick={() => onRowClick?.(r)}
-                  className={onRowClick ? "cursor-pointer" : undefined}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  onKeyDown={(e) => {
+                    if (onRowClick && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      onRowClick(r);
+                    }
+                  }}
+                  className={
+                    onRowClick
+                      ? "cursor-pointer transition-colors hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none active:bg-accent"
+                      : undefined
+                  }
                 >
                   {cols.map((c) => (
                     <TableCell key={c} className="whitespace-nowrap">
