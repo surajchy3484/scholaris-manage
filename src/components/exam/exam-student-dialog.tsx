@@ -26,7 +26,16 @@ type Mode =
 
 type Errors = Partial<
   Record<
-    "code" | "name" | "class" | "division" | "roll" | "attendance" | "ica" | "imf" | "date",
+    | "code"
+    | "name"
+    | "class"
+    | "division"
+    | "roll"
+    | "attendance"
+    | "ica"
+    | "imf"
+    | "fca"
+    | "date",
     string
   >
 >;
@@ -55,6 +64,7 @@ export function ExamStudentDialog({
   const [attendance, setAttendance] = useState("");
   const [ica, setIca] = useState("");
   const [imf, setImf] = useState("");
+  const [fca, setFca] = useState("");
   const [enrolled, setEnrolled] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [errors, setErrors] = useState<Errors>({});
@@ -74,6 +84,7 @@ export function ExamStudentDialog({
       setAttendance(s.attendance_override != null ? String(s.attendance_override) : "");
       setIca(s.ica != null ? String(s.ica) : "");
       setImf(s.imf != null ? String(s.imf) : "");
+      setFca(s.fca != null ? String(s.fca) : "");
       setEnrolled(s.enrollment_date ?? s.created_at.slice(0, 10));
       setPhoto(s.photo_url);
     } else {
@@ -84,6 +95,7 @@ export function ExamStudentDialog({
       setAttendance("");
       setIca("");
       setImf("");
+      setFca("");
       setEnrolled(new Date().toISOString().slice(0, 10));
       setPhoto(null);
       setCode("");
@@ -101,7 +113,11 @@ export function ExamStudentDialog({
     if (!cls.trim()) e.class = "Class is required.";
     if (!division.trim()) e.division = "Division is required.";
     if (!roll.trim()) e.roll = "Roll number is required.";
-    const rangeCheck = (raw: string, key: "attendance" | "ica" | "imf", label: string) => {
+    const rangeCheck = (
+      raw: string,
+      key: "attendance" | "ica" | "imf" | "fca",
+      label: string,
+    ) => {
       const n = numOrNull(raw);
       if (n === null) return;
       if (Number.isNaN(n)) e[key] = `${label} must be a number.`;
@@ -110,6 +126,7 @@ export function ExamStudentDialog({
     rangeCheck(attendance, "attendance", "Attendance");
     rangeCheck(ica, "ica", "ICA score");
     rangeCheck(imf, "imf", "IMF score");
+    rangeCheck(fca, "fca", "FCA score");
     if (enrolled && Number.isNaN(new Date(enrolled).getTime())) e.date = "Invalid date.";
     return e;
   }
@@ -179,6 +196,7 @@ export function ExamStudentDialog({
       setStatus("Saving scores...");
       await saveScore({ schoolId, studentId, examType: "ICA", score: numOrNull(ica) });
       await saveScore({ schoolId, studentId, examType: "IMF", score: numOrNull(imf) });
+      await saveScore({ schoolId, studentId, examType: "FCA", score: numOrNull(fca) });
       await saveScore({
         schoolId,
         studentId,
@@ -216,8 +234,8 @@ export function ExamStudentDialog({
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit student" : "Add student"}</DialogTitle>
           <DialogDescription>
-            Attendance, ICA and IMF accept values between 0 and 100. Leave a score blank if not
-            recorded.
+            Attendance, ICA, IMF and FCA accept values between 0 and 100. Leave a score blank if
+            not recorded.
           </DialogDescription>
         </DialogHeader>
 
@@ -253,6 +271,9 @@ export function ExamStudentDialog({
             </Field>
             <Field label="IMF Score" error={errors.imf}>
               <Input value={imf} onChange={(e) => setImf(e.target.value)} inputMode="decimal" />
+            </Field>
+            <Field label="FCA Score" error={errors.fca}>
+              <Input value={fca} onChange={(e) => setFca(e.target.value)} inputMode="decimal" />
             </Field>
             <Field label="Enrollment Date" error={errors.date}>
               <Input type="date" value={enrolled} onChange={(e) => setEnrolled(e.target.value)} />
