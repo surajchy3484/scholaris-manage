@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   BarChart3,
   CalendarCheck,
+  ClipboardCheck,
   GraduationCap,
   School as SchoolIcon,
   TrendingDown,
@@ -44,12 +45,12 @@ export const Route = createFileRoute("/exam-report/$schoolId/")({
       { title: "School Exam Dashboard — Scholaris" },
       {
         name: "description",
-        content: "Class-wise attendance, ICA and IMF performance for a single school.",
+        content: "Class-wise attendance, ICA, IMF and FCA performance for a single school.",
       },
       { property: "og:title", content: "School Exam Dashboard — Scholaris" },
       {
         property: "og:description",
-        content: "Class-wise attendance, ICA and IMF performance for a single school.",
+        content: "Class-wise attendance, ICA, IMF and FCA performance for a single school.",
       },
     ],
   }),
@@ -77,6 +78,7 @@ function SchoolExamDashboard() {
       attendance: avg(students.map((s) => s.attendance_pct)),
       ica: avg(students.filter((s) => s.ica != null).map((s) => s.ica as number)),
       imf: avg(students.filter((s) => s.imf != null).map((s) => s.imf as number)),
+      fca: avg(students.filter((s) => s.fca != null).map((s) => s.fca as number)),
       best: ranked[0],
       worst: ranked[ranked.length - 1],
     };
@@ -114,6 +116,7 @@ function SchoolExamDashboard() {
     "Attendance %": c.attendance,
     "ICA Avg": c.ica,
     "IMF Avg": c.imf,
+    "FCA Avg": c.fca,
     "Performance %": c.performance,
     Status: c.status,
   }));
@@ -122,6 +125,7 @@ function SchoolExamDashboard() {
     name: `${c.class}-${c.division}`,
     ICA: c.ica,
     IMF: c.imf,
+    FCA: c.fca,
   }));
 
   return (
@@ -156,6 +160,7 @@ function SchoolExamDashboard() {
         />
         <StatCard icon={BarChart3} label="ICA Average" value={stats.ica} tone="success" delay={0.15} />
         <StatCard icon={GraduationCap} label="IMF Average" value={stats.imf} tone="sunset" delay={0.2} />
+        <StatCard icon={ClipboardCheck} label="FCA Average" value={stats.fca} tone="cyan" delay={0.22} />
         <StatCard
           icon={TrendingUp}
           label="Best Class"
@@ -247,7 +252,7 @@ function SchoolExamDashboard() {
         }
       />
 
-      <ChartCard title="Class Performance — ICA vs IMF">
+      <ChartCard title="Class Performance — ICA vs IMF vs FCA">
         <BarChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
           <XAxis dataKey="name" fontSize={11} />
@@ -256,6 +261,7 @@ function SchoolExamDashboard() {
           <Legend />
           <Bar dataKey="ICA" fill="#4F46E5" radius={[6, 6, 0, 0]} />
           <Bar dataKey="IMF" fill="#F59E0B" radius={[6, 6, 0, 0]} />
+          <Bar dataKey="FCA" fill="#06B6D4" radius={[6, 6, 0, 0]} />
         </BarChart>
       </ChartCard>
     </div>
