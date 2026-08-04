@@ -254,7 +254,7 @@ function ExamReportDashboard() {
           </BarChart>
         </ChartCard>
 
-        <ChartCard title="ICA vs IMF Comparison">
+        <ChartCard title="ICA vs IMF vs FCA Comparison">
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
             <XAxis dataKey="name" fontSize={11} />
@@ -263,6 +263,7 @@ function ExamReportDashboard() {
             <Legend />
             <Bar dataKey="ICA" fill={CHART_COLORS[0]} radius={[6, 6, 0, 0]} />
             <Bar dataKey="IMF" fill={CHART_COLORS[2]} radius={[6, 6, 0, 0]} />
+            <Bar dataKey="FCA" fill={CHART_COLORS[1]} radius={[6, 6, 0, 0]} />
           </BarChart>
         </ChartCard>
 
