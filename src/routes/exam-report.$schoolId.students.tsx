@@ -55,6 +55,7 @@ import {
   CLASS_OPTIONS,
   DIVISION_OPTIONS,
   STATUS_COLORS,
+  deleteScoresForStudentIds,
   fetchExamData,
   type StudentReport,
 } from "@/lib/exam";
