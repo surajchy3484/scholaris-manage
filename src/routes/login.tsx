@@ -58,7 +58,7 @@ function LoginPage() {
         setErr("Invalid username or password.");
         return;
       }
-      loginLocal(username.trim(), remember);
+      loginLocal(username.trim(), remember, password);
       toast.success("Welcome back");
       router.navigate({ to: (search.redirect as "/" | undefined) ?? "/", replace: true });
     }, 120);

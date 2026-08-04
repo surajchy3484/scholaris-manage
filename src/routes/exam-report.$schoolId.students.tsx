@@ -55,6 +55,7 @@ import {
   CLASS_OPTIONS,
   DIVISION_OPTIONS,
   STATUS_COLORS,
+  deleteScoresForStudentIds,
   fetchExamData,
   type StudentReport,
 } from "@/lib/exam";
@@ -136,8 +137,7 @@ function StudentExamDashboard() {
   const del = useMutation({
     mutationFn: async (list: StudentReport[]) => {
       const ids = list.map((s) => s.id);
-      const { error: scoreErr } = await supabase.from("exam_scores").delete().in("student_id", ids);
-      if (scoreErr) throw scoreErr;
+      await deleteScoresForStudentIds(ids);
       const { error } = await supabase.from("students").delete().in("id", ids);
       if (error) throw error;
     },

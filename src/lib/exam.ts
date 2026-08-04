@@ -1,4 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getAccessToken } from "./app-access";
+import {
+  deleteScoresForStudents,
+  listExamScores,
+  saveExamScore,
+} from "./exam-scores.functions";
 import { fetchAllRows } from "./fetch-all";
 import type { School, Student } from "./types";
 
@@ -104,9 +110,7 @@ export async function fetchExamData(): Promise<ExamData> {
     fetchAllRows<{ student_id: string; status: string }>((from, to) =>
       supabase.from("attendance").select("student_id,status").range(from, to),
     ),
-    fetchAllRows<ScoreRow>((from, to) =>
-      supabase.from("exam_scores").select("student_id,exam_type,score,remarks").range(from, to),
-    ),
+    listExamScores({ data: { token: getAccessToken() } }) as Promise<ScoreRow[]>,
   ]);
   if (schoolsRes.error) throw schoolsRes.error;
   const studentsRes = { data: studentRows };
@@ -231,39 +235,24 @@ export async function saveScore(params: {
   remarks?: string | null;
 }) {
   const { schoolId, studentId, examType, score, remarks } = params;
-  if (score == null) {
-    const { error } = await supabase
-      .from("exam_scores")
-      .delete()
-      .eq("student_id", studentId)
-      .eq("exam_type", examType);
-    if (error) throw error;
-    return;
-  }
-  const { data: existing, error: selErr } = await supabase
-    .from("exam_scores")
-    .select("id")
-    .eq("student_id", studentId)
-    .eq("exam_type", examType)
-    .limit(1);
-  if (selErr) throw selErr;
-  if (existing && existing.length > 0) {
-    const { error } = await supabase
-      .from("exam_scores")
-      .update({ score, remarks: remarks ?? null })
-      .eq("id", existing[0].id);
-    if (error) throw error;
-  } else {
-    const { error } = await supabase.from("exam_scores").insert({
-      school_id: schoolId,
-      student_id: studentId,
-      exam_type: examType,
+  await saveExamScore({
+    data: {
+      token: getAccessToken(),
+      schoolId,
+      studentId,
+      examType,
       score,
       remarks: remarks ?? null,
-    });
-    if (error) throw error;
-  }
+    },
+  });
 }
+
+/** Delete every exam score belonging to the given students. */
+export async function deleteScoresForStudentIds(studentIds: string[]) {
+  if (studentIds.length === 0) return;
+  await deleteScoresForStudents({ data: { token: getAccessToken(), studentIds } });
+}
+
 
 export const CLASS_OPTIONS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 export const DIVISION_OPTIONS = ["A", "B", "C", "D"];

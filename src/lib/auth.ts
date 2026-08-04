@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { clearAccessToken, storeAccessToken } from "@/lib/app-access";
+
 const KEY = "scholaris_auth_v1";
 const CREDS = { username: "reapstem", password: "123456" };
 
@@ -23,10 +25,11 @@ export function verifyCredentials(username: string, password: string): boolean {
   );
 }
 
-export function loginLocal(username: string, remember: boolean) {
+export function loginLocal(username: string, remember: boolean, password?: string) {
   const session: Session = { user: username, remember };
   const store = remember ? localStorage : sessionStorage;
   store.setItem(KEY, JSON.stringify(session));
+  if (password) storeAccessToken(password, remember);
   // Notify listeners in this tab
   window.dispatchEvent(new Event("scholaris:auth"));
 }
@@ -34,6 +37,7 @@ export function loginLocal(username: string, remember: boolean) {
 export function logoutLocal() {
   localStorage.removeItem(KEY);
   sessionStorage.removeItem(KEY);
+  clearAccessToken();
   window.dispatchEvent(new Event("scholaris:auth"));
 }
 
