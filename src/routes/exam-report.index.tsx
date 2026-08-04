@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import {
   BarChart3,
   CalendarCheck,
+  ClipboardCheck,
   GraduationCap,
   School as SchoolIcon,
   Sparkles,
@@ -139,7 +140,7 @@ function ExamReportDashboard() {
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="font-display text-3xl font-bold">📊 Exam Report</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Attendance, ICA and IMF performance across every school.
+          Attendance, ICA, IMF and FCA performance across every school.
         </p>
       </motion.div>
 
@@ -155,6 +156,7 @@ function ExamReportDashboard() {
         />
         <StatCard icon={BarChart3} label="Overall ICA Average" value={totals.ica} tone="success" delay={0.15} />
         <StatCard icon={GraduationCap} label="Overall IMF Average" value={totals.imf} tone="sunset" delay={0.2} />
+        <StatCard icon={ClipboardCheck} label="Overall FCA Average" value={totals.fca} tone="cyan" delay={0.22} />
         <StatCard
           icon={TrendingUp}
           label="Best Performing School"
@@ -174,8 +176,8 @@ function ExamReportDashboard() {
         <StatCard
           icon={Sparkles}
           label="Overall Performance"
-          value={`${round1((totals.ica + totals.imf) / 2)}%`}
-          hint="(ICA + IMF) / 2"
+          value={`${round1((totals.ica + totals.imf + totals.fca) / 3)}%`}
+          hint="(ICA + IMF + FCA) / 3"
           tone="violet"
           delay={0.35}
         />
