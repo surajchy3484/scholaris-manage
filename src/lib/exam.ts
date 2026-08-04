@@ -69,6 +69,15 @@ export function avg(values: number[]): number {
   return round1(values.reduce((a, b) => a + b, 0) / values.length);
 }
 
+/** Overall performance = (ICA + IMF + FCA) / 3. Missing scores count as 0. */
+export function overallPerformance(
+  ica: number | null,
+  imf: number | null,
+  fca: number | null,
+): number {
+  return round1(((ica ?? 0) + (imf ?? 0) + (fca ?? 0)) / 3);
+}
+
 export type StudentReport = Student & {
   school_name: string;
   school_code: string;
@@ -76,6 +85,7 @@ export type StudentReport = Student & {
   attendance_override: number | null;
   ica: number | null;
   imf: number | null;
+  fca: number | null;
   performance: number;
   status: PerfStatus;
   remarks: string | null;
@@ -87,6 +97,7 @@ export type SchoolReport = {
   attendance: number;
   ica: number;
   imf: number;
+  fca: number;
   performance: number;
   status: PerfStatus;
 };
