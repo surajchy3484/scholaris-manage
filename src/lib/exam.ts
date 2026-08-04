@@ -18,7 +18,7 @@ import type { School, Student } from "./types";
  * `ATTENDANCE` is stored as an exam_type too: it acts as a manual override of
  * the attendance percentage computed from the `attendance` table.
  */
-export const EXAM_TYPES = ["ICA", "IMF"] as const;
+export const EXAM_TYPES = ["ICA", "IMF", "FCA"] as const;
 export type ExamType = (typeof EXAM_TYPES)[number];
 export const ATTENDANCE_TYPE = "ATTENDANCE";
 
@@ -69,6 +69,15 @@ export function avg(values: number[]): number {
   return round1(values.reduce((a, b) => a + b, 0) / values.length);
 }
 
+/** Overall performance = (ICA + IMF + FCA) / 3. Missing scores count as 0. */
+export function overallPerformance(
+  ica: number | null,
+  imf: number | null,
+  fca: number | null,
+): number {
+  return round1(((ica ?? 0) + (imf ?? 0) + (fca ?? 0)) / 3);
+}
+
 export type StudentReport = Student & {
   school_name: string;
   school_code: string;
@@ -76,6 +85,7 @@ export type StudentReport = Student & {
   attendance_override: number | null;
   ica: number | null;
   imf: number | null;
+  fca: number | null;
   performance: number;
   status: PerfStatus;
   remarks: string | null;
@@ -87,6 +97,7 @@ export type SchoolReport = {
   attendance: number;
   ica: number;
   imf: number;
+  fca: number;
   performance: number;
   status: PerfStatus;
 };
@@ -141,10 +152,11 @@ export async function fetchExamData(): Promise<ExamData> {
     const m = scores.get(s.id);
     const ica = m?.get("ICA")?.score ?? null;
     const imf = m?.get("IMF")?.score ?? null;
+    const fca = m?.get("FCA")?.score ?? null;
     const override = m?.get(ATTENDANCE_TYPE)?.score ?? null;
     const t = attTotals.get(s.id);
     const computed = t && t.total > 0 ? round1((t.present / t.total) * 100) : 0;
-    const performance = round1(((ica ?? 0) + (imf ?? 0)) / 2);
+    const performance = overallPerformance(ica, imf, fca);
     return {
       ...s,
       school_name: school?.name ?? "—",
@@ -153,6 +165,7 @@ export async function fetchExamData(): Promise<ExamData> {
       attendance_pct: override ?? computed,
       ica,
       imf,
+      fca,
       performance,
       status: performanceStatus(performance),
       remarks: m?.get("ICA")?.remarks ?? null,
@@ -168,13 +181,15 @@ export function buildSchoolReports(data: ExamData): SchoolReport[] {
     const attendance = avg(list.map((s) => s.attendance_pct));
     const ica = avg(list.filter((s) => s.ica != null).map((s) => s.ica as number));
     const imf = avg(list.filter((s) => s.imf != null).map((s) => s.imf as number));
-    const performance = round1((ica + imf) / 2);
+    const fca = avg(list.filter((s) => s.fca != null).map((s) => s.fca as number));
+    const performance = round1((ica + imf + fca) / 3);
     return {
       school,
       students: list.length,
       attendance,
       ica,
       imf,
+      fca,
       performance,
       status: performanceStatus(performance),
     };
@@ -189,6 +204,7 @@ export type ClassReport = {
   attendance: number;
   ica: number;
   imf: number;
+  fca: number;
   performance: number;
   status: PerfStatus;
 };
@@ -204,7 +220,8 @@ export function buildClassReports(students: StudentReport[]): ClassReport[] {
       const attendance = avg(list.map((s) => s.attendance_pct));
       const ica = avg(list.filter((s) => s.ica != null).map((s) => s.ica as number));
       const imf = avg(list.filter((s) => s.imf != null).map((s) => s.imf as number));
-      const performance = round1((ica + imf) / 2);
+      const fca = avg(list.filter((s) => s.fca != null).map((s) => s.fca as number));
+      const performance = round1((ica + imf + fca) / 3);
       const [cls, division] = key.split("|");
       return {
         key,
@@ -214,6 +231,7 @@ export function buildClassReports(students: StudentReport[]): ClassReport[] {
         attendance,
         ica,
         imf,
+        fca,
         performance,
         status: performanceStatus(performance),
       };

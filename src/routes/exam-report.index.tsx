@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import {
   BarChart3,
   CalendarCheck,
+  ClipboardCheck,
   GraduationCap,
   School as SchoolIcon,
   Sparkles,
@@ -56,12 +57,12 @@ export const Route = createFileRoute("/exam-report/")({
       { title: "Exam Report — Scholaris" },
       {
         name: "description",
-        content: "Cross-school exam performance: attendance, ICA and IMF analytics.",
+        content: "Cross-school exam performance: attendance, ICA, IMF and FCA analytics.",
       },
       { property: "og:title", content: "Exam Report — Scholaris" },
       {
         property: "og:description",
-        content: "Cross-school exam performance: attendance, ICA and IMF analytics.",
+        content: "Cross-school exam performance: attendance, ICA, IMF and FCA analytics.",
       },
     ],
   }),
@@ -89,6 +90,7 @@ function ExamReportDashboard() {
       attendance: avg((data?.students ?? []).map((s) => s.attendance_pct)),
       ica: avg((data?.students ?? []).filter((s) => s.ica != null).map((s) => s.ica as number)),
       imf: avg((data?.students ?? []).filter((s) => s.imf != null).map((s) => s.imf as number)),
+      fca: avg((data?.students ?? []).filter((s) => s.fca != null).map((s) => s.fca as number)),
       best: ranked[0],
       worst: ranked[ranked.length - 1],
     };
@@ -100,6 +102,7 @@ function ExamReportDashboard() {
     "Avg Attendance %": r.attendance,
     "ICA Avg": r.ica,
     "IMF Avg": r.imf,
+    "FCA Avg": r.fca,
     "Overall Performance %": r.performance,
     Status: r.status,
     _id: r.school.id,
@@ -116,6 +119,7 @@ function ExamReportDashboard() {
     attendance: r.attendance,
     ICA: r.ica,
     IMF: r.imf,
+    FCA: r.fca,
   }));
 
   if (isLoading) {
@@ -136,7 +140,7 @@ function ExamReportDashboard() {
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="font-display text-3xl font-bold">📊 Exam Report</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Attendance, ICA and IMF performance across every school.
+          Attendance, ICA, IMF and FCA performance across every school.
         </p>
       </motion.div>
 
@@ -152,6 +156,7 @@ function ExamReportDashboard() {
         />
         <StatCard icon={BarChart3} label="Overall ICA Average" value={totals.ica} tone="success" delay={0.15} />
         <StatCard icon={GraduationCap} label="Overall IMF Average" value={totals.imf} tone="sunset" delay={0.2} />
+        <StatCard icon={ClipboardCheck} label="Overall FCA Average" value={totals.fca} tone="cyan" delay={0.22} />
         <StatCard
           icon={TrendingUp}
           label="Best Performing School"
@@ -171,8 +176,8 @@ function ExamReportDashboard() {
         <StatCard
           icon={Sparkles}
           label="Overall Performance"
-          value={`${round1((totals.ica + totals.imf) / 2)}%`}
-          hint="(ICA + IMF) / 2"
+          value={`${round1((totals.ica + totals.imf + totals.fca) / 3)}%`}
+          hint="(ICA + IMF + FCA) / 3"
           tone="violet"
           delay={0.35}
         />
@@ -249,7 +254,7 @@ function ExamReportDashboard() {
           </BarChart>
         </ChartCard>
 
-        <ChartCard title="ICA vs IMF Comparison">
+        <ChartCard title="ICA vs IMF vs FCA Comparison">
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
             <XAxis dataKey="name" fontSize={11} />
@@ -258,6 +263,7 @@ function ExamReportDashboard() {
             <Legend />
             <Bar dataKey="ICA" fill={CHART_COLORS[0]} radius={[6, 6, 0, 0]} />
             <Bar dataKey="IMF" fill={CHART_COLORS[2]} radius={[6, 6, 0, 0]} />
+            <Bar dataKey="FCA" fill={CHART_COLORS[1]} radius={[6, 6, 0, 0]} />
           </BarChart>
         </ChartCard>
 
