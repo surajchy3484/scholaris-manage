@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { clearAccessToken, storeAccessToken } from "@/lib/app-access";
+
 const KEY = "scholaris_auth_v1";
 const CREDS = { username: "reapstem", password: "123456" };
 
