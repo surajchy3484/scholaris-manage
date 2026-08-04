@@ -1,4 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getAccessToken } from "./app-access";
+import {
+  deleteScoresForStudents,
+  listExamScores,
+  saveExamScore,
+} from "./exam-scores.functions";
 import { fetchAllRows } from "./fetch-all";
 import type { School, Student } from "./types";
 
