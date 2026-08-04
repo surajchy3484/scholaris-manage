@@ -56,12 +56,12 @@ export const Route = createFileRoute("/exam-report/")({
       { title: "Exam Report — Scholaris" },
       {
         name: "description",
-        content: "Cross-school exam performance: attendance, ICA and IMF analytics.",
+        content: "Cross-school exam performance: attendance, ICA, IMF and FCA analytics.",
       },
       { property: "og:title", content: "Exam Report — Scholaris" },
       {
         property: "og:description",
-        content: "Cross-school exam performance: attendance, ICA and IMF analytics.",
+        content: "Cross-school exam performance: attendance, ICA, IMF and FCA analytics.",
       },
     ],
   }),
@@ -89,6 +89,7 @@ function ExamReportDashboard() {
       attendance: avg((data?.students ?? []).map((s) => s.attendance_pct)),
       ica: avg((data?.students ?? []).filter((s) => s.ica != null).map((s) => s.ica as number)),
       imf: avg((data?.students ?? []).filter((s) => s.imf != null).map((s) => s.imf as number)),
+      fca: avg((data?.students ?? []).filter((s) => s.fca != null).map((s) => s.fca as number)),
       best: ranked[0],
       worst: ranked[ranked.length - 1],
     };
@@ -100,6 +101,7 @@ function ExamReportDashboard() {
     "Avg Attendance %": r.attendance,
     "ICA Avg": r.ica,
     "IMF Avg": r.imf,
+    "FCA Avg": r.fca,
     "Overall Performance %": r.performance,
     Status: r.status,
     _id: r.school.id,
@@ -116,6 +118,7 @@ function ExamReportDashboard() {
     attendance: r.attendance,
     ICA: r.ica,
     IMF: r.imf,
+    FCA: r.fca,
   }));
 
   if (isLoading) {
