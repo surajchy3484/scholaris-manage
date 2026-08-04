@@ -97,6 +97,7 @@ function toRow(s: StudentReport) {
     "Update Date": s.updated_at.slice(0, 10),
     "ICA Score": s.ica ?? "",
     "IMF Score": s.imf ?? "",
+    "FCA Score": s.fca ?? "",
     "Performance %": s.performance,
     Status: s.status,
   };
@@ -160,6 +161,7 @@ function StudentExamDashboard() {
     name: s.name.split(" ")[0],
     ICA: s.ica ?? 0,
     IMF: s.imf ?? 0,
+    FCA: s.fca ?? 0,
   }));
 
   if (isLoading) {
@@ -349,10 +351,11 @@ function StudentExamDashboard() {
                   </div>
                 </div>
 
-                <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="mt-3 grid grid-cols-2 gap-2 text-center text-xs sm:grid-cols-4">
                   <Metric label="Attendance" value={`${s.attendance_pct}%`} />
                   <Metric label="ICA" value={s.ica ?? "—"} />
                   <Metric label="IMF" value={s.imf ?? "—"} />
+                  <Metric label="FCA" value={s.fca ?? "—"} />
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
                   <span>Class {s.class}-{s.division} · Roll {s.roll_number}</span>
@@ -487,6 +490,7 @@ function StudentProfileDialog({
     { name: "Attendance", value: student.attendance_pct },
     { name: "ICA", value: student.ica ?? 0 },
     { name: "IMF", value: student.imf ?? 0 },
+    { name: "FCA", value: student.fca ?? 0 },
     { name: "Overall", value: student.performance },
   ];
   return (
@@ -521,6 +525,8 @@ function StudentProfileDialog({
               <Info label="Attendance" value={`${student.attendance_pct}%`} />
               <Info label="ICA Score" value={String(student.ica ?? "—")} />
               <Info label="IMF Score" value={String(student.imf ?? "—")} />
+              <Info label="FCA Score" value={String(student.fca ?? "—")} />
+              <Info label="Overall Performance" value={`${student.performance}%`} />
               <Info
                 label="Enrollment Date"
                 value={student.enrollment_date ?? student.created_at.slice(0, 10)}
