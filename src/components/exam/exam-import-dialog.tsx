@@ -30,6 +30,7 @@ type ParsedRow = {
   enrollment_date: string | null;
   ica: number | null;
   imf: number | null;
+  fca: number | null;
   errors: string[];
 };
 
@@ -93,6 +94,7 @@ export function ExamImportDialog({
       const att = cellNum(get("attendance", "attendance %"));
       const ica = cellNum(get("ica score", "ica"));
       const imf = cellNum(get("imf score", "imf"));
+      const fca = cellNum(get("fca score", "fca"));
 
       if (!name) errors.push("Missing Student Name");
       if (!cls) errors.push("Missing Class");
@@ -105,6 +107,7 @@ export function ExamImportDialog({
       range(att, "Attendance");
       range(ica, "ICA Score");
       range(imf, "IMF Score");
+      range(fca, "FCA Score");
       if (code) {
         if (seen.has(code)) errors.push("Duplicate Student ID in file");
         seen.add(code);
@@ -122,6 +125,7 @@ export function ExamImportDialog({
         enrollment_date: cellDate(get("enrollment date", "enrolled")),
         ica: ica === "invalid" ? null : ica,
         imf: imf === "invalid" ? null : imf,
+        fca: fca === "invalid" ? null : fca,
         errors,
       };
     });
@@ -177,6 +181,7 @@ export function ExamImportDialog({
         }
         await saveScore({ schoolId, studentId, examType: "ICA", score: r.ica });
         await saveScore({ schoolId, studentId, examType: "IMF", score: r.imf });
+        await saveScore({ schoolId, studentId, examType: "FCA", score: r.fca });
         await saveScore({ schoolId, studentId, examType: ATTENDANCE_TYPE, score: r.attendance });
       }
       return { created, updated };
@@ -208,7 +213,8 @@ export function ExamImportDialog({
           <DialogTitle>Import exam data</DialogTitle>
           <DialogDescription>
             Columns: Student ID, Student Name, Class, Division, Roll No, Attendance, Photo,
-            Enrollment Date, Update Date, ICA Score, IMF Score. Existing Student IDs are updated.
+            Enrollment Date, Update Date, ICA Score, IMF Score, FCA Score. Existing Student IDs are
+            updated.
           </DialogDescription>
         </DialogHeader>
 
@@ -244,7 +250,7 @@ export function ExamImportDialog({
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-muted">
                     <tr>
-                      {["Row", "Student ID", "Name", "Class", "Div", "Roll", "Att", "ICA", "IMF", "Issues"].map(
+                      {["Row", "Student ID", "Name", "Class", "Div", "Roll", "Att", "ICA", "IMF", "FCA", "Issues"].map(
                         (h) => (
                           <th key={h} className="px-2 py-2 text-left font-semibold">
                             {h}
@@ -268,6 +274,7 @@ export function ExamImportDialog({
                         <td className="px-2 py-1.5">{r.attendance ?? "—"}</td>
                         <td className="px-2 py-1.5">{r.ica ?? "—"}</td>
                         <td className="px-2 py-1.5">{r.imf ?? "—"}</td>
+                        <td className="px-2 py-1.5">{r.fca ?? "—"}</td>
                         <td className="px-2 py-1.5 text-destructive">{r.errors.join(", ")}</td>
                       </tr>
                     ))}
