@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      assessments: {
+        Row: {
+          assessment_id: string
+          class: string | null
+          created_at: string
+          date: string | null
+          exam_type: string
+          id: string
+          name: string
+          school_id: string | null
+          school_name: string | null
+          section: string | null
+          status: string
+          total_questions: number
+          updated_at: string
+        }
+        Insert: {
+          assessment_id: string
+          class?: string | null
+          created_at?: string
+          date?: string | null
+          exam_type?: string
+          id?: string
+          name: string
+          school_id?: string | null
+          school_name?: string | null
+          section?: string | null
+          status?: string
+          total_questions?: number
+          updated_at?: string
+        }
+        Update: {
+          assessment_id?: string
+          class?: string | null
+          created_at?: string
+          date?: string | null
+          exam_type?: string
+          id?: string
+          name?: string
+          school_id?: string | null
+          school_name?: string | null
+          section?: string | null
+          status?: string
+          total_questions?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessments_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance: {
         Row: {
           created_at: string
@@ -56,6 +112,78 @@ export type Database = {
           },
         ]
       }
+      clicker_records: {
+        Row: {
+          answers: Json
+          assessment_id: string | null
+          class: string | null
+          correct_rate: number
+          created_at: string
+          id: string
+          keypad_id: string
+          ranking: number | null
+          school_id: string | null
+          school_name: string | null
+          score: number
+          section: string | null
+          student_id: string | null
+          student_name: string
+          team: string | null
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json
+          assessment_id?: string | null
+          class?: string | null
+          correct_rate?: number
+          created_at?: string
+          id?: string
+          keypad_id: string
+          ranking?: number | null
+          school_id?: string | null
+          school_name?: string | null
+          score?: number
+          section?: string | null
+          student_id?: string | null
+          student_name?: string
+          team?: string | null
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json
+          assessment_id?: string | null
+          class?: string | null
+          correct_rate?: number
+          created_at?: string
+          id?: string
+          keypad_id?: string
+          ranking?: number | null
+          school_id?: string | null
+          school_name?: string | null
+          score?: number
+          section?: string | null
+          student_id?: string | null
+          student_name?: string
+          team?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clicker_records_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clicker_records_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_scores: {
         Row: {
           academic_year: string
@@ -91,6 +219,42 @@ export type Database = {
           score?: number
           student_id?: string
           subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      questions: {
+        Row: {
+          assessment_id: string
+          chapter: string | null
+          correct_answer: string
+          created_at: string
+          id: string
+          parameter: string | null
+          question_no: number
+          topic: string | null
+          updated_at: string
+        }
+        Insert: {
+          assessment_id: string
+          chapter?: string | null
+          correct_answer?: string
+          created_at?: string
+          id?: string
+          parameter?: string | null
+          question_no: number
+          topic?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assessment_id?: string
+          chapter?: string | null
+          correct_answer?: string
+          created_at?: string
+          id?: string
+          parameter?: string | null
+          question_no?: number
+          topic?: string | null
           updated_at?: string
         }
         Relationships: []
