@@ -18,7 +18,7 @@ import type { School, Student } from "./types";
  * `ATTENDANCE` is stored as an exam_type too: it acts as a manual override of
  * the attendance percentage computed from the `attendance` table.
  */
-export const EXAM_TYPES = ["ICA", "IMF"] as const;
+export const EXAM_TYPES = ["ICA", "IMF", "FCA"] as const;
 export type ExamType = (typeof EXAM_TYPES)[number];
 export const ATTENDANCE_TYPE = "ATTENDANCE";
 
