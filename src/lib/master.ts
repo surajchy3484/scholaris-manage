@@ -13,12 +13,18 @@ import { fetchAllRows } from "./fetch-all";
 export const EXAM_TYPE_OPTIONS = ["ICA", "IMF", "FCA"] as const;
 export const ASSESSMENT_STATUS_OPTIONS = ["Draft", "Scheduled", "Active", "Completed"] as const;
 export const ANSWER_OPTIONS = ["A", "B", "C", "D"] as const;
+export const DIFFICULTY_OPTIONS = ["Easy", "Medium", "Hard"] as const;
+export const QUESTION_STATUS_OPTIONS = ["Active", "Inactive"] as const;
 
 export type Assessment = {
   id: string;
   assessment_id: string;
   exam_type: string;
   name: string;
+  academic_year: string;
+  subject: string | null;
+  total_marks: number;
+  passing_marks: number;
   date: string | null;
   school_id: string | null;
   school_name: string | null;
@@ -34,7 +40,12 @@ export type Question = {
   id: string;
   assessment_id: string;
   question_no: number;
+  question_text: string | null;
   correct_answer: string;
+  marks: number;
+  difficulty: string;
+  status: string;
+  subject: string | null;
   parameter: string | null;
   topic: string | null;
   chapter: string | null;
@@ -47,6 +58,7 @@ export type ClickerRecord = {
   assessment_id: string | null;
   keypad_id: string;
   student_name: string;
+  roll_number: string | null;
   school_id: string | null;
   school_name: string | null;
   class: string | null;
@@ -105,6 +117,22 @@ export function nextAssessmentCode(existing: Assessment[]): string {
     if (m) max = Math.max(max, Number(m[1]));
   }
   return `ASM-${String(max + 1).padStart(4, "0")}`;
+}
+
+/** Deletes rows in chunks so bulk selections never exceed URL limits. */
+export async function deleteRowsByIds(
+  table: "assessments" | "questions" | "clicker_records",
+  ids: string[],
+  chunk = 200,
+): Promise<number> {
+  for (let i = 0; i < ids.length; i += chunk) {
+    const { error } = await supabase
+      .from(table)
+      .delete()
+      .in("id", ids.slice(i, i + chunk));
+    if (error) throw new Error(error.message);
+  }
+  return ids.length;
 }
 
 /**

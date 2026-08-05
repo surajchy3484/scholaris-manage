@@ -10,7 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as QuestionsRouteImport } from './routes/questions'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ClickerRouteImport } from './routes/clicker'
+import { Route as AssessmentsRouteImport } from './routes/assessments'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExamReportIndexRouteImport } from './routes/exam-report.index'
 import { Route as SchoolsSchoolIdRouteImport } from './routes/schools.$schoolId'
@@ -22,9 +25,24 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QuestionsRoute = QuestionsRouteImport.update({
+  id: '/questions',
+  path: '/questions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClickerRoute = ClickerRouteImport.update({
+  id: '/clicker',
+  path: '/clicker',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssessmentsRoute = AssessmentsRouteImport.update({
+  id: '/assessments',
+  path: '/assessments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -56,7 +74,10 @@ const ExamReportSchoolIdStudentsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/assessments': typeof AssessmentsRoute
+  '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
+  '/questions': typeof QuestionsRoute
   '/settings': typeof SettingsRoute
   '/schools/$schoolId': typeof SchoolsSchoolIdRoute
   '/exam-report/': typeof ExamReportIndexRoute
@@ -65,7 +86,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/assessments': typeof AssessmentsRoute
+  '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
+  '/questions': typeof QuestionsRoute
   '/settings': typeof SettingsRoute
   '/schools/$schoolId': typeof SchoolsSchoolIdRoute
   '/exam-report': typeof ExamReportIndexRoute
@@ -75,7 +99,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/assessments': typeof AssessmentsRoute
+  '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
+  '/questions': typeof QuestionsRoute
   '/settings': typeof SettingsRoute
   '/schools/$schoolId': typeof SchoolsSchoolIdRoute
   '/exam-report/': typeof ExamReportIndexRoute
@@ -86,7 +113,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/assessments'
+    | '/clicker'
     | '/login'
+    | '/questions'
     | '/settings'
     | '/schools/$schoolId'
     | '/exam-report/'
@@ -95,7 +125,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/assessments'
+    | '/clicker'
     | '/login'
+    | '/questions'
     | '/settings'
     | '/schools/$schoolId'
     | '/exam-report'
@@ -104,7 +137,10 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/assessments'
+    | '/clicker'
     | '/login'
+    | '/questions'
     | '/settings'
     | '/schools/$schoolId'
     | '/exam-report/'
@@ -114,7 +150,10 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AssessmentsRoute: typeof AssessmentsRoute
+  ClickerRoute: typeof ClickerRoute
   LoginRoute: typeof LoginRoute
+  QuestionsRoute: typeof QuestionsRoute
   SettingsRoute: typeof SettingsRoute
   SchoolsSchoolIdRoute: typeof SchoolsSchoolIdRoute
   ExamReportIndexRoute: typeof ExamReportIndexRoute
@@ -131,11 +170,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/questions': {
+      id: '/questions'
+      path: '/questions'
+      fullPath: '/questions'
+      preLoaderRoute: typeof QuestionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clicker': {
+      id: '/clicker'
+      path: '/clicker'
+      fullPath: '/clicker'
+      preLoaderRoute: typeof ClickerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assessments': {
+      id: '/assessments'
+      path: '/assessments'
+      fullPath: '/assessments'
+      preLoaderRoute: typeof AssessmentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -178,7 +238,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AssessmentsRoute: AssessmentsRoute,
+  ClickerRoute: ClickerRoute,
   LoginRoute: LoginRoute,
+  QuestionsRoute: QuestionsRoute,
   SettingsRoute: SettingsRoute,
   SchoolsSchoolIdRoute: SchoolsSchoolIdRoute,
   ExamReportIndexRoute: ExamReportIndexRoute,

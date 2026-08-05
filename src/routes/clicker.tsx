@@ -1,0 +1,419 @@
+import { useMemo, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Pencil, Plus, Trash2, Upload } from "lucide-react";
+
+import { PageNav } from "@/components/page-nav";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { DataGrid, type GridColumn } from "@/components/data-grid";
+import { ClickerDialog } from "@/components/master/clicker-dialog";
+import {
+  SheetImportDialog,
+  pick,
+  type ParsedBase,
+} from "@/components/master/sheet-import-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  clickerQuestionColumns,
+  deleteRowsByIds,
+  fetchAssessments,
+  fetchClickerRecords,
+  type ClickerRecord,
+} from "@/lib/master";
+
+export const Route = createFileRoute("/clicker")({
+  head: () => ({
+    meta: [
+      { title: "Clicker Data — Scholaris" },
+      {
+        name: "description",
+        content:
+          "Import, edit and export clicker responses with automatically detected question columns.",
+      },
+      { property: "og:title", content: "Clicker Data — Scholaris" },
+      {
+        property: "og:description",
+        content: "Student clicker responses with dynamic question columns and inline editing.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: ClickerPage,
+});
+
+type ParsedClicker = ParsedBase & {
+  assessment_id: string | null;
+  keypad_id: string;
+  student_name: string;
+  roll_number: string | null;
+  class: string | null;
+  section: string | null;
+  team: string | null;
+  answers: Record<string, string>;
+};
+
+/** Answer cell that supports inline edit, keyboard save/cancel and undo. */
+function AnswerCell({
+  value,
+  onSave,
+}: {
+  value: string;
+  onSave: (next: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  if (!editing)
+    return (
+      <button
+        type="button"
+        className="min-w-8 rounded-md px-2 py-0.5 text-center transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+        onClick={(e) => {
+          e.stopPropagation();
+          setDraft(value);
+          setEditing(true);
+        }}
+      >
+        {value || "—"}
+      </button>
+    );
+
+  return (
+    <Input
+      autoFocus
+      value={draft}
+      maxLength={1}
+      className="h-7 w-12 px-1 text-center text-xs uppercase"
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => setDraft(e.target.value.toUpperCase())}
+      onBlur={() => setEditing(false)}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === "Enter") {
+          const next = draft.trim().toUpperCase();
+          if (next && !"ABCD".includes(next)) {
+            toast.error("Answer must be A, B, C, D or blank.");
+            return;
+          }
+          setEditing(false);
+          if (next !== value) onSave(next);
+        }
+        if (e.key === "Escape") {
+          setDraft(value);
+          setEditing(false);
+        }
+      }}
+    />
+  );
+}
+
+function ClickerPage() {
+  const qc = useQueryClient();
+  const [assessment, setAssessment] = useState("all");
+  const [minScore, setMinScore] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [editing, setEditing] = useState<ClickerRecord | null>(null);
+  const [dialog, setDialog] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [confirm, setConfirm] = useState<"single" | "bulk" | null>(null);
+  const [target, setTarget] = useState<ClickerRecord | null>(null);
+
+  const assessments = useQuery({ queryKey: ["assessments"], queryFn: fetchAssessments });
+  const list = useQuery({
+    queryKey: ["clicker", assessment],
+    queryFn: () => fetchClickerRecords(assessment),
+  });
+
+  const rows = useMemo(() => {
+    const min = Number(minScore);
+    const all = list.data ?? [];
+    return Number.isFinite(min) && minScore.trim() !== ""
+      ? all.filter((r) => r.score >= min)
+      : all;
+  }, [list.data, minScore]);
+
+  const questionCols = useMemo(() => clickerQuestionColumns(list.data ?? []), [list.data]);
+
+  const saveAnswer = useMutation({
+    mutationFn: async ({
+      row,
+      col,
+      value,
+    }: {
+      row: ClickerRecord;
+      col: string;
+      value: string;
+    }) => {
+      const answers = { ...row.answers };
+      if (value) answers[col] = value;
+      else delete answers[col];
+      const { error } = await supabase
+        .from("clicker_records")
+        .update({ answers })
+        .eq("id", row.id);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["clicker"] });
+      toast.success("Answer saved");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: (ids: string[]) => deleteRowsByIds("clicker_records", ids),
+    onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["clicker"] });
+      setSelected([]);
+      toast.success(`${n} record(s) deleted`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const columns = useMemo<GridColumn<ClickerRecord>[]>(() => {
+    const base: GridColumn<ClickerRecord>[] = [
+      { key: "student_name", label: "Student", value: (r) => r.student_name },
+      { key: "roll_number", label: "Roll", value: (r) => r.roll_number ?? "—" },
+      { key: "keypad_id", label: "Keypad ID", value: (r) => r.keypad_id },
+      { key: "class", label: "Class", value: (r) => r.class ?? "—" },
+      { key: "section", label: "Section", value: (r) => r.section ?? "—" },
+      { key: "team", label: "Team", value: (r) => r.team ?? "—" },
+      { key: "score", label: "Score", value: (r) => r.score },
+      { key: "correct_rate", label: "Correct Rate", value: (r) => r.correct_rate, render: (r) => `${r.correct_rate}%` },
+      { key: "ranking", label: "Ranking", value: (r) => r.ranking ?? 0 },
+    ];
+    const dyn: GridColumn<ClickerRecord>[] = questionCols.map((c) => ({
+      key: c,
+      label: c,
+      value: (r) => r.answers[c] ?? "",
+      render: (r) => (
+        <AnswerCell
+          value={r.answers[c] ?? ""}
+          onSave={(next) => saveAnswer.mutate({ row: r, col: c, value: next })}
+        />
+      ),
+    }));
+    return [
+      ...base,
+      ...dyn,
+      {
+        key: "actions",
+        label: "Actions",
+        value: () => "",
+        render: (r) => (
+          <span className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label="Edit"
+              onClick={() => {
+                setEditing(r);
+                setDialog(true);
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="text-destructive"
+              aria-label="Delete"
+              onClick={() => {
+                setTarget(r);
+                setConfirm("single");
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </span>
+        ),
+      },
+    ];
+  }, [questionCols, saveAnswer]);
+
+  return (
+    <>
+      <PageNav />
+      <main className="mx-auto max-w-7xl space-y-4 px-3 py-6 sm:px-6">
+        <header className="min-w-0">
+          <h1 className="font-display text-2xl font-bold sm:text-3xl">Clicker Data</h1>
+          <p className="text-sm text-muted-foreground">
+            {questionCols.length > 0
+              ? `${questionCols.length} question column(s) detected automatically.`
+              : "Import a sheet to detect question columns automatically."}
+          </p>
+        </header>
+
+        <DataGrid
+          title="Clicker responses"
+          description={`${rows.length} record(s)`}
+          rows={rows}
+          columns={columns}
+          getId={(r) => r.id}
+          loading={list.isLoading}
+          filename="clicker-data"
+          emptyMessage="No clicker records yet. Import a sheet or add one manually."
+          selectedIds={selected}
+          onSelectedChange={setSelected}
+          filters={
+            <>
+              <Select value={assessment} onValueChange={setAssessment}>
+                <SelectTrigger className="h-9 w-[190px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All assessments</SelectItem>
+                  {(assessments.data ?? []).map((a) => (
+                    <SelectItem key={a.id} value={a.assessment_id}>
+                      {a.assessment_id} — {a.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                value={minScore}
+                onChange={(e) => setMinScore(e.target.value)}
+                inputMode="numeric"
+                placeholder="Min score"
+                className="h-9 w-[120px]"
+              />
+            </>
+          }
+          toolbar={
+            <>
+              {selected.length > 0 && (
+                <Button variant="destructive" size="sm" onClick={() => setConfirm("bulk")}>
+                  <Trash2 className="h-4 w-4" /> Delete {selected.length}
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4" /> Import
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEditing(null);
+                  setDialog(true);
+                }}
+              >
+                <Plus className="h-4 w-4" /> Add Record
+              </Button>
+            </>
+          }
+        />
+      </main>
+
+      <ClickerDialog
+        open={dialog}
+        onOpenChange={setDialog}
+        record={editing}
+        assessments={assessments.data ?? []}
+        questionColumns={questionCols}
+        defaultAssessmentId={assessment !== "all" ? assessment : undefined}
+      />
+
+      <SheetImportDialog<ParsedClicker>
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        title="Import clicker data"
+        description="Student columns (Keypad ID, Student Name, Roll, Class, Section, Team) are mapped automatically; every other column becomes a question column."
+        parse={(raw) => {
+          const known = new Set(
+            ["assessment id", "keypad id", "keypad", "student name", "student", "name", "roll", "roll number", "class", "section", "team", "score", "correct rate", "ranking"],
+          );
+          return raw.map((row, i) => {
+            const keypad = pick(row, "Keypad ID", "keypad_id", "Keypad");
+            const name = pick(row, "Student Name", "student_name", "Student", "Name");
+            const errors: string[] = [];
+            if (!keypad) errors.push("Keypad ID required");
+            if (!name) errors.push("Student name required");
+            const answers: Record<string, string> = {};
+            for (const key of Object.keys(row)) {
+              const k = key.trim();
+              if (known.has(k.toLowerCase())) continue;
+              const v = String(row[key] ?? "").trim().toUpperCase();
+              if (v) answers[k] = v;
+            }
+            const aid =
+              pick(row, "Assessment ID", "assessment_id") ||
+              (assessment !== "all" ? assessment : "");
+            return {
+              _row: i + 2,
+              errors,
+              assessment_id: aid || null,
+              keypad_id: keypad,
+              student_name: name,
+              roll_number: pick(row, "Roll", "Roll Number", "roll_number") || null,
+              class: pick(row, "Class", "class") || null,
+              section: pick(row, "Section", "section") || null,
+              team: pick(row, "Team", "team") || null,
+              answers,
+            };
+          });
+        }}
+        columns={[
+          { label: "Keypad", get: (r) => r.keypad_id },
+          { label: "Student", get: (r) => r.student_name },
+          { label: "Class", get: (r) => r.class ?? "—" },
+          { label: "Questions", get: (r) => Object.keys(r.answers).length },
+        ]}
+        commit={async (valid) => {
+          const chunk = 300;
+          for (let i = 0; i < valid.length; i += chunk) {
+            const payload = valid.slice(i, i + chunk).map(({ _row, errors, ...rest }) => rest);
+            const { error } = await supabase.from("clicker_records").insert(payload);
+            if (error) throw new Error(error.message);
+          }
+          qc.invalidateQueries({ queryKey: ["clicker"] });
+          const detected = new Set<string>();
+          for (const v of valid) for (const k of Object.keys(v.answers)) detected.add(k);
+          return `Imported ${valid.length} record(s) with ${detected.size} question column(s).`;
+        }}
+      />
+
+      <AlertDialog open={confirm !== null} onOpenChange={(o) => !o && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete clicker record(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirm === "bulk"
+                ? `${selected.length} record(s) will be permanently removed.`
+                : `"${target?.student_name ?? ""}" will be permanently removed.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                remove.mutate(confirm === "bulk" ? selected : target ? [target.id] : []);
+                setConfirm(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}

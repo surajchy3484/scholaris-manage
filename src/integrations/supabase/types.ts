@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       assessments: {
         Row: {
+          academic_year: string
           assessment_id: string
           class: string | null
           created_at: string
@@ -23,14 +24,18 @@ export type Database = {
           exam_type: string
           id: string
           name: string
+          passing_marks: number
           school_id: string | null
           school_name: string | null
           section: string | null
           status: string
+          subject: string | null
+          total_marks: number
           total_questions: number
           updated_at: string
         }
         Insert: {
+          academic_year?: string
           assessment_id: string
           class?: string | null
           created_at?: string
@@ -38,14 +43,18 @@ export type Database = {
           exam_type?: string
           id?: string
           name: string
+          passing_marks?: number
           school_id?: string | null
           school_name?: string | null
           section?: string | null
           status?: string
+          subject?: string | null
+          total_marks?: number
           total_questions?: number
           updated_at?: string
         }
         Update: {
+          academic_year?: string
           assessment_id?: string
           class?: string | null
           created_at?: string
@@ -53,10 +62,13 @@ export type Database = {
           exam_type?: string
           id?: string
           name?: string
+          passing_marks?: number
           school_id?: string | null
           school_name?: string | null
           section?: string | null
           status?: string
+          subject?: string | null
+          total_marks?: number
           total_questions?: number
           updated_at?: string
         }
@@ -122,6 +134,7 @@ export type Database = {
           id: string
           keypad_id: string
           ranking: number | null
+          roll_number: string | null
           school_id: string | null
           school_name: string | null
           score: number
@@ -140,6 +153,7 @@ export type Database = {
           id?: string
           keypad_id: string
           ranking?: number | null
+          roll_number?: string | null
           school_id?: string | null
           school_name?: string | null
           score?: number
@@ -158,6 +172,7 @@ export type Database = {
           id?: string
           keypad_id?: string
           ranking?: number | null
+          roll_number?: string | null
           school_id?: string | null
           school_name?: string | null
           score?: number
@@ -229,9 +244,14 @@ export type Database = {
           chapter: string | null
           correct_answer: string
           created_at: string
+          difficulty: string
           id: string
+          marks: number
           parameter: string | null
           question_no: number
+          question_text: string | null
+          status: string
+          subject: string | null
           topic: string | null
           updated_at: string
         }
@@ -240,9 +260,14 @@ export type Database = {
           chapter?: string | null
           correct_answer?: string
           created_at?: string
+          difficulty?: string
           id?: string
+          marks?: number
           parameter?: string | null
           question_no: number
+          question_text?: string | null
+          status?: string
+          subject?: string | null
           topic?: string | null
           updated_at?: string
         }
@@ -251,9 +276,14 @@ export type Database = {
           chapter?: string | null
           correct_answer?: string
           created_at?: string
+          difficulty?: string
           id?: string
+          marks?: number
           parameter?: string | null
           question_no?: number
+          question_text?: string | null
+          status?: string
+          subject?: string | null
           topic?: string | null
           updated_at?: string
         }
