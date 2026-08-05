@@ -18,6 +18,9 @@ import {
   Users,
   BarChart3,
   ChevronDown,
+  ClipboardList,
+  HelpCircle,
+  MousePointerClick,
   Menu,
 } from "lucide-react";
 import {
@@ -175,6 +178,24 @@ function ScholarsMenu({
       label: "Exam Report",
       icon: BarChart3,
       active: pathname.startsWith("/exam-report"),
+    },
+    {
+      to: "/assessments",
+      label: "Assessment Master",
+      icon: ClipboardList,
+      active: pathname.startsWith("/assessments"),
+    },
+    {
+      to: "/questions",
+      label: "Question Master",
+      icon: HelpCircle,
+      active: pathname.startsWith("/questions"),
+    },
+    {
+      to: "/clicker",
+      label: "Clicker Data",
+      icon: MousePointerClick,
+      active: pathname.startsWith("/clicker"),
     },
   ] as const;
 
