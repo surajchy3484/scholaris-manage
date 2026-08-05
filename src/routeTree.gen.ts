@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as QuestionsRouteImport } from './routes/questions'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AssessmentsRouteImport } from './routes/assessments'
 import { Route as IndexRouteImport } from './routes/index'
@@ -21,6 +22,11 @@ import { Route as ExamReportSchoolIdStudentsRouteImport } from './routes/exam-re
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuestionsRoute = QuestionsRouteImport.update({
+  id: '/questions',
+  path: '/questions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assessments': typeof AssessmentsRoute
   '/login': typeof LoginRoute
+  '/questions': typeof QuestionsRoute
   '/settings': typeof SettingsRoute
   '/schools/$schoolId': typeof SchoolsSchoolIdRoute
   '/exam-report/': typeof ExamReportIndexRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/assessments': typeof AssessmentsRoute
   '/login': typeof LoginRoute
+  '/questions': typeof QuestionsRoute
   '/settings': typeof SettingsRoute
   '/schools/$schoolId': typeof SchoolsSchoolIdRoute
   '/exam-report': typeof ExamReportIndexRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/assessments': typeof AssessmentsRoute
   '/login': typeof LoginRoute
+  '/questions': typeof QuestionsRoute
   '/settings': typeof SettingsRoute
   '/schools/$schoolId': typeof SchoolsSchoolIdRoute
   '/exam-report/': typeof ExamReportIndexRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assessments'
     | '/login'
+    | '/questions'
     | '/settings'
     | '/schools/$schoolId'
     | '/exam-report/'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assessments'
     | '/login'
+    | '/questions'
     | '/settings'
     | '/schools/$schoolId'
     | '/exam-report'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assessments'
     | '/login'
+    | '/questions'
     | '/settings'
     | '/schools/$schoolId'
     | '/exam-report/'
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AssessmentsRoute: typeof AssessmentsRoute
   LoginRoute: typeof LoginRoute
+  QuestionsRoute: typeof QuestionsRoute
   SettingsRoute: typeof SettingsRoute
   SchoolsSchoolIdRoute: typeof SchoolsSchoolIdRoute
   ExamReportIndexRoute: typeof ExamReportIndexRoute
@@ -142,6 +155,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/questions': {
+      id: '/questions'
+      path: '/questions'
+      fullPath: '/questions'
+      preLoaderRoute: typeof QuestionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -200,6 +220,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AssessmentsRoute: AssessmentsRoute,
   LoginRoute: LoginRoute,
+  QuestionsRoute: QuestionsRoute,
   SettingsRoute: SettingsRoute,
   SchoolsSchoolIdRoute: SchoolsSchoolIdRoute,
   ExamReportIndexRoute: ExamReportIndexRoute,
