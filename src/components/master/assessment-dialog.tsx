@@ -28,7 +28,9 @@ import {
   type Assessment,
 } from "@/lib/master";
 
-type Errors = Partial<Record<"assessment_id" | "name" | "total_questions", string>>;
+type Errors = Partial<
+  Record<"assessment_id" | "name" | "total_questions" | "passing_marks", string>
+>;
 
 export function AssessmentDialog({
   open,
@@ -56,6 +58,10 @@ export function AssessmentDialog({
   const [cls, setCls] = useState("");
   const [section, setSection] = useState("");
   const [total, setTotal] = useState("0");
+  const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [subject, setSubject] = useState("");
+  const [totalMarks, setTotalMarks] = useState("0");
+  const [passMarks, setPassMarks] = useState("0");
   const [status, setStatus] = useState<string>("Draft");
   const [errors, setErrors] = useState<Errors>({});
 
@@ -70,6 +76,10 @@ export function AssessmentDialog({
     setCls(assessment?.class ?? "");
     setSection(assessment?.section ?? "");
     setTotal(String(assessment?.total_questions ?? 0));
+    setYear(assessment?.academic_year ?? String(new Date().getFullYear()));
+    setSubject(assessment?.subject ?? "");
+    setTotalMarks(String(assessment?.total_marks ?? 0));
+    setPassMarks(String(assessment?.passing_marks ?? 0));
     setStatus(assessment?.status ?? "Draft");
   }, [open, assessment, defaultCode]);
 
@@ -86,6 +96,10 @@ export function AssessmentDialog({
         class: cls.trim() || null,
         section: section.trim().toUpperCase() || null,
         total_questions: Number(total) || 0,
+        academic_year: year.trim() || String(new Date().getFullYear()),
+        subject: subject.trim() || null,
+        total_marks: Number(totalMarks) || 0,
+        passing_marks: Number(passMarks) || 0,
         status,
       };
       if (isEdit && assessment) {
@@ -118,6 +132,8 @@ export function AssessmentDialog({
     if (!name.trim()) e.name = "Assessment name is required.";
     const n = Number(total);
     if (!Number.isFinite(n) || n < 0) e.total_questions = "Must be a positive number.";
+    if (Number(passMarks) > Number(totalMarks))
+      e.passing_marks = "Passing marks cannot exceed total marks.";
     setErrors(e);
     if (Object.keys(e).length > 0) {
       toast.error("Please fix the highlighted fields.");
@@ -185,6 +201,18 @@ export function AssessmentDialog({
           </Field>
           <Field label="Total Questions" error={errors.total_questions}>
             <Input value={total} onChange={(e) => setTotal(e.target.value)} inputMode="numeric" />
+          </Field>
+          <Field label="Academic Year">
+            <Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="2026" />
+          </Field>
+          <Field label="Subject">
+            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Mathematics" />
+          </Field>
+          <Field label="Total Marks">
+            <Input value={totalMarks} onChange={(e) => setTotalMarks(e.target.value)} inputMode="numeric" />
+          </Field>
+          <Field label="Passing Marks" error={errors.passing_marks}>
+            <Input value={passMarks} onChange={(e) => setPassMarks(e.target.value)} inputMode="numeric" />
           </Field>
           <Field label="Status">
             <Select value={status} onValueChange={setStatus}>
