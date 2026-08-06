@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +21,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { School } from "@/lib/types";
-import { ASSESSMENT_STATUS_OPTIONS, EXAM_TYPE_OPTIONS, type Assessment } from "@/lib/master";
+import {
+  ASSESSMENT_STATUS_OPTIONS,
+  EXAM_TYPE_OPTIONS,
+  insertRows,
+  updateRowsByIds,
+  type Assessment,
+} from "@/lib/master";
 
 type Errors = Partial<
   Record<"assessment_id" | "name" | "total_questions" | "passing_marks", string>
@@ -99,19 +104,18 @@ export function AssessmentDialog({
         status,
       };
       if (isEdit && assessment) {
-        const { error } = await supabase
-          .from("assessments")
-          .update(payload)
-          .eq("id", assessment.id);
-        if (error) throw error;
+        await updateRowsByIds("assessments", [assessment.id], payload);
       } else {
-        const { error } = await supabase.from("assessments").insert(payload);
-        if (error)
+        try {
+          await insertRows("assessments", [payload]);
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Failed to save assessment";
           throw new Error(
-            error.code === "23505"
+            msg === "DUPLICATE"
               ? `Assessment ID "${payload.assessment_id}" already exists.`
-              : error.message,
+              : msg,
           );
+        }
       }
     },
     onSuccess: () => {

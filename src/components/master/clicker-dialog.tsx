@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type Assessment, type ClickerRecord } from "@/lib/master";
+import {
+  insertRows,
+  updateRowsByIds,
+  type Assessment,
+  type ClickerRecord,
+} from "@/lib/master";
 
 type Errors = Partial<Record<"keypad_id" | "student_name", string>>;
 
@@ -86,14 +90,9 @@ export function ClickerDialog({
         answers,
       };
       if (isEdit && record) {
-        const { error } = await supabase
-          .from("clicker_records")
-          .update(payload)
-          .eq("id", record.id);
-        if (error) throw new Error(error.message);
+        await updateRowsByIds("clicker_records", [record.id], payload);
       } else {
-        const { error } = await supabase.from("clicker_records").insert(payload);
-        if (error) throw new Error(error.message);
+        await insertRows("clicker_records", [payload]);
       }
     },
     onSuccess: () => {

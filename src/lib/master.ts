@@ -1,5 +1,10 @@
-import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "./fetch-all";
+import { getAccessToken } from "./app-access";
+import {
+  deleteMasterRows,
+  insertMasterRows,
+  listMasterRows,
+  updateMasterRows,
+} from "./master.functions";
 
 /**
  * Data layer for the Assessment / Question / Clicker modules.
@@ -72,41 +77,53 @@ export type ClickerRecord = {
   updated_at: string;
 };
 
+export type MasterTable = "assessments" | "questions" | "clicker_records";
+
+async function listRows(table: MasterTable, assessmentId?: string) {
+  return listMasterRows({ data: { token: getAccessToken(), table, assessmentId } });
+}
+
 export async function fetchAssessments(): Promise<Assessment[]> {
-  return fetchAllRows<Assessment>((from, to) =>
-    supabase
-      .from("assessments")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .range(from, to) as never,
-  );
+  return (await listRows("assessments")) as Assessment[];
 }
 
 export async function fetchQuestions(assessmentId?: string): Promise<Question[]> {
-  return fetchAllRows<Question>((from, to) => {
-    let q = supabase.from("questions").select("*").order("question_no");
-    if (assessmentId && assessmentId !== "all") q = q.eq("assessment_id", assessmentId);
-    return q.range(from, to) as never;
-  });
+  return (await listRows("questions", assessmentId)) as Question[];
 }
 
 export async function fetchClickerRecords(assessmentId?: string): Promise<ClickerRecord[]> {
-  const rows = await fetchAllRows<Omit<ClickerRecord, "answers"> & { answers: unknown }>(
-    (from, to) => {
-      let q = supabase
-        .from("clicker_records")
-        .select("*")
-        .order("ranking", { nullsFirst: false });
-      if (assessmentId && assessmentId !== "all") q = q.eq("assessment_id", assessmentId);
-      return q.range(from, to) as never;
-    },
-  );
+  const rows = (await listRows("clicker_records", assessmentId)) as ClickerRecord[];
   return rows.map((r) => ({
     ...r,
     answers: (r.answers && typeof r.answers === "object"
       ? (r.answers as Record<string, string>)
       : {}) as Record<string, string>,
   }));
+}
+
+/** Inserts rows in chunks through the privileged server function. */
+export async function insertRows(
+  table: MasterTable,
+  rows: Record<string, unknown>[],
+  chunk = 500,
+): Promise<number> {
+  const token = getAccessToken();
+  for (let i = 0; i < rows.length; i += chunk) {
+    await insertMasterRows({ data: { token, table, rows: rows.slice(i, i + chunk) } });
+  }
+  return rows.length;
+}
+
+export async function updateRowsByIds(
+  table: MasterTable,
+  ids: string[],
+  patch: Record<string, unknown>,
+  chunk = 200,
+): Promise<void> {
+  const token = getAccessToken();
+  for (let i = 0; i < ids.length; i += chunk) {
+    await updateMasterRows({ data: { token, table, ids: ids.slice(i, i + chunk), patch } });
+  }
 }
 
 /** Next free assessment code, e.g. ASM-0007. */
@@ -119,18 +136,15 @@ export function nextAssessmentCode(existing: Assessment[]): string {
   return `ASM-${String(max + 1).padStart(4, "0")}`;
 }
 
-/** Deletes rows in chunks so bulk selections never exceed URL limits. */
+/** Deletes rows in chunks so bulk selections never exceed request limits. */
 export async function deleteRowsByIds(
-  table: "assessments" | "questions" | "clicker_records",
+  table: MasterTable,
   ids: string[],
   chunk = 200,
 ): Promise<number> {
+  const token = getAccessToken();
   for (let i = 0; i < ids.length; i += chunk) {
-    const { error } = await supabase
-      .from(table)
-      .delete()
-      .in("id", ids.slice(i, i + chunk));
-    if (error) throw new Error(error.message);
+    await deleteMasterRows({ data: { token, table, ids: ids.slice(i, i + chunk) } });
   }
   return ids.length;
 }
