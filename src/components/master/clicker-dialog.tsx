@@ -20,7 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type Assessment, type ClickerRecord } from "@/lib/master";
+import {
+  insertRows,
+  updateRowsByIds,
+  type Assessment,
+  type ClickerRecord,
+} from "@/lib/master";
 
 type Errors = Partial<Record<"keypad_id" | "student_name", string>>;
 

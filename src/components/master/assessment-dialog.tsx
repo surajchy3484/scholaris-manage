@@ -21,7 +21,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { School } from "@/lib/types";
-import { ASSESSMENT_STATUS_OPTIONS, EXAM_TYPE_OPTIONS, type Assessment } from "@/lib/master";
+import {
+  ASSESSMENT_STATUS_OPTIONS,
+  EXAM_TYPE_OPTIONS,
+  insertRows,
+  updateRowsByIds,
+  type Assessment,
+} from "@/lib/master";
 
 type Errors = Partial<
   Record<"assessment_id" | "name" | "total_questions" | "passing_marks", string>
