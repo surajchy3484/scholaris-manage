@@ -29,7 +29,8 @@ const listSchema = tokenSchema.extend({
 
 export const listMasterRows = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => listSchema.parse(data))
-  .handler(async ({ data }): Promise<Record<string, unknown>[]> => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  .handler(async ({ data }): Promise<any[]> => {
     assertAccess(data.token);
     const db = await admin();
     const out: Record<string, unknown>[] = [];
@@ -51,7 +52,8 @@ export const listMasterRows = createServerFn({ method: "POST" })
     return out;
   });
 
-const rowSchema = z.record(z.string(), z.unknown());
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const rowSchema = z.record(z.string(), z.any());
 
 const insertSchema = tokenSchema.extend({
   table: tableSchema,
