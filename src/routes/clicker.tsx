@@ -26,13 +26,14 @@ import {
 import { DataGrid, type GridColumn } from "@/components/data-grid";
 import { ClickerDialog } from "@/components/master/clicker-dialog";
 import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
-import { supabase } from "@/integrations/supabase/client";
 import {
   clickerQuestionColumns,
   deleteRowsByIds,
   fetchAssessments,
   fetchClickerRecords,
   type ClickerRecord,
+  insertRows,
+  updateRowsByIds,
 } from "@/lib/master";
 
 export const Route = createFileRoute("/clicker")({
@@ -147,7 +148,6 @@ function ClickerPage() {
       if (value) answers[col] = value;
       else delete answers[col];
       await updateRowsByIds("clicker_records", [row.id], { answers });
-      if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["clicker"] });
@@ -373,12 +373,11 @@ function ClickerPage() {
           { label: "Questions", get: (r) => Object.keys(r.answers).length },
         ]}
         commit={async (valid) => {
-          const chunk = 300;
-          for (let i = 0; i < valid.length; i += chunk) {
-            const payload = valid.slice(i, i + chunk).map(({ _row, errors, ...rest }) => rest);
-            const { error } = await supabase.from("clicker_records").insert(payload);
-            if (error) throw new Error(error.message);
-          }
+          await insertRows(
+            "clicker_records",
+            valid.map(({ _row, errors, ...rest }) => rest),
+            300,
+          );
           qc.invalidateQueries({ queryKey: ["clicker"] });
           const detected = new Set<string>();
           for (const v of valid) for (const k of Object.keys(v.answers)) detected.add(k);

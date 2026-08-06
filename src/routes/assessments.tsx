@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   deleteRowsByIds,
   fetchAssessments,
+  insertRows,
   nextAssessmentCode,
   type Assessment,
 } from "@/lib/master";
@@ -284,8 +285,7 @@ function AssessmentsPage() {
           const chunk = 500;
           for (let i = 0; i < valid.length; i += chunk) {
             const payload = valid.slice(i, i + chunk).map(({ _row, errors, ...rest }) => rest);
-            const { error } = await supabase.from("assessments").insert(payload);
-            if (error) throw new Error(error.message);
+            await insertRows("assessments", payload);
           }
           qc.invalidateQueries({ queryKey: ["assessments"] });
           return `Imported ${valid.length} assessment(s).`;
