@@ -21,11 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ANSWER_OPTIONS,
-  type Assessment,
-  type Question,
-} from "@/lib/master";
+import { ANSWER_OPTIONS, type Assessment, type Question } from "@/lib/master";
 
 type Errors = Partial<Record<"assessment_id" | "question_no" | "marks", string>>;
 

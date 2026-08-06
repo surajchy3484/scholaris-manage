@@ -26,11 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DataGrid, type GridColumn } from "@/components/data-grid";
 import { QuestionDialog } from "@/components/master/question-dialog";
-import {
-  SheetImportDialog,
-  pick,
-  type ParsedBase,
-} from "@/components/master/sheet-import-dialog";
+import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ANSWER_OPTIONS,
@@ -99,9 +95,7 @@ function QuestionsPage() {
   const rows = useMemo(() => {
     const needle = subject.trim().toLowerCase();
     const all = list.data ?? [];
-    return needle
-      ? all.filter((q) => (q.subject ?? "").toLowerCase().includes(needle))
-      : all;
+    return needle ? all.filter((q) => (q.subject ?? "").toLowerCase().includes(needle)) : all;
   }, [list.data, subject]);
 
   const remove = useMutation({
@@ -307,9 +301,7 @@ function QuestionsPage() {
         title="Import questions"
         description="Columns: Assessment ID, Question No, Question Text, Correct Answer, Marks, Difficulty, Subject, Parameter, Topic, Chapter, Status."
         parse={(raw) => {
-          const known = new Set(
-            (assessments.data ?? []).map((a) => a.assessment_id.toLowerCase()),
-          );
+          const known = new Set((assessments.data ?? []).map((a) => a.assessment_id.toLowerCase()));
           const existing = new Set(
             (list.data ?? []).map((q) => `${q.assessment_id.toLowerCase()}#${q.question_no}`),
           );

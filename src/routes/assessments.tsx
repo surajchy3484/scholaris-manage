@@ -18,11 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DataGrid, type GridColumn } from "@/components/data-grid";
 import { AssessmentDialog } from "@/components/master/assessment-dialog";
-import {
-  SheetImportDialog,
-  pick,
-  type ParsedBase,
-} from "@/components/master/sheet-import-dialog";
+import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import {
   deleteRowsByIds,
@@ -113,7 +109,12 @@ function AssessmentsPage() {
       { key: "class", label: "Class", value: (r) => r.class ?? "—" },
       { key: "section", label: "Section", value: (r) => r.section ?? "—" },
       { key: "exam_type", label: "Exam Type", value: (r) => r.exam_type },
-      { key: "date", label: "Exam Date", value: (r) => r.date ?? "", render: (r) => fmtDate(r.date) },
+      {
+        key: "date",
+        label: "Exam Date",
+        value: (r) => r.date ?? "",
+        render: (r) => fmtDate(r.date),
+      },
       { key: "total_questions", label: "Total Question", value: (r) => r.total_questions },
       {
         key: "status",
