@@ -28,6 +28,7 @@ import {
   type Assessment,
 } from "@/lib/master";
 import type { School } from "@/lib/types";
+import { ASSESSMENT_SAMPLE } from "@/lib/sample-templates";
 
 export const Route = createFileRoute("/assessments")({
   head: () => ({
@@ -235,6 +236,7 @@ function AssessmentsPage() {
         open={importOpen}
         onOpenChange={setImportOpen}
         title="Import assessments"
+        sample={ASSESSMENT_SAMPLE}
         description="Columns: Assessment ID, Assessment Name, Academic Year, Class, Subject, Total Marks, Passing Marks, Exam Date, Status."
         parse={(raw) => {
           const existing = new Set(rows.map((r) => r.assessment_id.toLowerCase()));

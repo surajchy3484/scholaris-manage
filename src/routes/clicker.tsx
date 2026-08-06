@@ -27,6 +27,7 @@ import { DataGrid, type GridColumn } from "@/components/data-grid";
 import { ClickerDialog } from "@/components/master/clicker-dialog";
 import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
 import {
+import { clickerSample } from "@/lib/sample-templates";
   clickerQuestionColumns,
   deleteRowsByIds,
   fetchAssessments,
@@ -316,6 +317,7 @@ function ClickerPage() {
         open={importOpen}
         onOpenChange={setImportOpen}
         title="Import clicker data"
+        sample={clickerSample(questionCols)}
         description="Student columns (Keypad ID, Student Name, Roll, Class, Section, Team) are mapped automatically; every other column becomes a question column."
         parse={(raw) => {
           const known = new Set([

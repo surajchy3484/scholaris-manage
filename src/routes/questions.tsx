@@ -28,6 +28,7 @@ import { DataGrid, type GridColumn } from "@/components/data-grid";
 import { QuestionDialog } from "@/components/master/question-dialog";
 import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
 import {
+import { QUESTION_SAMPLE } from "@/lib/sample-templates";
   ANSWER_OPTIONS,
   DIFFICULTY_OPTIONS,
   QUESTION_STATUS_OPTIONS,
@@ -296,6 +297,7 @@ function QuestionsPage() {
         open={importOpen}
         onOpenChange={setImportOpen}
         title="Import questions"
+        sample={QUESTION_SAMPLE}
         description="Columns: Assessment ID, Question No, Question Text, Correct Answer, Marks, Difficulty, Subject, Parameter, Topic, Chapter, Status."
         parse={(raw) => {
           const known = new Set((assessments.data ?? []).map((a) => a.assessment_id.toLowerCase()));
