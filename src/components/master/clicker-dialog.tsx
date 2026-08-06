@@ -67,7 +67,8 @@ export function ClickerDialog({
     setAnswers({ ...(record?.answers ?? {}) });
   }, [open, record, defaultAssessmentId]);
 
-  const cols = questionColumns.length > 0 ? questionColumns : ["S1", "S2", "S3", "S4", "S5"];
+  const baseCols = Array.from({ length: 10 }, (_, i) => `S${i + 1}`);
+  const cols = [...baseCols, ...questionColumns.filter((c) => !baseCols.includes(c))];
 
   const save = useMutation({
     mutationFn: async () => {
