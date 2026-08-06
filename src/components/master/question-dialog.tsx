@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -89,11 +88,9 @@ export function QuestionDialog({
         chapter: chapter.trim() || null,
       };
       if (isEdit && question) {
-        const { error } = await supabase.from("questions").update(payload).eq("id", question.id);
-        if (error) throw new Error(error.message);
+        await updateRowsByIds("questions", [question.id], payload);
       } else {
-        const { error } = await supabase.from("questions").insert(payload);
-        if (error) throw new Error(error.message);
+        await insertRows("questions", [payload]);
       }
     },
     onSuccess: () => {

@@ -146,7 +146,7 @@ function ClickerPage() {
       const answers = { ...row.answers };
       if (value) answers[col] = value;
       else delete answers[col];
-      const { error } = await supabase.from("clicker_records").update({ answers }).eq("id", row.id);
+      await updateRowsByIds("clicker_records", [row.id], { answers });
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {

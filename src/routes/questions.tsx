@@ -27,7 +27,6 @@ import {
 import { DataGrid, type GridColumn } from "@/components/data-grid";
 import { QuestionDialog } from "@/components/master/question-dialog";
 import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
-import { supabase } from "@/integrations/supabase/client";
 import {
   ANSWER_OPTIONS,
   DIFFICULTY_OPTIONS,
@@ -35,6 +34,8 @@ import {
   deleteRowsByIds,
   fetchAssessments,
   fetchQuestions,
+  insertRows,
+  updateRowsByIds,
   type Question,
 } from "@/lib/master";
 
@@ -110,11 +111,7 @@ function QuestionsPage() {
 
   const bulkEdit = useMutation({
     mutationFn: async (answer: string) => {
-      const { error } = await supabase
-        .from("questions")
-        .update({ correct_answer: answer })
-        .in("id", selected);
-      if (error) throw new Error(error.message);
+      await updateRowsByIds("questions", selected, { correct_answer: answer });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["questions"] });
@@ -356,12 +353,10 @@ function QuestionsPage() {
           { label: "Difficulty", get: (r) => r.difficulty },
         ]}
         commit={async (valid) => {
-          const chunk = 500;
-          for (let i = 0; i < valid.length; i += chunk) {
-            const payload = valid.slice(i, i + chunk).map(({ _row, errors, ...rest }) => rest);
-            const { error } = await supabase.from("questions").insert(payload);
-            if (error) throw new Error(error.message);
-          }
+          await insertRows(
+            "questions",
+            valid.map(({ _row, errors, ...rest }) => rest),
+          );
           qc.invalidateQueries({ queryKey: ["questions"] });
           return `Imported ${valid.length} question(s).`;
         }}
