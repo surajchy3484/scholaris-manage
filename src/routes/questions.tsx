@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Copy, Pencil, Plus, Trash2, Upload } from "lucide-react";
 
-import { PageNav } from "@/components/page-nav";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -212,7 +211,6 @@ function QuestionsPage() {
 
   return (
     <>
-      <PageNav />
       <main className="mx-auto max-w-7xl space-y-4 px-3 py-6 sm:px-6">
         <header className="min-w-0">
           <h1 className="font-display text-2xl font-bold sm:text-3xl">Question Master</h1>
