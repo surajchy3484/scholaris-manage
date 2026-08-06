@@ -233,6 +233,21 @@ export function ExamImportDialog({
             />
           </label>
 
+          <div className="flex justify-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                downloadSampleSheet(EXAM_SAMPLE.fileName, EXAM_SAMPLE.sheetName, EXAM_SAMPLE.rows)
+              }
+            >
+              <Download className="h-4 w-4" />
+              Download sample format
+            </Button>
+          </div>
+
+
+
           {rows.length > 0 && (
             <>
               <div className="flex flex-wrap gap-2 text-sm">
