@@ -2,7 +2,9 @@ import { useState } from "react";
 import * as XLSX from "xlsx";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, CheckCircle2, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, Upload } from "lucide-react";
+import { downloadSampleSheet, EXAM_SAMPLE } from "@/lib/sample-templates";
+
 
 import { supabase } from "@/integrations/supabase/client";
 import {
