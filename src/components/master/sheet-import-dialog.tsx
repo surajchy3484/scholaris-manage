@@ -48,6 +48,7 @@ export function SheetImportDialog<T extends ParsedBase>({
   parse,
   commit,
   columns,
+  sample,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -56,6 +57,7 @@ export function SheetImportDialog<T extends ParsedBase>({
   parse: (rows: Record<string, unknown>[]) => T[];
   commit: (valid: T[]) => Promise<string>;
   columns: { label: string; get: (r: T) => ReactNode }[];
+  sample?: { fileName: string; sheetName: string; rows: Record<string, string | number>[] };
 }) {
   const [rows, setRows] = useState<T[]>([]);
   const [summary, setSummary] = useState<string | null>(null);
