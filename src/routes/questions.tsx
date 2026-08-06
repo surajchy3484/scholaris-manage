@@ -133,7 +133,6 @@ function QuestionsPage() {
 
   const columns = useMemo<GridColumn<Question>[]>(
     () => [
-      { key: "id", label: "Question ID", value: (r) => r.id.slice(0, 8), className: "font-mono text-xs" },
       {
         key: "assessment_id",
         label: "Assessment ID",
@@ -142,24 +141,14 @@ function QuestionsPage() {
       },
       { key: "question_no", label: "Question No.", value: (r) => r.question_no },
       {
-        key: "question_text",
-        label: "Question Text",
-        value: (r) => r.question_text ?? "",
-        render: (r) => (
-          <span className="block max-w-xs truncate">{r.question_text ?? "—"}</span>
-        ),
-      },
-      {
         key: "correct_answer",
-        label: "Correct Answer",
+        label: "Correct Ans (A/B/C/D)",
         value: (r) => r.correct_answer,
         render: (r) => <Badge variant="secondary">{r.correct_answer}</Badge>,
       },
-      { key: "marks", label: "Marks", value: (r) => r.marks },
-      { key: "difficulty", label: "Difficulty", value: (r) => r.difficulty },
-      { key: "chapter", label: "Chapter", value: (r) => r.chapter ?? "—" },
+      { key: "parameter", label: "Parameter", value: (r) => r.parameter ?? "—" },
       { key: "topic", label: "Topic", value: (r) => r.topic ?? "—" },
-      { key: "status", label: "Status", value: (r) => r.status },
+      { key: "chapter", label: "Chapter", value: (r) => r.chapter ?? "—" },
       {
         key: "actions",
         label: "Actions",
