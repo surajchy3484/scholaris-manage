@@ -35,6 +35,7 @@ import {
   insertRows,
   updateRowsByIds,
 } from "@/lib/master";
+import { clickerSample } from "@/lib/sample-templates";
 
 export const Route = createFileRoute("/clicker")({
   head: () => ({
@@ -316,6 +317,7 @@ function ClickerPage() {
         open={importOpen}
         onOpenChange={setImportOpen}
         title="Import clicker data"
+        sample={clickerSample(questionCols)}
         description="Student columns (Keypad ID, Student Name, Roll, Class, Section, Team) are mapped automatically; every other column becomes a question column."
         parse={(raw) => {
           const known = new Set([

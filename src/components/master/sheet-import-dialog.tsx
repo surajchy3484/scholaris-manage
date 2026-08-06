@@ -2,7 +2,9 @@ import { useState, type ReactNode } from "react";
 import * as XLSX from "xlsx";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, CheckCircle2, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, Upload } from "lucide-react";
+import { downloadSampleSheet } from "@/lib/sample-templates";
+
 
 import {
   Dialog,
@@ -46,6 +48,7 @@ export function SheetImportDialog<T extends ParsedBase>({
   parse,
   commit,
   columns,
+  sample,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -54,6 +57,7 @@ export function SheetImportDialog<T extends ParsedBase>({
   parse: (rows: Record<string, unknown>[]) => T[];
   commit: (valid: T[]) => Promise<string>;
   columns: { label: string; get: (r: T) => ReactNode }[];
+  sample?: { fileName: string; sheetName: string; rows: Record<string, string | number>[] };
 }) {
   const [rows, setRows] = useState<T[]>([]);
   const [summary, setSummary] = useState<string | null>(null);
@@ -107,6 +111,23 @@ export function SheetImportDialog<T extends ParsedBase>({
               }}
             />
           </label>
+
+          {sample && (
+            <div className="flex justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  downloadSampleSheet(sample.fileName, sample.sheetName, sample.rows)
+                }
+              >
+                <Download className="h-4 w-4" />
+                Download sample format
+              </Button>
+            </div>
+          )}
+
+
 
           {rows.length > 0 && (
             <>

@@ -38,6 +38,7 @@ import {
   updateRowsByIds,
   type Question,
 } from "@/lib/master";
+import { QUESTION_SAMPLE } from "@/lib/sample-templates";
 
 export const Route = createFileRoute("/questions")({
   head: () => ({
@@ -296,6 +297,7 @@ function QuestionsPage() {
         open={importOpen}
         onOpenChange={setImportOpen}
         title="Import questions"
+        sample={QUESTION_SAMPLE}
         description="Columns: Assessment ID, Question No, Question Text, Correct Answer, Marks, Difficulty, Subject, Parameter, Topic, Chapter, Status."
         parse={(raw) => {
           const known = new Set((assessments.data ?? []).map((a) => a.assessment_id.toLowerCase()));
