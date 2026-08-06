@@ -27,7 +27,6 @@ import { DataGrid, type GridColumn } from "@/components/data-grid";
 import { ClickerDialog } from "@/components/master/clicker-dialog";
 import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
 import {
-import { clickerSample } from "@/lib/sample-templates";
   clickerQuestionColumns,
   deleteRowsByIds,
   fetchAssessments,
@@ -36,6 +35,7 @@ import { clickerSample } from "@/lib/sample-templates";
   insertRows,
   updateRowsByIds,
 } from "@/lib/master";
+import { clickerSample } from "@/lib/sample-templates";
 
 export const Route = createFileRoute("/clicker")({
   head: () => ({

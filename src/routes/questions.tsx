@@ -28,7 +28,6 @@ import { DataGrid, type GridColumn } from "@/components/data-grid";
 import { QuestionDialog } from "@/components/master/question-dialog";
 import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
 import {
-import { QUESTION_SAMPLE } from "@/lib/sample-templates";
   ANSWER_OPTIONS,
   DIFFICULTY_OPTIONS,
   QUESTION_STATUS_OPTIONS,
@@ -39,6 +38,7 @@ import { QUESTION_SAMPLE } from "@/lib/sample-templates";
   updateRowsByIds,
   type Question,
 } from "@/lib/master";
+import { QUESTION_SAMPLE } from "@/lib/sample-templates";
 
 export const Route = createFileRoute("/questions")({
   head: () => ({
