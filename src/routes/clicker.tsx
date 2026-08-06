@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2, Upload } from "lucide-react";
 
-import { PageNav } from "@/components/page-nav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,11 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DataGrid, type GridColumn } from "@/components/data-grid";
 import { ClickerDialog } from "@/components/master/clicker-dialog";
-import {
-  SheetImportDialog,
-  pick,
-  type ParsedBase,
-} from "@/components/master/sheet-import-dialog";
+import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import {
   clickerQuestionColumns,
@@ -73,13 +68,7 @@ type ParsedClicker = ParsedBase & {
 };
 
 /** Answer cell that supports inline edit, keyboard save/cancel and undo. */
-function AnswerCell({
-  value,
-  onSave,
-}: {
-  value: string;
-  onSave: (next: string) => void;
-}) {
+function AnswerCell({ value, onSave }: { value: string; onSave: (next: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
 
@@ -147,30 +136,17 @@ function ClickerPage() {
   const rows = useMemo(() => {
     const min = Number(minScore);
     const all = list.data ?? [];
-    return Number.isFinite(min) && minScore.trim() !== ""
-      ? all.filter((r) => r.score >= min)
-      : all;
+    return Number.isFinite(min) && minScore.trim() !== "" ? all.filter((r) => r.score >= min) : all;
   }, [list.data, minScore]);
 
   const questionCols = useMemo(() => clickerQuestionColumns(list.data ?? []), [list.data]);
 
   const saveAnswer = useMutation({
-    mutationFn: async ({
-      row,
-      col,
-      value,
-    }: {
-      row: ClickerRecord;
-      col: string;
-      value: string;
-    }) => {
+    mutationFn: async ({ row, col, value }: { row: ClickerRecord; col: string; value: string }) => {
       const answers = { ...row.answers };
       if (value) answers[col] = value;
       else delete answers[col];
-      const { error } = await supabase
-        .from("clicker_records")
-        .update({ answers })
-        .eq("id", row.id);
+      const { error } = await supabase.from("clicker_records").update({ answers }).eq("id", row.id);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
@@ -199,7 +175,12 @@ function ClickerPage() {
       { key: "section", label: "Section", value: (r) => r.section ?? "—" },
       { key: "team", label: "Team", value: (r) => r.team ?? "—" },
       { key: "score", label: "Score", value: (r) => r.score },
-      { key: "correct_rate", label: "Correct Rate", value: (r) => r.correct_rate, render: (r) => `${r.correct_rate}%` },
+      {
+        key: "correct_rate",
+        label: "Correct Rate",
+        value: (r) => r.correct_rate,
+        render: (r) => `${r.correct_rate}%`,
+      },
       { key: "ranking", label: "Ranking", value: (r) => r.ranking ?? 0 },
     ];
     const dyn: GridColumn<ClickerRecord>[] = questionCols.map((c) => ({
@@ -253,7 +234,6 @@ function ClickerPage() {
 
   return (
     <>
-      <PageNav />
       <main className="mx-auto max-w-7xl space-y-4 px-3 py-6 sm:px-6">
         <header className="min-w-0">
           <h1 className="font-display text-2xl font-bold sm:text-3xl">Clicker Data</h1>
@@ -338,9 +318,22 @@ function ClickerPage() {
         title="Import clicker data"
         description="Student columns (Keypad ID, Student Name, Roll, Class, Section, Team) are mapped automatically; every other column becomes a question column."
         parse={(raw) => {
-          const known = new Set(
-            ["assessment id", "keypad id", "keypad", "student name", "student", "name", "roll", "roll number", "class", "section", "team", "score", "correct rate", "ranking"],
-          );
+          const known = new Set([
+            "assessment id",
+            "keypad id",
+            "keypad",
+            "student name",
+            "student",
+            "name",
+            "roll",
+            "roll number",
+            "class",
+            "section",
+            "team",
+            "score",
+            "correct rate",
+            "ranking",
+          ]);
           return raw.map((row, i) => {
             const keypad = pick(row, "Keypad ID", "keypad_id", "Keypad");
             const name = pick(row, "Student Name", "student_name", "Student", "Name");
@@ -351,7 +344,9 @@ function ClickerPage() {
             for (const key of Object.keys(row)) {
               const k = key.trim();
               if (known.has(k.toLowerCase())) continue;
-              const v = String(row[key] ?? "").trim().toUpperCase();
+              const v = String(row[key] ?? "")
+                .trim()
+                .toUpperCase();
               if (v) answers[k] = v;
             }
             const aid =

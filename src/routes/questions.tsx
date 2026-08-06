@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Copy, Pencil, Plus, Trash2, Upload } from "lucide-react";
 
-import { PageNav } from "@/components/page-nav";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -27,11 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DataGrid, type GridColumn } from "@/components/data-grid";
 import { QuestionDialog } from "@/components/master/question-dialog";
-import {
-  SheetImportDialog,
-  pick,
-  type ParsedBase,
-} from "@/components/master/sheet-import-dialog";
+import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ANSWER_OPTIONS,
@@ -100,9 +95,7 @@ function QuestionsPage() {
   const rows = useMemo(() => {
     const needle = subject.trim().toLowerCase();
     const all = list.data ?? [];
-    return needle
-      ? all.filter((q) => (q.subject ?? "").toLowerCase().includes(needle))
-      : all;
+    return needle ? all.filter((q) => (q.subject ?? "").toLowerCase().includes(needle)) : all;
   }, [list.data, subject]);
 
   const remove = useMutation({
@@ -134,7 +127,6 @@ function QuestionsPage() {
 
   const columns = useMemo<GridColumn<Question>[]>(
     () => [
-      { key: "id", label: "Question ID", value: (r) => r.id.slice(0, 8), className: "font-mono text-xs" },
       {
         key: "assessment_id",
         label: "Assessment ID",
@@ -143,24 +135,14 @@ function QuestionsPage() {
       },
       { key: "question_no", label: "Question No.", value: (r) => r.question_no },
       {
-        key: "question_text",
-        label: "Question Text",
-        value: (r) => r.question_text ?? "",
-        render: (r) => (
-          <span className="block max-w-xs truncate">{r.question_text ?? "—"}</span>
-        ),
-      },
-      {
         key: "correct_answer",
-        label: "Correct Answer",
+        label: "Correct Ans (A/B/C/D)",
         value: (r) => r.correct_answer,
         render: (r) => <Badge variant="secondary">{r.correct_answer}</Badge>,
       },
-      { key: "marks", label: "Marks", value: (r) => r.marks },
-      { key: "difficulty", label: "Difficulty", value: (r) => r.difficulty },
-      { key: "chapter", label: "Chapter", value: (r) => r.chapter ?? "—" },
+      { key: "parameter", label: "Parameter", value: (r) => r.parameter ?? "—" },
       { key: "topic", label: "Topic", value: (r) => r.topic ?? "—" },
-      { key: "status", label: "Status", value: (r) => r.status },
+      { key: "chapter", label: "Chapter", value: (r) => r.chapter ?? "—" },
       {
         key: "actions",
         label: "Actions",
@@ -212,7 +194,6 @@ function QuestionsPage() {
 
   return (
     <>
-      <PageNav />
       <main className="mx-auto max-w-7xl space-y-4 px-3 py-6 sm:px-6">
         <header className="min-w-0">
           <h1 className="font-display text-2xl font-bold sm:text-3xl">Question Master</h1>
@@ -320,9 +301,7 @@ function QuestionsPage() {
         title="Import questions"
         description="Columns: Assessment ID, Question No, Question Text, Correct Answer, Marks, Difficulty, Subject, Parameter, Topic, Chapter, Status."
         parse={(raw) => {
-          const known = new Set(
-            (assessments.data ?? []).map((a) => a.assessment_id.toLowerCase()),
-          );
+          const known = new Set((assessments.data ?? []).map((a) => a.assessment_id.toLowerCase()));
           const existing = new Set(
             (list.data ?? []).map((q) => `${q.assessment_id.toLowerCase()}#${q.question_no}`),
           );

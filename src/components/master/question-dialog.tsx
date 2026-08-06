@@ -14,7 +14,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -22,13 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ANSWER_OPTIONS,
-  DIFFICULTY_OPTIONS,
-  QUESTION_STATUS_OPTIONS,
-  type Assessment,
-  type Question,
-} from "@/lib/master";
+import { ANSWER_OPTIONS, type Assessment, type Question } from "@/lib/master";
 
 type Errors = Partial<Record<"assessment_id" | "question_no" | "marks", string>>;
 
@@ -154,17 +147,7 @@ export function QuestionDialog({
           <Field label="Question No." error={errors.question_no}>
             <Input value={no} onChange={(e) => setNo(e.target.value)} inputMode="numeric" />
           </Field>
-          <div className="sm:col-span-2">
-            <Field label="Question Text">
-              <Textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                maxLength={2000}
-                rows={3}
-              />
-            </Field>
-          </div>
-          <Field label="Correct Answer">
+          <Field label="Correct Answer (A/B/C/D)">
             <Select value={answer} onValueChange={setAnswer}>
               <SelectTrigger>
                 <SelectValue />
@@ -177,40 +160,6 @@ export function QuestionDialog({
                 ))}
               </SelectContent>
             </Select>
-          </Field>
-          <Field label="Marks" error={errors.marks}>
-            <Input value={marks} onChange={(e) => setMarks(e.target.value)} inputMode="decimal" />
-          </Field>
-          <Field label="Difficulty">
-            <Select value={difficulty} onValueChange={setDifficulty}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DIFFICULTY_OPTIONS.map((d) => (
-                  <SelectItem key={d} value={d}>
-                    {d}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field label="Status">
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {QUESTION_STATUS_OPTIONS.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field label="Subject">
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
           </Field>
           <Field label="Parameter">
             <Input value={parameter} onChange={(e) => setParameter(e.target.value)} />

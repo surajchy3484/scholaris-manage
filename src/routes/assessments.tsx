@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Copy, Pencil, Plus, Trash2, Upload } from "lucide-react";
 
-import { PageNav } from "@/components/page-nav";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,11 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DataGrid, type GridColumn } from "@/components/data-grid";
 import { AssessmentDialog } from "@/components/master/assessment-dialog";
-import {
-  SheetImportDialog,
-  pick,
-  type ParsedBase,
-} from "@/components/master/sheet-import-dialog";
+import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import {
   deleteRowsByIds,
@@ -110,29 +105,22 @@ function AssessmentsPage() {
         className: "font-mono text-xs",
       },
       { key: "name", label: "Assessment Name", value: (r) => r.name },
-      { key: "academic_year", label: "Academic Year", value: (r) => r.academic_year },
+      { key: "school_name", label: "School Name", value: (r) => r.school_name ?? "—" },
       { key: "class", label: "Class", value: (r) => r.class ?? "—" },
-      { key: "subject", label: "Subject", value: (r) => r.subject ?? r.exam_type },
-      { key: "total_marks", label: "Total Marks", value: (r) => r.total_marks },
-      { key: "passing_marks", label: "Passing Marks", value: (r) => r.passing_marks },
-      { key: "date", label: "Exam Date", value: (r) => r.date ?? "", render: (r) => fmtDate(r.date) },
+      { key: "section", label: "Section", value: (r) => r.section ?? "—" },
+      { key: "exam_type", label: "Exam Type", value: (r) => r.exam_type },
+      {
+        key: "date",
+        label: "Exam Date",
+        value: (r) => r.date ?? "",
+        render: (r) => fmtDate(r.date),
+      },
+      { key: "total_questions", label: "Total Question", value: (r) => r.total_questions },
       {
         key: "status",
         label: "Status",
         value: (r) => r.status,
         render: (r) => <Badge variant="secondary">{r.status}</Badge>,
-      },
-      {
-        key: "created_at",
-        label: "Created Date",
-        value: (r) => r.created_at,
-        render: (r) => fmtDate(r.created_at),
-      },
-      {
-        key: "updated_at",
-        label: "Updated Date",
-        value: (r) => r.updated_at,
-        render: (r) => fmtDate(r.updated_at),
       },
       {
         key: "actions",
@@ -185,7 +173,6 @@ function AssessmentsPage() {
 
   return (
     <>
-      <PageNav />
       <main className="mx-auto max-w-7xl space-y-4 px-3 py-6 sm:px-6">
         <header className="min-w-0">
           <h1 className="font-display text-2xl font-bold sm:text-3xl">Assessment Master</h1>

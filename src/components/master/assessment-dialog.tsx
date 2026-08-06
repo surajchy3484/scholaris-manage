@@ -22,11 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { School } from "@/lib/types";
-import {
-  ASSESSMENT_STATUS_OPTIONS,
-  EXAM_TYPE_OPTIONS,
-  type Assessment,
-} from "@/lib/master";
+import { ASSESSMENT_STATUS_OPTIONS, EXAM_TYPE_OPTIONS, type Assessment } from "@/lib/master";
 
 type Errors = Partial<
   Record<"assessment_id" | "name" | "total_questions" | "passing_marks", string>
@@ -147,7 +143,11 @@ export function AssessmentDialog({
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? "Edit assessment" : defaultCode && assessment ? "Duplicate assessment" : "New assessment"}
+            {isEdit
+              ? "Edit assessment"
+              : defaultCode && assessment
+                ? "Duplicate assessment"
+                : "New assessment"}
           </DialogTitle>
           <DialogDescription>
             Assessments group a question bank and its clicker responses.
@@ -156,7 +156,11 @@ export function AssessmentDialog({
 
         <div className="grid gap-3 py-2 sm:grid-cols-2">
           <Field label="Assessment ID" error={errors.assessment_id}>
-            <Input value={code} onChange={(e) => setCode(e.target.value)} className="font-mono text-xs" />
+            <Input
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="font-mono text-xs"
+            />
           </Field>
           <Field label="Exam Type">
             <Select value={examType} onValueChange={setExamType}>
@@ -206,13 +210,25 @@ export function AssessmentDialog({
             <Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="2026" />
           </Field>
           <Field label="Subject">
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Mathematics" />
+            <Input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Mathematics"
+            />
           </Field>
           <Field label="Total Marks">
-            <Input value={totalMarks} onChange={(e) => setTotalMarks(e.target.value)} inputMode="numeric" />
+            <Input
+              value={totalMarks}
+              onChange={(e) => setTotalMarks(e.target.value)}
+              inputMode="numeric"
+            />
           </Field>
           <Field label="Passing Marks" error={errors.passing_marks}>
-            <Input value={passMarks} onChange={(e) => setPassMarks(e.target.value)} inputMode="numeric" />
+            <Input
+              value={passMarks}
+              onChange={(e) => setPassMarks(e.target.value)}
+              inputMode="numeric"
+            />
           </Field>
           <Field label="Status">
             <Select value={status} onValueChange={setStatus}>
