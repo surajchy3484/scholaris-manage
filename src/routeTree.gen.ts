@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SessionStatusRouteImport } from './routes/session-status'
 import { Route as QuestionsRouteImport } from './routes/questions'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
@@ -28,6 +29,11 @@ import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SessionStatusRoute = SessionStatusRouteImport.update({
+  id: '/session-status',
+  path: '/session-status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QuestionsRoute = QuestionsRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/questions': typeof QuestionsRoute
+  '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/questions': typeof QuestionsRoute
+  '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/questions': typeof QuestionsRoute
+  '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/mcp'
     | '/questions'
+    | '/session-status'
     | '/settings'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/mcp'
     | '/questions'
+    | '/session-status'
     | '/settings'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/mcp'
     | '/questions'
+    | '/session-status'
     | '/settings'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -218,6 +230,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
   QuestionsRoute: typeof QuestionsRoute
+  SessionStatusRoute: typeof SessionStatusRoute
   SettingsRoute: typeof SettingsRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -236,6 +249,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/session-status': {
+      id: '/session-status'
+      path: '/session-status'
+      fullPath: '/session-status'
+      preLoaderRoute: typeof SessionStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/questions': {
@@ -346,6 +366,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
   QuestionsRoute: QuestionsRoute,
+  SessionStatusRoute: SessionStatusRoute,
   SettingsRoute: SettingsRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:

@@ -340,6 +340,53 @@ export type Database = {
         }
         Relationships: []
       }
+      sessions: {
+        Row: {
+          class: string
+          created_at: string
+          division: string
+          id: string
+          school_id: string
+          session_name: string
+          status: string
+          topic: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          class?: string
+          created_at?: string
+          division?: string
+          id?: string
+          school_id: string
+          session_name: string
+          status?: string
+          topic?: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          class?: string
+          created_at?: string
+          division?: string
+          id?: string
+          school_id?: string
+          session_name?: string
+          status?: string
+          topic?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       students: {
         Row: {
           class: string
