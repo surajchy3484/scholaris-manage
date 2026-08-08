@@ -123,3 +123,24 @@ export const EXAM_SAMPLE = {
     },
   ],
 };
+
+export const SESSION_SAMPLE = {
+  fileName: "sessions-sample.xlsx",
+  sheetName: "Sessions",
+  rows: [
+    {
+      "Session Name": "Introduction",
+      Class: "5",
+      Division: "A",
+      Topic: "Basics",
+      Status: "Pending",
+    },
+    {
+      "Session Name": "Numbers",
+      Class: "5",
+      Division: "A",
+      Topic: "Addition",
+      Status: "Complete",
+    },
+  ],
+};
