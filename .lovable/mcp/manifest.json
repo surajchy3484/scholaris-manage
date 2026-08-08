@@ -1,0 +1,161 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.1",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://ejbxdfbgdmseptwmypbm.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "school-harmony",
+      "version": "0.1.0",
+      "title": "School Harmony"
+    },
+    "tools": [
+      {
+        "name": "list_schools",
+        "title": "List schools",
+        "description": "List the schools in Scholaris with their code, location and student count.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_students",
+        "title": "List students",
+        "description": "List students, optionally filtered by school code, class, division or a name/roll-number search.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "school_code": {
+              "type": "string",
+              "description": "School code such as SCH001."
+            },
+            "class": {
+              "type": "string",
+              "description": "Class / grade to filter by."
+            },
+            "division": {
+              "type": "string",
+              "description": "Division or section to filter by."
+            },
+            "search": {
+              "type": "string",
+              "description": "Match against student name or roll number."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum rows to return (default 50)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "attendance_summary",
+        "title": "Attendance summary",
+        "description": "Summarise attendance (present / absent / late counts and attendance rate) for a date range, optionally for one school.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "school_code": {
+              "type": "string",
+              "description": "School code such as SCH001."
+            },
+            "from": {
+              "type": "string",
+              "description": "Start date, YYYY-MM-DD."
+            },
+            "to": {
+              "type": "string",
+              "description": "End date, YYYY-MM-DD."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "exam_performance",
+        "title": "Exam performance",
+        "description": "Average exam scores by exam type (ICA, IMF, FCA) across all schools or for one school, with the overall performance average.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "school_code": {
+              "type": "string",
+              "description": "School code such as SCH001."
+            },
+            "academic_year": {
+              "type": "string",
+              "description": "Academic year, e.g. 2025-26."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_assessments",
+        "title": "List assessments",
+        "description": "List assessments from the Assessment Master, optionally filtered by school name or status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "school_name": {
+              "type": "string",
+              "description": "Partial school name to filter by."
+            },
+            "status": {
+              "type": "string",
+              "description": "Assessment status, e.g. Active or Draft."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum rows to return (default 50)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

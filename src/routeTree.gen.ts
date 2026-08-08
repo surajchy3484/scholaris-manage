@@ -11,14 +11,19 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as QuestionsRouteImport } from './routes/questions'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ClickerRouteImport } from './routes/clicker'
 import { Route as AssessmentsRouteImport } from './routes/assessments'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExamReportIndexRouteImport } from './routes/exam-report.index'
 import { Route as SchoolsSchoolIdRouteImport } from './routes/schools.$schoolId'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as ExamReportSchoolIdIndexRouteImport } from './routes/exam-report.$schoolId.index'
 import { Route as ExamReportSchoolIdStudentsRouteImport } from './routes/exam-report.$schoolId.students'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -28,6 +33,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const QuestionsRoute = QuestionsRouteImport.update({
   id: '/questions',
   path: '/questions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -60,6 +70,18 @@ const SchoolsSchoolIdRoute = SchoolsSchoolIdRouteImport.update({
   path: '/schools/$schoolId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ExamReportSchoolIdIndexRoute = ExamReportSchoolIdIndexRouteImport.update({
   id: '/exam-report/$schoolId/',
   path: '/exam-report/$schoolId/',
@@ -71,16 +93,32 @@ const ExamReportSchoolIdStudentsRoute =
     path: '/exam-report/$schoolId/students',
     getParentRoute: () => rootRouteImport,
   } as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assessments': typeof AssessmentsRoute
   '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/questions': typeof QuestionsRoute
   '/settings': typeof SettingsRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/schools/$schoolId': typeof SchoolsSchoolIdRoute
   '/exam-report/': typeof ExamReportIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/exam-report/$schoolId/students': typeof ExamReportSchoolIdStudentsRoute
   '/exam-report/$schoolId/': typeof ExamReportSchoolIdIndexRoute
 }
@@ -89,10 +127,15 @@ export interface FileRoutesByTo {
   '/assessments': typeof AssessmentsRoute
   '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/questions': typeof QuestionsRoute
   '/settings': typeof SettingsRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/schools/$schoolId': typeof SchoolsSchoolIdRoute
   '/exam-report': typeof ExamReportIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/exam-report/$schoolId/students': typeof ExamReportSchoolIdStudentsRoute
   '/exam-report/$schoolId': typeof ExamReportSchoolIdIndexRoute
 }
@@ -102,10 +145,15 @@ export interface FileRoutesById {
   '/assessments': typeof AssessmentsRoute
   '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
+  '/mcp': typeof McpRoute
   '/questions': typeof QuestionsRoute
   '/settings': typeof SettingsRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/schools/$schoolId': typeof SchoolsSchoolIdRoute
   '/exam-report/': typeof ExamReportIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/exam-report/$schoolId/students': typeof ExamReportSchoolIdStudentsRoute
   '/exam-report/$schoolId/': typeof ExamReportSchoolIdIndexRoute
 }
@@ -116,10 +164,15 @@ export interface FileRouteTypes {
     | '/assessments'
     | '/clicker'
     | '/login'
+    | '/mcp'
     | '/questions'
     | '/settings'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/schools/$schoolId'
     | '/exam-report/'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/exam-report/$schoolId/students'
     | '/exam-report/$schoolId/'
   fileRoutesByTo: FileRoutesByTo
@@ -128,10 +181,15 @@ export interface FileRouteTypes {
     | '/assessments'
     | '/clicker'
     | '/login'
+    | '/mcp'
     | '/questions'
     | '/settings'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/schools/$schoolId'
     | '/exam-report'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/exam-report/$schoolId/students'
     | '/exam-report/$schoolId'
   id:
@@ -140,10 +198,15 @@ export interface FileRouteTypes {
     | '/assessments'
     | '/clicker'
     | '/login'
+    | '/mcp'
     | '/questions'
     | '/settings'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/schools/$schoolId'
     | '/exam-report/'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
     | '/exam-report/$schoolId/students'
     | '/exam-report/$schoolId/'
   fileRoutesById: FileRoutesById
@@ -153,10 +216,15 @@ export interface RootRouteChildren {
   AssessmentsRoute: typeof AssessmentsRoute
   ClickerRoute: typeof ClickerRoute
   LoginRoute: typeof LoginRoute
+  McpRoute: typeof McpRoute
   QuestionsRoute: typeof QuestionsRoute
   SettingsRoute: typeof SettingsRoute
+  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   SchoolsSchoolIdRoute: typeof SchoolsSchoolIdRoute
   ExamReportIndexRoute: typeof ExamReportIndexRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ExamReportSchoolIdStudentsRoute: typeof ExamReportSchoolIdStudentsRoute
   ExamReportSchoolIdIndexRoute: typeof ExamReportSchoolIdIndexRoute
 }
@@ -175,6 +243,13 @@ declare module '@tanstack/react-router' {
       path: '/questions'
       fullPath: '/questions'
       preLoaderRoute: typeof QuestionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -219,6 +294,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SchoolsSchoolIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/exam-report/$schoolId/': {
       id: '/exam-report/$schoolId/'
       path: '/exam-report/$schoolId'
@@ -233,6 +322,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExamReportSchoolIdStudentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -241,10 +344,16 @@ const rootRouteChildren: RootRouteChildren = {
   AssessmentsRoute: AssessmentsRoute,
   ClickerRoute: ClickerRoute,
   LoginRoute: LoginRoute,
+  McpRoute: McpRoute,
   QuestionsRoute: QuestionsRoute,
   SettingsRoute: SettingsRoute,
+  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   SchoolsSchoolIdRoute: SchoolsSchoolIdRoute,
   ExamReportIndexRoute: ExamReportIndexRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ExamReportSchoolIdStudentsRoute: ExamReportSchoolIdStudentsRoute,
   ExamReportSchoolIdIndexRoute: ExamReportSchoolIdIndexRoute,
 }
