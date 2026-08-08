@@ -238,6 +238,27 @@ export type Database = {
         }
         Relationships: []
       }
+      mcp_allowed_emails: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          note: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          note?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          note?: string | null
+        }
+        Relationships: []
+      }
       questions: {
         Row: {
           assessment_id: string
