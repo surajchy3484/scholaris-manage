@@ -47,22 +47,23 @@ import {
 import { SESSION_SAMPLE } from "@/lib/sample-templates";
 import { exportRowsToExcel } from "@/lib/exam-export";
 import {
-  SESSION_STATUSES,
+  DIVISIONS,
   UNITS,
   createSessions,
+  fetchDivisionSessions,
   fetchSessions,
-  normalizeStatus,
-  patchSessions,
+  fetchUnitCounts,
+  normalizeClass,
   removeSessions,
+  setSessionStatus,
   unitProgress,
+  type DivisionSession,
   type NewSession,
-  type SessionRow,
   type SessionStatus,
   type Unit,
 } from "@/lib/sessions";
 
 const DEFAULT_CLASSES = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
-const DEFAULT_DIVISIONS = ["A", "B", "C", "D"];
 
 export const Route = createFileRoute("/session-status")({
   head: () => ({
@@ -130,7 +131,7 @@ function SessionStatusPage() {
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [unit, setUnit] = useState<Unit | null>(null);
   const [klass, setKlass] = useState<string | null>(null);
-  const [division, setDivision] = useState<string | null>(null);
+  const [division, setDivision] = useState<string>("A");
   const [statusFilter, setStatusFilter] = useState<"all" | SessionStatus>("all");
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -147,55 +148,82 @@ function SessionStatusPage() {
       if (error) throw new Error(error.message);
       return data ?? [];
     },
+    staleTime: 5 * 60_000,
+  });
+
+  const unitCounts = useQuery({
+    queryKey: ["session-unit-counts", schoolId],
+    queryFn: () => fetchUnitCounts(schoolId!),
+    enabled: !!schoolId,
+    staleTime: 60_000,
+  });
+
+  // Class options come from the master list of this school+unit only.
+  const classesQuery = useQuery({
+    queryKey: ["session-classes", schoolId, unit],
+    queryFn: () => fetchSessions(schoolId!, { unit: unit! }),
+    enabled: !!schoolId && !!unit,
+    staleTime: 60_000,
   });
 
   const sessionsQuery = useQuery({
-    queryKey: ["sessions", schoolId],
-    queryFn: () => fetchSessions(schoolId ?? undefined),
-    enabled: !!schoolId,
+    queryKey: ["division-sessions", schoolId, unit, klass, division],
+    queryFn: () =>
+      fetchDivisionSessions({
+        schoolId: schoolId!,
+        unit: unit!,
+        klass: klass!,
+        division,
+      }),
+    enabled: !!schoolId && !!unit && !!klass,
+    staleTime: 30_000,
   });
 
   const school = schoolsQuery.data?.find((s) => s.id === schoolId) ?? null;
-  const all = useMemo(() => sessionsQuery.data ?? [], [sessionsQuery.data]);
-  const unitRows = useMemo(() => all.filter((r) => r.unit === unit), [all, unit]);
 
   const classOptions = useMemo(() => {
-    const found = new Set(unitRows.map((r) => r.class).filter(Boolean));
+    const found = new Set((classesQuery.data ?? []).map((r) => r.class).filter(Boolean));
     return [...new Set([...found, ...DEFAULT_CLASSES])].sort((a, b) =>
       a.localeCompare(b, undefined, { numeric: true }),
     );
-  }, [unitRows]);
+  }, [classesQuery.data]);
 
-  const divisionOptions = useMemo(() => {
-    const found = new Set(
-      unitRows.filter((r) => !klass || r.class === klass).map((r) => r.division).filter(Boolean),
-    );
-    return [...new Set([...found, ...DEFAULT_DIVISIONS])].sort();
-  }, [unitRows, klass]);
+  const rows = useMemo(() => sessionsQuery.data ?? [], [sessionsQuery.data]);
 
   const visible = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return unitRows.filter(
+    return rows.filter(
       (r) =>
-        (!klass || r.class === klass) &&
-        (!division || r.division === division) &&
         (statusFilter === "all" || r.status === statusFilter) &&
         (!needle ||
           r.session_name.toLowerCase().includes(needle) ||
-          r.topic.toLowerCase().includes(needle)),
+          (r.topic ?? "").toLowerCase().includes(needle)),
     );
-  }, [unitRows, klass, division, statusFilter, q]);
+  }, [rows, statusFilter, q]);
 
-  const summary = unitProgress(unitRows);
+  const summary = unitProgress(rows);
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ["sessions", schoolId] });
+  const refresh = async () => {
+    await qc.invalidateQueries({ queryKey: ["division-sessions", schoolId, unit, klass] });
+    await qc.invalidateQueries({ queryKey: ["session-classes", schoolId, unit] });
+    await qc.invalidateQueries({ queryKey: ["session-unit-counts", schoolId] });
+  };
 
   const setStatus = useMutation({
     mutationFn: ({ ids, status }: { ids: string[]; status: SessionStatus }) =>
-      patchSessions(ids, { status }),
+      setSessionStatus({
+        schoolId: schoolId!,
+        unit: unit!,
+        klass: klass!,
+        division,
+        ids,
+        status,
+      }),
     onSuccess: (_d, v) => {
       toast.success(
-        v.ids.length > 1 ? `${v.ids.length} sessions updated` : "Session status saved",
+        v.ids.length > 1
+          ? `${v.ids.length} sessions updated for Division ${division}`
+          : `Status saved for Division ${division}`,
       );
       setSelected([]);
       void refresh();
@@ -260,36 +288,59 @@ function SessionStatusPage() {
         onBack={() => setSchoolId(null)}
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          {UNITS.map((u, i) => {
-            const stats = unitProgress(all.filter((r) => r.unit === u));
-            return (
-              <motion.button
-                key={u}
-                type="button"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                onClick={() => {
-                  setUnit(u);
-                  setKlass(null);
-                  setDivision(null);
-                }}
-                className="rounded-2xl border border-border/60 bg-card p-5 text-left shadow-soft transition hover:border-primary/50 hover:shadow-elegant"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-display text-lg font-bold">{u}</span>
-                  <CalendarCheck className="h-5 w-5 text-primary" />
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                  <Badge variant="secondary">{stats.total} sessions</Badge>
-                  <Badge className="border-0 bg-success/15 text-success">{stats.complete} complete</Badge>
-                  <Badge className="border-0 bg-warning/15 text-warning">{stats.pending} pending</Badge>
-                </div>
-                <Progress value={stats.percent} className="mt-3 h-2" />
-                <p className="mt-1 text-xs text-muted-foreground">{stats.percent}% complete</p>
-              </motion.button>
-            );
-          })}
+          {UNITS.map((u, i) => (
+            <motion.button
+              key={u}
+              type="button"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04 }}
+              onClick={() => {
+                setUnit(u);
+                setKlass(null);
+                setSelected([]);
+              }}
+              className="rounded-2xl border border-border/60 bg-card p-5 text-left shadow-soft transition hover:border-primary/50 hover:shadow-elegant"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-display text-lg font-bold">{u}</span>
+                <CalendarCheck className="h-5 w-5 text-primary" />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                {unitCounts.isLoading ? (
+                  <Skeleton className="h-5 w-24 rounded-full" />
+                ) : (
+                  <Badge variant="secondary">{unitCounts.data?.[u] ?? 0} sessions</Badge>
+                )}
+              </div>
+            </motion.button>
+          ))}
+        </div>
+      </Shell>
+    );
+  }
+
+  if (!klass) {
+    return (
+      <Shell
+        title={`${school?.name ?? "School"} · ${unit}`}
+        subtitle="Choose a class"
+        onBack={() => setUnit(null)}
+      >
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {classOptions.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => {
+                setKlass(c);
+                setSelected([]);
+              }}
+              className="rounded-2xl border border-border/60 bg-card p-5 text-center shadow-soft transition hover:border-primary/50 hover:shadow-elegant"
+            >
+              <p className="font-display text-lg font-bold">Class {c}</p>
+            </button>
+          ))}
         </div>
       </Shell>
     );
@@ -302,9 +353,34 @@ function SessionStatusPage() {
   return (
     <Shell
       title={`${school?.name ?? "School"} · ${unit}`}
-      subtitle="Session list"
-      onBack={() => setUnit(null)}
+      subtitle={`Class ${klass} · Division ${division}`}
+      onBack={() => setKlass(null)}
     >
+      <Card className="space-y-3 p-4 shadow-soft">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Division
+          </span>
+          {DIVISIONS.map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => {
+                setDivision(d);
+                setSelected([]);
+              }}
+              className={`h-10 w-10 rounded-xl border text-sm font-bold transition ${
+                division === d
+                  ? "border-primary bg-primary text-primary-foreground shadow-elegant"
+                  : "border-border hover:bg-accent"
+              }`}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
+      </Card>
+
       <Card className="p-4 shadow-soft">
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
@@ -322,7 +398,9 @@ function SessionStatusPage() {
         </div>
         <div className="mt-4">
           <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-            <span>Unit progress</span>
+            <span>
+              Class {klass} · Division {division} progress
+            </span>
             <span>{summary.percent}%</span>
           </div>
           <Progress value={summary.percent} className="h-2.5" />
@@ -330,28 +408,6 @@ function SessionStatusPage() {
       </Card>
 
       <Card className="space-y-3 p-4 shadow-soft">
-        <div className="flex flex-wrap items-center gap-2">
-          <FilterChips
-            label="Class"
-            options={classOptions}
-            value={klass}
-            onChange={(v) => {
-              setKlass(v);
-              setDivision(null);
-            }}
-          />
-        </div>
-        {klass && (
-          <div className="flex flex-wrap items-center gap-2">
-            <FilterChips
-              label="Division"
-              options={divisionOptions}
-              value={division}
-              onChange={setDivision}
-            />
-          </div>
-        )}
-
         <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
           <div className="relative min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -384,12 +440,12 @@ function SessionStatusPage() {
               size="sm"
               onClick={() =>
                 exportRowsToExcel(
-                  `sessions-${unit}`,
+                  `sessions-${unit}-class-${klass}-div-${division}`,
                   visible.map((r) => ({
                     "Session Name": r.session_name,
                     Class: r.class,
-                    Division: r.division,
                     Topic: r.topic,
+                    Division: division,
                     Status: r.status === "complete" ? "Complete" : "Pending",
                   })),
                 )
@@ -402,7 +458,9 @@ function SessionStatusPage() {
 
         {selected.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/40 p-2">
-            <span className="text-sm font-medium">{selected.length} selected</span>
+            <span className="text-sm font-medium">
+              {selected.length} selected · Division {division}
+            </span>
             <Button
               size="sm"
               className="bg-success text-success-foreground hover:bg-success/90"
@@ -436,7 +494,7 @@ function SessionStatusPage() {
         <GridSkeleton />
       ) : visible.length === 0 ? (
         <Card className="p-10 text-center text-muted-foreground shadow-soft">
-          No sessions yet for this selection. Add one or import a sheet.
+          No sessions yet for Class {klass}. Add one or import a sheet.
         </Card>
       ) : (
         <>
@@ -450,12 +508,10 @@ function SessionStatusPage() {
                       <Checkbox
                         aria-label="Select all"
                         checked={allVisibleSelected}
-                        onCheckedChange={(c) =>
-                          setSelected(c ? visible.map((r) => r.id) : [])
-                        }
+                        onCheckedChange={(c) => setSelected(c ? visible.map((r) => r.id) : [])}
                       />
                     </th>
-                    {["Session Name", "Class", "Division", "Topic", "Status"].map((h) => (
+                    {["Session Name", "Class", "Topic", "Status"].map((h) => (
                       <th
                         key={h}
                         className="sticky top-0 z-10 bg-muted/95 px-3 py-2.5 text-left font-semibold backdrop-blur"
@@ -473,15 +529,12 @@ function SessionStatusPage() {
                           aria-label="Select session"
                           checked={selected.includes(r.id)}
                           onCheckedChange={(c) =>
-                            setSelected((s) =>
-                              c ? [...s, r.id] : s.filter((x) => x !== r.id),
-                            )
+                            setSelected((s) => (c ? [...s, r.id] : s.filter((x) => x !== r.id)))
                           }
                         />
                       </td>
                       <td className="px-3 py-2 font-medium">{r.session_name}</td>
                       <td className="px-3 py-2">{r.class}</td>
-                      <td className="px-3 py-2">{r.division}</td>
                       <td className="px-3 py-2 text-muted-foreground">{r.topic}</td>
                       <td className="px-3 py-2">
                         <StatusSelect
@@ -499,13 +552,13 @@ function SessionStatusPage() {
 
           {/* Mobile cards */}
           <div className="space-y-3 md:hidden">
-            {visible.map((r) => (
+            {visible.map((r: DivisionSession) => (
               <Card key={r.id} className="space-y-3 p-4 shadow-soft">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{r.session_name}</p>
                     <p className="text-xs text-muted-foreground">
-                      Class {r.class || "—"} · Division {r.division || "—"}
+                      Class {r.class || "—"} · Division {division}
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">{r.topic}</p>
                   </div>
@@ -537,8 +590,7 @@ function SessionStatusPage() {
         open={addOpen}
         onOpenChange={setAddOpen}
         classOptions={classOptions}
-        divisionOptions={DEFAULT_DIVISIONS}
-        defaults={{ klass, division }}
+        defaultClass={klass}
         onSave={async (row) => {
           await createSessions([{ ...row, school_id: schoolId, unit }]);
           await refresh();
@@ -549,33 +601,26 @@ function SessionStatusPage() {
         open={importOpen}
         onOpenChange={setImportOpen}
         title={`Import sessions — ${unit}`}
-        description="Session Name, Class, Division and Topic are imported into this school and unit. Status defaults to Pending."
+        description="Session Name, Class and Topic are imported into this school and unit. Sessions apply to every division of the class; status starts as Pending."
         sample={SESSION_SAMPLE}
-        parse={(rows) =>
-          rows.map((raw, i) => {
+        parse={(rows2) =>
+          rows2.map((raw, i) => {
             const name = pick(raw, "Session Name", "Session", "Name");
-            const statusRaw = pick(raw, "Status");
-            const status = statusRaw ? normalizeStatus(statusRaw) : "pending";
             const errors: string[] = [];
             if (!name) errors.push("Session Name is required");
-            if (statusRaw && !status) errors.push("Status must be Pending or Complete");
             return {
               _row: i + 2,
               errors,
               session_name: name,
-              class: pick(raw, "Class", "Grade"),
-              division: pick(raw, "Division", "Section"),
+              class: normalizeClass(pick(raw, "Class", "Grade")),
               topic: pick(raw, "Topic"),
-              status: status ?? "pending",
             };
           })
         }
         columns={[
           { label: "Session Name", get: (r) => r.session_name },
           { label: "Class", get: (r) => r.class },
-          { label: "Division", get: (r) => r.division },
           { label: "Topic", get: (r) => r.topic },
-          { label: "Status", get: (r) => r.status },
         ]}
         commit={async (valid) => {
           const chunk = 500;
@@ -586,9 +631,7 @@ function SessionStatusPage() {
                 unit,
                 session_name: v.session_name,
                 class: v.class,
-                division: v.division,
                 topic: v.topic,
-                status: v.status,
               })),
             );
           }
@@ -603,82 +646,31 @@ function SessionStatusPage() {
 type ParsedSession = ParsedBase & {
   session_name: string;
   class: string;
-  division: string;
   topic: string;
-  status: SessionStatus;
 };
-
-function FilterChips({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: string[];
-  value: string | null;
-  onChange: (v: string | null) => void;
-}) {
-  return (
-    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-      <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      <button
-        type="button"
-        onClick={() => onChange(null)}
-        className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
-          value === null
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-border hover:bg-accent"
-        }`}
-      >
-        All
-      </button>
-      {options.map((o) => (
-        <button
-          key={o}
-          type="button"
-          onClick={() => onChange(o)}
-          className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
-            value === o
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border hover:bg-accent"
-          }`}
-        >
-          {o}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function AddSessionDialog({
   open,
   onOpenChange,
   classOptions,
-  divisionOptions,
-  defaults,
+  defaultClass,
   onSave,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   classOptions: string[];
-  divisionOptions: string[];
-  defaults: { klass: string | null; division: string | null };
+  defaultClass: string | null;
   onSave: (row: Omit<NewSession, "school_id" | "unit">) => Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [topic, setTopic] = useState("");
-  const [klass, setKlass] = useState(defaults.klass ?? "");
-  const [division, setDivision] = useState(defaults.division ?? "");
-  const [status, setStatus] = useState<SessionStatus>("pending");
+  const [klass, setKlass] = useState(defaultClass ?? "");
 
   const save = useMutation({
     mutationFn: () =>
-      onSave({ session_name: name.trim(), class: klass, division, topic: topic.trim(), status }),
+      onSave({ session_name: name.trim(), class: klass, topic: topic.trim() }),
     onSuccess: () => {
-      toast.success("Session added");
+      toast.success("Session added for every division of this class");
       setName("");
       setTopic("");
       onOpenChange(false);
@@ -691,70 +683,44 @@ function AddSessionDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Add session</DialogTitle>
-          <DialogDescription>Saved against the selected school and unit.</DialogDescription>
+          <DialogDescription>
+            Saved for the selected school, unit and class. It becomes available to every division
+            (A–F) of that class.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-1">
           <div className="space-y-1.5">
             <Label htmlFor="s-name">Session Name</Label>
             <Input id="s-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>Class</Label>
-              <Select value={klass} onValueChange={setKlass}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select class" />
-                </SelectTrigger>
-                <SelectContent>
-                  {classOptions.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Division</Label>
-              <Select value={division} onValueChange={setDivision}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select division" />
-                </SelectTrigger>
-                <SelectContent>
-                  {divisionOptions.map((d) => (
-                    <SelectItem key={d} value={d}>
-                      {d}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
           <div className="space-y-1.5">
-            <Label htmlFor="s-topic">Topic</Label>
-            <Input id="s-topic" value={topic} onChange={(e) => setTopic(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Status</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v as SessionStatus)}>
+            <Label>Class</Label>
+            <Select value={klass} onValueChange={setKlass}>
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Select class" />
               </SelectTrigger>
               <SelectContent>
-                {SESSION_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s === "complete" ? "🟢 Complete" : "🟠 Pending"}
+                {classOptions.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="s-topic">Topic</Label>
+            <Input id="s-topic" value={topic} onChange={(e) => setTopic(e.target.value)} />
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={save.isPending}>
             Cancel
           </Button>
-          <Button onClick={() => save.mutate()} disabled={!name.trim() || save.isPending}>
+          <Button
+            onClick={() => save.mutate()}
+            disabled={!name.trim() || !klass || save.isPending}
+          >
             {save.isPending ? "Saving..." : "Save Session"}
           </Button>
         </DialogFooter>
@@ -805,5 +771,3 @@ function GridSkeleton() {
     </div>
   );
 }
-
-export type { SessionRow };
