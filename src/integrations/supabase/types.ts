@@ -340,11 +340,64 @@ export type Database = {
         }
         Relationships: []
       }
-      sessions: {
+      session_division_status: {
         Row: {
           class: string
           created_at: string
           division: string
+          id: string
+          school_id: string
+          session_id: string
+          status: string
+          unit: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          class?: string
+          created_at?: string
+          division: string
+          id?: string
+          school_id: string
+          session_id: string
+          status?: string
+          unit: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          class?: string
+          created_at?: string
+          division?: string
+          id?: string
+          school_id?: string
+          session_id?: string
+          status?: string
+          unit?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_division_status_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_division_status_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          class: string
+          created_at: string
           id: string
           school_id: string
           session_name: string
@@ -356,7 +409,6 @@ export type Database = {
         Insert: {
           class?: string
           created_at?: string
-          division?: string
           id?: string
           school_id: string
           session_name: string
@@ -368,7 +420,6 @@ export type Database = {
         Update: {
           class?: string
           created_at?: string
-          division?: string
           id?: string
           school_id?: string
           session_name?: string
