@@ -18,6 +18,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { setupOffline } from "@/lib/pwa";
 
 
 function NotFoundComponent() {
@@ -191,6 +192,7 @@ function AuthGate({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => setupOffline(), []);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const onLogin = pathname === "/login" || pathname.startsWith("/.lovable");
   return (
