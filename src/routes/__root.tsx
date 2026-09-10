@@ -19,6 +19,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { setupOffline } from "@/lib/pwa";
+import { BrandName } from "@/components/brand";
 
 
 function NotFoundComponent() {
@@ -158,7 +159,7 @@ function Header() {
         <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-primary to-primary-glow text-primary-foreground">
           <GraduationCap className="h-4 w-4" />
         </div>
-        <span className="font-display font-bold">SchoolRise</span>
+        <BrandName className="font-display font-bold" />
       </Link>
     </header>
   );

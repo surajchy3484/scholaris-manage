@@ -76,7 +76,7 @@ function LoginPage() {
             <GraduationCap className="h-7 w-7" />
           </div>
           <div>
-            <h1 className="font-display text-3xl font-bold tracking-tight">SchoolRise</h1>
+            <BrandName className="font-display text-3xl font-bold tracking-tight" />
             <p className="mt-1 text-sm text-muted-foreground">
               School Management &amp; Attendance
             </p>
