@@ -310,6 +310,44 @@ export type Database = {
         }
         Relationships: []
       }
+      school_divisions: {
+        Row: {
+          class: string
+          created_at: string
+          id: string
+          name: string
+          school_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          class?: string
+          created_at?: string
+          id?: string
+          name: string
+          school_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          class?: string
+          created_at?: string
+          id?: string
+          name?: string
+          school_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_divisions_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schools: {
         Row: {
           code: string
