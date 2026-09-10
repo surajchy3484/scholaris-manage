@@ -17,7 +17,7 @@ export default defineConfig({
   vite: {
     plugins: [
       mcpPlugin(),
-      // Offline support for the installed Scholaris PWA. Registration happens
+      // Offline support for the installed SchoolRise PWA. Registration happens
       // only from src/lib/pwa.ts, which refuses dev/preview contexts.
       VitePWA({
         registerType: "autoUpdate",

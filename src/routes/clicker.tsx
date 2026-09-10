@@ -40,13 +40,13 @@ import { clickerSample } from "@/lib/sample-templates";
 export const Route = createFileRoute("/clicker")({
   head: () => ({
     meta: [
-      { title: "Clicker Data — Scholaris" },
+      { title: "Clicker Data — SchoolRise" },
       {
         name: "description",
         content:
           "Import, edit and export clicker responses with automatically detected question columns.",
       },
-      { property: "og:title", content: "Clicker Data — Scholaris" },
+      { property: "og:title", content: "Clicker Data — SchoolRise" },
       {
         property: "og:description",
         content: "Student clicker responses with dynamic question columns and inline editing.",

@@ -68,13 +68,13 @@ const DEFAULT_CLASSES = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
 export const Route = createFileRoute("/session-status")({
   head: () => ({
     meta: [
-      { title: "Session Status — Scholaris" },
+      { title: "Session Status — SchoolRise" },
       {
         name: "description",
         content:
           "Track and update training session progress by school, unit, class and division.",
       },
-      { property: "og:title", content: "Session Status — Scholaris" },
+      { property: "og:title", content: "Session Status — SchoolRise" },
       {
         property: "og:description",
         content: "Track and update training session progress across schools and units.",

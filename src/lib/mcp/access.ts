@@ -2,7 +2,7 @@ import type { ToolContext } from "@lovable.dev/mcp-js";
 import { ToolError } from "@lovable.dev/mcp-js";
 
 /**
- * Scholaris keeps its academic tables reachable only by the service role, so
+ * SchoolRise keeps its academic tables reachable only by the service role, so
  * MCP tools run privileged queries. Every tool therefore has to prove the
  * caller is (a) an authenticated OAuth user and (b) on the operator-managed
  * allow list in `mcp_allowed_emails` before any data is read.
@@ -25,7 +25,7 @@ export async function requireApprovedOperator(ctx: ToolContext) {
   if (error) throw new ToolError(error.message);
   if (!data) {
     throw new ToolError(
-      `${email} is not approved for Scholaris agent access. Ask an operator to add this address to the approved list.`,
+      `${email} is not approved for SchoolRise agent access. Ask an operator to add this address to the approved list.`,
     );
   }
   return supabaseAdmin;

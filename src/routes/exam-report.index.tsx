@@ -54,12 +54,12 @@ import {
 export const Route = createFileRoute("/exam-report/")({
   head: () => ({
     meta: [
-      { title: "Exam Report — Scholaris" },
+      { title: "Exam Report — SchoolRise" },
       {
         name: "description",
         content: "Cross-school exam performance: attendance, ICA, IMF and FCA analytics.",
       },
-      { property: "og:title", content: "Exam Report — Scholaris" },
+      { property: "og:title", content: "Exam Report — SchoolRise" },
       {
         property: "og:description",
         content: "Cross-school exam performance: attendance, ICA, IMF and FCA analytics.",

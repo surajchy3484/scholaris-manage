@@ -43,13 +43,13 @@ import { QUESTION_SAMPLE } from "@/lib/sample-templates";
 export const Route = createFileRoute("/questions")({
   head: () => ({
     meta: [
-      { title: "Question Master — Scholaris" },
+      { title: "Question Master — SchoolRise" },
       {
         name: "description",
         content:
           "Manage each assessment's question bank: answers, marks, difficulty, chapter and topic.",
       },
-      { property: "og:title", content: "Question Master — Scholaris" },
+      { property: "og:title", content: "Question Master — SchoolRise" },
       {
         property: "og:description",
         content: "Bulk import and edit thousands of assessment questions.",

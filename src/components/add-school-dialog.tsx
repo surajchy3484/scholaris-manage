@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PhotoPicker } from "@/components/photo-picker";
+import { DivisionEditor } from "@/components/division-editor";
+import { fetchSchoolDivisions, saveSchoolDivisions, type DivisionDraft } from "@/lib/divisions";
 import type { School } from "@/lib/types";
 
 export function AddSchoolDialog({
@@ -26,15 +28,19 @@ export function AddSchoolDialog({
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [divisions, setDivisions] = useState<DivisionDraft[]>([]);
   const qc = useQueryClient();
 
   const create = useMutation({
     mutationFn: async () => {
       // `code` is auto-assigned by a DB trigger (SCH001, SCH002, ...); pass empty string.
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("schools")
-        .insert({ name, location, code: "", image_url: imageUrl });
+        .insert({ name, location, code: "", image_url: imageUrl })
+        .select("id")
+        .single();
       if (error) throw error;
+      if (divisions.length) await saveSchoolDivisions(data.id, divisions);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools"] });
@@ -42,6 +48,7 @@ export function AddSchoolDialog({
       setName("");
       setLocation("");
       setImageUrl(null);
+      setDivisions([]);
       onOpenChange(false);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -57,7 +64,7 @@ export function AddSchoolDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add school</DialogTitle>
           <DialogDescription>Create a new school. You can add students afterwards.</DialogDescription>
@@ -86,6 +93,7 @@ export function AddSchoolDialog({
               placeholder="123 Main St, Bengaluru"
             />
           </div>
+          <DivisionEditor rows={divisions} onChange={setDivisions} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -114,7 +122,20 @@ export function EditSchoolDialog({
   const [name, setName] = useState(school.name);
   const [location, setLocation] = useState(school.location);
   const [imageUrl, setImageUrl] = useState<string | null>(school.image_url);
+  const [divisions, setDivisions] = useState<DivisionDraft[]>([]);
   const qc = useQueryClient();
+
+  const existing = useQuery({
+    queryKey: ["school-divisions", school.id],
+    queryFn: () => fetchSchoolDivisions(school.id),
+    enabled: open,
+    staleTime: 5 * 60_000,
+  });
+
+  useEffect(() => {
+    if (open && existing.data)
+      setDivisions(existing.data.map((d) => ({ class: d.class, name: d.name })));
+  }, [open, existing.data]);
 
   const update = useMutation({
     mutationFn: async () => {
@@ -123,10 +144,12 @@ export function EditSchoolDialog({
         .update({ name, location, image_url: imageUrl })
         .eq("id", school.id);
       if (error) throw error;
+      await saveSchoolDivisions(school.id, divisions);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools"] });
       qc.invalidateQueries({ queryKey: ["school", school.id] });
+      qc.invalidateQueries({ queryKey: ["school-divisions", school.id] });
       toast.success("School updated");
       onSaved?.();
       onOpenChange(false);
@@ -136,7 +159,7 @@ export function EditSchoolDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit school</DialogTitle>
         </DialogHeader>
@@ -153,6 +176,7 @@ export function EditSchoolDialog({
             <Label>Location / Address</Label>
             <Input value={location} onChange={(e) => setLocation(e.target.value)} />
           </div>
+          <DivisionEditor rows={divisions} onChange={setDivisions} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

@@ -19,6 +19,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { setupOffline } from "@/lib/pwa";
+import { BrandName } from "@/components/brand";
 
 
 function NotFoundComponent() {
@@ -77,14 +78,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "theme-color", content: "#4f46e5" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-title", content: "Scholaris" },
-      { title: "Dashboard — Scholaris" },
+      { name: "apple-mobile-web-app-title", content: "SchoolRise" },
+      { title: "Dashboard — SchoolRise" },
       {
         name: "description",
         content:
           "All your schools in one place.",
       },
-      { property: "og:title", content: "Dashboard — Scholaris" },
+      { property: "og:title", content: "Dashboard — SchoolRise" },
       {
         property: "og:description",
         content:
@@ -92,7 +93,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Dashboard — Scholaris" },
+      { name: "twitter:title", content: "Dashboard — SchoolRise" },
       { name: "twitter:description", content: "All your schools in one place." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4abcf4b6-0d2b-4d20-98ae-c150d68028f3/id-preview-295903e0--cc90d495-f9b5-4bed-aad1-c4d52efaac77.lovable.app-1783762067691.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4abcf4b6-0d2b-4d20-98ae-c150d68028f3/id-preview-295903e0--cc90d495-f9b5-4bed-aad1-c4d52efaac77.lovable.app-1783762067691.png" },
@@ -158,7 +159,7 @@ function Header() {
         <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-primary to-primary-glow text-primary-foreground">
           <GraduationCap className="h-4 w-4" />
         </div>
-        <span className="font-display font-bold">Scholaris</span>
+        <BrandName className="font-display font-bold" />
       </Link>
     </header>
   );

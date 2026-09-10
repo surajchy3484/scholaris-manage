@@ -42,12 +42,12 @@ import {
 export const Route = createFileRoute("/exam-report/$schoolId/")({
   head: () => ({
     meta: [
-      { title: "School Exam Dashboard — Scholaris" },
+      { title: "School Exam Dashboard — SchoolRise" },
       {
         name: "description",
         content: "Class-wise attendance, ICA, IMF and FCA performance for a single school.",
       },
-      { property: "og:title", content: "School Exam Dashboard — Scholaris" },
+      { property: "og:title", content: "School Exam Dashboard — SchoolRise" },
       {
         property: "og:description",
         content: "Class-wise attendance, ICA, IMF and FCA performance for a single school.",
