@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { loginLocal, useAuth, verifyCredentials } from "@/lib/auth";
+import { BrandName } from "@/components/brand";
 
 type LoginSearch = { redirect?: string };
 
