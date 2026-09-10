@@ -32,10 +32,10 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
   }),
   head: () => ({
     meta: [
-      { title: "Authorize access — Scholaris" },
-      { name: "description", content: "Approve or deny an assistant's request to connect to your Scholaris account." },
-      { property: "og:title", content: "Authorize access — Scholaris" },
-      { property: "og:description", content: "Approve or deny an assistant's request to connect to your Scholaris account." },
+      { title: "Authorize access — SchoolRise" },
+      { name: "description", content: "Approve or deny an assistant's request to connect to your SchoolRise account." },
+      { property: "og:title", content: "Authorize access — SchoolRise" },
+      { property: "og:description", content: "Approve or deny an assistant's request to connect to your SchoolRise account." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -135,7 +135,7 @@ function ConsentPage() {
       <Shell>
         <h1 className="font-display text-xl font-semibold">Sign in to continue</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Use your Scholaris operator account to approve this connection.
+          Use your SchoolRise operator account to approve this connection.
         </p>
         <form onSubmit={signIn} className="mt-5 space-y-3 text-left">
           <div className="space-y-1.5">
@@ -164,10 +164,10 @@ function ConsentPage() {
   return (
     <Shell>
       <h1 className="font-display text-xl font-semibold">
-        Connect {details?.client?.name ?? "an app"} to Scholaris
+        Connect {details?.client?.name ?? "an app"} to SchoolRise
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        This lets {details?.client?.name ?? "the client"} use Scholaris as you. It can read school,
+        This lets {details?.client?.name ?? "the client"} use SchoolRise as you. It can read school,
         student, attendance, exam and assessment data through the app's agent tools.
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
@@ -198,7 +198,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         </div>
         {children}
         <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-          <ShieldCheck className="h-3.5 w-3.5" /> Secured by Scholaris
+          <ShieldCheck className="h-3.5 w-3.5" /> Secured by SchoolRise
         </p>
       </Card>
     </main>

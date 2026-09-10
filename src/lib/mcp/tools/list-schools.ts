@@ -4,7 +4,7 @@ import { jsonResult, requireApprovedOperator } from "../access";
 export default defineTool({
   name: "list_schools",
   title: "List schools",
-  description: "List the schools in Scholaris with their code, location and student count.",
+  description: "List the schools in SchoolRise with their code, location and student count.",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {

@@ -33,13 +33,13 @@ import { ASSESSMENT_SAMPLE } from "@/lib/sample-templates";
 export const Route = createFileRoute("/assessments")({
   head: () => ({
     meta: [
-      { title: "Assessment Master — Scholaris" },
+      { title: "Assessment Master — SchoolRise" },
       {
         name: "description",
         content:
           "Create, import and manage assessments with academic year, subject, marks and status.",
       },
-      { property: "og:title", content: "Assessment Master — Scholaris" },
+      { property: "og:title", content: "Assessment Master — SchoolRise" },
       {
         property: "og:description",
         content: "Create, import and manage assessments across every school.",

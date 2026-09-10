@@ -1,6 +1,6 @@
 {
-  "name": "Scholaris",
-  "short_name": "Scholaris",
+  "name": "SchoolRise",
+  "short_name": "SchoolRise",
   "description": "School management, attendance, exam reports and session tracking.",
   "start_url": "/",
   "scope": "/",

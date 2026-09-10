@@ -89,13 +89,13 @@ export function AppSidebar() {
   const install = async () => {
     if (canInstall) {
       const ok = await promptInstall();
-      if (ok) toast.success("Installing Scholaris...");
+      if (ok) toast.success("Installing SchoolRise...");
       return;
     }
     toast.info(
       isIos
-        ? "On iPhone: tap Share, then 'Add to Home Screen' to install Scholaris."
-        : "To install Scholaris, use your browser's 'Add to Home Screen' option.",
+        ? "On iPhone: tap Share, then 'Add to Home Screen' to install SchoolRise."
+        : "To install SchoolRise, use your browser's 'Add to Home Screen' option.",
     );
   };
 
@@ -107,7 +107,7 @@ export function AppSidebar() {
             <GraduationCap className="h-5 w-5" />
           </div>
           <div className="flex min-w-0 flex-col leading-none">
-            <span className="truncate font-display text-lg font-bold tracking-tight">Scholaris</span>
+            <span className="truncate font-display text-lg font-bold tracking-tight">SchoolRise</span>
             <span className="truncate text-[10px] uppercase tracking-widest text-muted-foreground">
               School Manager
             </span>
@@ -194,7 +194,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton onClick={installed ? undefined : install} disabled={installed}>
               {installed ? <Smartphone /> : <Download />}
-              <span>{installed ? "Scholaris installed" : "Install Scholaris"}</span>
+              <span>{installed ? "SchoolRise installed" : "Install SchoolRise"}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

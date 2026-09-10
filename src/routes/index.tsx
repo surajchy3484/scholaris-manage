@@ -24,7 +24,7 @@ import { SchoolCard } from "@/components/school-card";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard — Scholaris" },
+      { title: "Dashboard — SchoolRise" },
       { name: "description", content: "All your schools in one place." },
     ],
   }),

@@ -48,7 +48,7 @@ import { exportStudentsToExcel, exportStudentsAsZip } from "@/lib/excel";
 
 export const Route = createFileRoute("/schools/$schoolId")({
   head: () => ({
-    meta: [{ title: "School — Scholaris" }],
+    meta: [{ title: "School — SchoolRise" }],
   }),
   component: SchoolDetail,
 });

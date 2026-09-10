@@ -68,12 +68,12 @@ export const Route = createFileRoute("/exam-report/$schoolId/students")({
   }),
   head: () => ({
     meta: [
-      { title: "Student Exam Records — Scholaris" },
+      { title: "Student Exam Records — SchoolRise" },
       {
         name: "description",
         content: "Search, edit, import and export student attendance and exam scores.",
       },
-      { property: "og:title", content: "Student Exam Records — Scholaris" },
+      { property: "og:title", content: "Student Exam Records — SchoolRise" },
       {
         property: "og:description",
         content: "Search, edit, import and export student attendance and exam scores.",

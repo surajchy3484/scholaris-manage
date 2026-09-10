@@ -11,7 +11,7 @@ import { logoutLocal, useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
-    meta: [{ title: "Settings — Scholaris" }],
+    meta: [{ title: "Settings — SchoolRise" }],
   }),
   component: SettingsPage,
 });
@@ -133,7 +133,7 @@ function SettingsPage() {
         <Card className="p-5">
           <h2 className="font-display text-lg font-semibold">About</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Scholaris — modern school management &amp; attendance workspace. Data is stored securely
+            SchoolRise — modern school management &amp; attendance workspace. Data is stored securely
             in your cloud backend.
           </p>
         </Card>

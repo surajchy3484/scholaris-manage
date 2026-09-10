@@ -1,7 +1,7 @@
 /**
  * Server-only guard for the app's protected server functions.
  *
- * Scholaris uses one shared operator login, so the password entered at login is
+ * SchoolRise uses one shared operator login, so the password entered at login is
  * replayed to server functions and checked against APP_ACCESS_PASSWORD before
  * privileged database access is used.
  */

@@ -14,7 +14,7 @@ export default defineMcp({
   title: "School Harmony",
   version: "0.1.0",
   instructions:
-    "Read-only tools for the School Harmony (Scholaris) school management app. Use `list_schools` for the school roster, `list_students` to look up students, `attendance_summary` for attendance rates, `exam_performance` for ICA/IMF/FCA averages, and `list_assessments` for the assessment master. Access is limited to approved operator accounts.",
+    "Read-only tools for the School Harmony (SchoolRise) school management app. Use `list_schools` for the school roster, `list_students` to look up students, `attendance_summary` for attendance rates, `exam_performance` for ICA/IMF/FCA averages, and `list_assessments` for the assessment master. Access is limited to approved operator accounts.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",

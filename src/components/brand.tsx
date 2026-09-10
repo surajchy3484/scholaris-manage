@@ -1,13 +1,16 @@
-/** App name with the S and R picked out in the accent colour. */
-export function BrandName({ className = "" }: { className?: string }) {
+export const APP_NAME = "SchoolRise";
+
+/** App name with the S and R picked out in an accent colour. */
+export function BrandName({
+  className = "",
+  accentClass = "text-primary",
+}: {
+  className?: string;
+  accentClass?: string;
+}) {
   return (
     <span className={className}>
-      <span className="text-primary">S</span>
-      <span>chool</span>
-      <span className="text-primary">R</span>
-      <span>ise</span>
+      <span className={accentClass}>S</span>chool<span className={accentClass}>R</span>ise
     </span>
   );
 }
-
-export const APP_NAME = "SchoolRise";
