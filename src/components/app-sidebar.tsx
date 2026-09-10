@@ -38,6 +38,7 @@ import {
 import { useTheme } from "@/hooks/use-theme";
 import { usePwaInstall } from "@/hooks/use-pwa-install";
 import { logoutLocal } from "@/lib/auth";
+import { BrandName } from "@/components/brand";
 
 const SCHOLARS_KEY = "scholaris:scholars-menu-open";
 
@@ -107,7 +108,7 @@ export function AppSidebar() {
             <GraduationCap className="h-5 w-5" />
           </div>
           <div className="flex min-w-0 flex-col leading-none">
-            <span className="truncate font-display text-lg font-bold tracking-tight">SchoolRise</span>
+            <BrandName className="truncate font-display text-lg font-bold tracking-tight" />
             <span className="truncate text-[10px] uppercase tracking-widest text-muted-foreground">
               School Manager
             </span>
