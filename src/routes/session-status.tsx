@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -47,7 +47,11 @@ import {
 import { SESSION_SAMPLE } from "@/lib/sample-templates";
 import { exportRowsToExcel } from "@/lib/exam-export";
 import {
-  DIVISIONS,
+  DIVISION_EXAMPLES,
+  divisionsForClass,
+  fetchSchoolDivisions,
+} from "@/lib/divisions";
+import {
   UNITS,
   createSessions,
   fetchDivisionSessions,
