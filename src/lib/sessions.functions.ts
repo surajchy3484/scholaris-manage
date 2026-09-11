@@ -6,7 +6,8 @@ import { adminDb, assertAccess } from "./app-access.server";
 const token = z.object({ token: z.string().min(1) });
 const status = z.enum(["pending", "complete"]);
 const unit = z.enum(["Unit-1", "Unit-2", "Unit-3", "Unit-4"]);
-const division = z.string().min(1).max(4);
+// Divisions / batches are admin-defined free text ("A", "Batch 1", "Morning Batch").
+const division = z.string().min(1).max(60);
 
 /**
  * Session master rows for a school (optionally narrowed to a unit/class).

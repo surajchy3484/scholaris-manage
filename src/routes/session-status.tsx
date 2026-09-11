@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -47,7 +47,11 @@ import {
 import { SESSION_SAMPLE } from "@/lib/sample-templates";
 import { exportRowsToExcel } from "@/lib/exam-export";
 import {
-  DIVISIONS,
+  DIVISION_EXAMPLES,
+  divisionsForClass,
+  fetchSchoolDivisions,
+} from "@/lib/divisions";
+import {
   UNITS,
   createSessions,
   fetchDivisionSessions,
@@ -178,6 +182,29 @@ function SessionStatusPage() {
     enabled: !!schoolId && !!unit && !!klass,
     staleTime: 30_000,
   });
+
+  // Divisions / batches configured for this school (exact names, never normalised).
+  const divisionsQuery = useQuery({
+    queryKey: ["school-divisions", schoolId],
+    queryFn: () => fetchSchoolDivisions(schoolId!),
+    enabled: !!schoolId,
+    staleTime: 5 * 60_000,
+  });
+
+  const divisionOptions = useMemo(() => {
+    const names = divisionsForClass(divisionsQuery.data ?? [], klass);
+    return names.length ? names : DIVISION_EXAMPLES;
+  }, [divisionsQuery.data, klass]);
+
+  const hasConfiguredDivisions =
+    divisionsForClass(divisionsQuery.data ?? [], klass).length > 0;
+
+  useEffect(() => {
+    if (!divisionOptions.includes(division)) {
+      setDivision(divisionOptions[0] ?? "A");
+      setSelected([]);
+    }
+  }, [divisionOptions, division]);
 
   const school = schoolsQuery.data?.find((s) => s.id === schoolId) ?? null;
 
@@ -361,7 +388,7 @@ function SessionStatusPage() {
           <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Division
           </span>
-          {DIVISIONS.map((d) => (
+          {divisionOptions.map((d: string) => (
             <button
               key={d}
               type="button"
@@ -369,7 +396,7 @@ function SessionStatusPage() {
                 setDivision(d);
                 setSelected([]);
               }}
-              className={`h-10 w-10 rounded-xl border text-sm font-bold transition ${
+              className={`h-10 min-w-10 rounded-xl border px-3 text-sm font-bold transition ${
                 division === d
                   ? "border-primary bg-primary text-primary-foreground shadow-elegant"
                   : "border-border hover:bg-accent"
@@ -379,6 +406,12 @@ function SessionStatusPage() {
             </button>
           ))}
         </div>
+        {!hasConfiguredDivisions && (
+          <p className="text-xs text-muted-foreground">
+            This school has no divisions / batches set up yet — showing examples. Add the real
+            names (e.g. “Batch 1”, “Morning Batch”) by editing the school on the dashboard.
+          </p>
+        )}
       </Card>
 
       <Card className="p-4 shadow-soft">
