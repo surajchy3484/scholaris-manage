@@ -18,7 +18,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DataGrid, type GridColumn } from "@/components/data-grid";
 import { AssessmentDialog } from "@/components/master/assessment-dialog";
-import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
+import {
+  SheetImportDialog,
+  pick,
+  pickDate,
+  type ParsedBase,
+} from "@/components/master/sheet-import-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import {
   deleteRowsByIds,
@@ -58,6 +63,10 @@ type ParsedAssessment = ParsedBase & {
   academic_year: string;
   subject: string | null;
   class: string | null;
+  section: string | null;
+  school_id: string | null;
+  school_name: string | null;
+  total_questions: number;
   total_marks: number;
   passing_marks: number;
   date: string | null;
@@ -241,56 +250,93 @@ function AssessmentsPage() {
         parse={(raw) => {
           const existing = new Set(rows.map((r) => r.assessment_id.toLowerCase()));
           const seen = new Set<string>();
+          const schoolList = schools.data ?? [];
           return raw.map((row, i) => {
             const id = pick(row, "Assessment ID", "assessment_id", "id");
             const name = pick(row, "Assessment Name", "name", "assessment");
             const errors: string[] = [];
+            let duplicate = false;
             if (!id) errors.push("Assessment ID required");
             if (!name) errors.push("Assessment Name required");
             const keyed = id.toLowerCase();
-            if (keyed && (existing.has(keyed) || seen.has(keyed)))
+            if (keyed && (existing.has(keyed) || seen.has(keyed))) {
+              duplicate = true;
               errors.push("Duplicate Assessment ID — skipped");
+            }
             if (keyed) seen.add(keyed);
+
+            const schoolName = pick(row, "School Name", "School", "school_name");
+            const school = schoolName
+              ? schoolList.find(
+                  (s) => s.name.trim().toLowerCase() === schoolName.toLowerCase(),
+                ) ?? null
+              : null;
+            if (schoolName && !school) errors.push("Unknown School Name");
+
+            const totalRaw = pick(row, "Total Question", "Total Questions", "total_questions");
+            const totalQuestions = totalRaw === "" ? 0 : Number(totalRaw);
+            if (totalRaw !== "" && (!Number.isFinite(totalQuestions) || totalQuestions < 0))
+              errors.push("Total Question must be a number");
+
             const totalMarks = Number(pick(row, "Total Marks", "total_marks")) || 0;
             const passing = Number(pick(row, "Passing Marks", "passing_marks")) || 0;
             if (passing > totalMarks) errors.push("Passing marks exceed total marks");
+
             const rawDate = pick(row, "Exam Date", "Date", "date");
-            const parsedDate = rawDate ? new Date(rawDate) : null;
+            const date = pickDate(row, "Exam Date", "Date", "date");
+            if (rawDate && !date) errors.push("Invalid Exam Date");
+
+            const statusRaw = pick(row, "Status", "status") || "Draft";
+            const status =
+              ["draft", "active", "completed", "archived"].find(
+                (s) => s === statusRaw.toLowerCase(),
+              ) ?? null;
+            if (!status) errors.push("Status must be Draft, Active, Completed or Archived");
+
             return {
               _row: i + 2,
               errors,
+              duplicate,
               assessment_id: id,
               name,
-              exam_type: pick(row, "Exam Type", "exam_type") || "ICA",
+              exam_type: (pick(row, "Exam Type", "exam_type") || "ICA").toUpperCase(),
               academic_year:
                 pick(row, "Academic Year", "academic_year") || String(new Date().getFullYear()),
               subject: pick(row, "Subject", "subject") || null,
               class: pick(row, "Class", "class") || null,
+              section: pick(row, "Section", "section") || null,
+              school_id: school?.id ?? null,
+              school_name: school?.name ?? (schoolName || null),
+              total_questions: Number.isFinite(totalQuestions) ? totalQuestions : 0,
               total_marks: totalMarks,
               passing_marks: passing,
-              date:
-                parsedDate && !Number.isNaN(parsedDate.getTime())
-                  ? parsedDate.toISOString().slice(0, 10)
-                  : null,
-              status: pick(row, "Status", "status") || "Draft",
+              date,
+              status: status ? status[0].toUpperCase() + status.slice(1) : "Draft",
             };
           });
         }}
         columns={[
           { label: "Assessment ID", get: (r) => r.assessment_id },
           { label: "Name", get: (r) => r.name },
-          { label: "Year", get: (r) => r.academic_year },
-          { label: "Subject", get: (r) => r.subject ?? "—" },
-          { label: "Marks", get: (r) => `${r.passing_marks}/${r.total_marks}` },
+          { label: "School", get: (r) => r.school_name ?? "—" },
+          { label: "Class", get: (r) => `${r.class ?? "—"} ${r.section ?? ""}`.trim() },
+          { label: "Exam Type", get: (r) => r.exam_type },
+          { label: "Date", get: (r) => r.date ?? "—" },
+          { label: "Questions", get: (r) => r.total_questions },
+          { label: "Status", get: (r) => r.status },
         ]}
-        commit={async (valid) => {
+        commit={async (valid, onProgress) => {
           const chunk = 500;
           for (let i = 0; i < valid.length; i += chunk) {
-            const payload = valid.slice(i, i + chunk).map(({ _row, errors, ...rest }) => rest);
+            const payload = valid
+              .slice(i, i + chunk)
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              .map(({ _row, errors, duplicate, ...rest }) => rest);
             await insertRows("assessments", payload);
+            onProgress?.(Math.min(i + chunk, valid.length));
           }
           qc.invalidateQueries({ queryKey: ["assessments"] });
-          return `Imported ${valid.length} assessment(s).`;
+          return `Import complete — ${valid.length} assessment(s) imported.`;
         }}
       />
 
