@@ -388,7 +388,7 @@ function SessionStatusPage() {
           <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Division
           </span>
-          {DIVISIONS.map((d) => (
+          {divisionOptions.map((d: string) => (
             <button
               key={d}
               type="button"
@@ -396,7 +396,7 @@ function SessionStatusPage() {
                 setDivision(d);
                 setSelected([]);
               }}
-              className={`h-10 w-10 rounded-xl border text-sm font-bold transition ${
+              className={`h-10 min-w-10 rounded-xl border px-3 text-sm font-bold transition ${
                 division === d
                   ? "border-primary bg-primary text-primary-foreground shadow-elegant"
                   : "border-border hover:bg-accent"
@@ -406,6 +406,12 @@ function SessionStatusPage() {
             </button>
           ))}
         </div>
+        {!hasConfiguredDivisions && (
+          <p className="text-xs text-muted-foreground">
+            This school has no divisions / batches set up yet — showing examples. Add the real
+            names (e.g. “Batch 1”, “Morning Batch”) by editing the school on the dashboard.
+          </p>
+        )}
       </Card>
 
       <Card className="p-4 shadow-soft">
