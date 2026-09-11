@@ -183,6 +183,29 @@ function SessionStatusPage() {
     staleTime: 30_000,
   });
 
+  // Divisions / batches configured for this school (exact names, never normalised).
+  const divisionsQuery = useQuery({
+    queryKey: ["school-divisions", schoolId],
+    queryFn: () => fetchSchoolDivisions(schoolId!),
+    enabled: !!schoolId,
+    staleTime: 5 * 60_000,
+  });
+
+  const divisionOptions = useMemo(() => {
+    const names = divisionsForClass(divisionsQuery.data ?? [], klass);
+    return names.length ? names : DIVISION_EXAMPLES;
+  }, [divisionsQuery.data, klass]);
+
+  const hasConfiguredDivisions =
+    divisionsForClass(divisionsQuery.data ?? [], klass).length > 0;
+
+  useEffect(() => {
+    if (!divisionOptions.includes(division)) {
+      setDivision(divisionOptions[0] ?? "A");
+      setSelected([]);
+    }
+  }, [divisionOptions, division]);
+
   const school = schoolsQuery.data?.find((s) => s.id === schoolId) ?? null;
 
   const classOptions = useMemo(() => {
