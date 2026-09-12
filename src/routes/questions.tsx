@@ -334,6 +334,7 @@ function QuestionsPage() {
             return {
               _row: i + 2,
               errors,
+              duplicate,
               assessment_id: aid,
               question_no: Number.isFinite(no) ? no : 0,
               question_text: pick(row, "Question Text", "question_text", "Question") || null,
@@ -355,19 +356,25 @@ function QuestionsPage() {
           });
         }}
         columns={[
-          { label: "Assessment", get: (r) => r.assessment_id },
-          { label: "No.", get: (r) => r.question_no },
-          { label: "Answer", get: (r) => r.correct_answer },
-          { label: "Marks", get: (r) => r.marks },
-          { label: "Difficulty", get: (r) => r.difficulty },
+          { label: "Assessment ID", get: (r) => r.assessment_id },
+          { label: "Question No.", get: (r) => r.question_no },
+          { label: "Correct Ans", get: (r) => r.correct_answer },
+          { label: "Parameter", get: (r) => r.parameter ?? "—" },
+          { label: "Topic", get: (r) => r.topic ?? "—" },
+          { label: "Chapter", get: (r) => r.chapter ?? "—" },
         ]}
-        commit={async (valid) => {
-          await insertRows(
-            "questions",
-            valid.map(({ _row, errors, ...rest }) => rest),
-          );
+        commit={async (valid, onProgress) => {
+          const chunk = 500;
+          for (let i = 0; i < valid.length; i += chunk) {
+            const payload = valid
+              .slice(i, i + chunk)
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              .map(({ _row, errors, duplicate, ...rest }) => rest);
+            await insertRows("questions", payload);
+            onProgress?.(Math.min(i + chunk, valid.length));
+          }
           qc.invalidateQueries({ queryKey: ["questions"] });
-          return `Imported ${valid.length} question(s).`;
+          return `Import complete — ${valid.length} question(s) imported.`;
         }}
       />
 

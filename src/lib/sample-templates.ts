@@ -49,16 +49,16 @@ export const QUESTION_SAMPLE = {
   rows: [
     {
       "Assessment ID": "AS-001",
-      "Question No": 1,
-      "Correct Answer": "A",
+      "Question No.": 1,
+      "Correct Ans (A,B,C,D)": "A",
       Parameter: "Knowledge",
       Topic: "Fractions",
       Chapter: "Chapter 2",
     },
     {
       "Assessment ID": "AS-001",
-      "Question No": 2,
-      "Correct Answer": "C",
+      "Question No.": 2,
+      "Correct Ans (A,B,C,D)": "C",
       Parameter: "Application",
       Topic: "Decimals",
       Chapter: "Chapter 3",
