@@ -298,7 +298,7 @@ function QuestionsPage() {
         onOpenChange={setImportOpen}
         title="Import questions"
         sample={QUESTION_SAMPLE}
-        description="Columns: Assessment ID, Question No, Question Text, Correct Answer, Marks, Difficulty, Subject, Parameter, Topic, Chapter, Status."
+        description="Columns: Assessment ID, Question No., Correct Ans (A,B,C,D), Parameter, Topic, Chapter. Column order does not matter."
         parse={(raw) => {
           const known = new Set((assessments.data ?? []).map((a) => a.assessment_id.toLowerCase()));
           const existing = new Set(

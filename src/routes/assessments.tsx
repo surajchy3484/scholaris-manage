@@ -246,7 +246,7 @@ function AssessmentsPage() {
         onOpenChange={setImportOpen}
         title="Import assessments"
         sample={ASSESSMENT_SAMPLE}
-        description="Columns: Assessment ID, Assessment Name, Academic Year, Class, Subject, Total Marks, Passing Marks, Exam Date, Status."
+        description="Columns: Assessment ID, Assessment Name, School Name, Class, Section, Exam Type, Exam Date, Total Question, Status. Column order does not matter."
         parse={(raw) => {
           const existing = new Set(rows.map((r) => r.assessment_id.toLowerCase()));
           const seen = new Set<string>();

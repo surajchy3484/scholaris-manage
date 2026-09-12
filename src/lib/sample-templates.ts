@@ -27,7 +27,7 @@ export const ASSESSMENT_SAMPLE = {
       "Exam Type": "ICA",
       "Exam Date": "2026-04-15",
       "Total Question": 30,
-      Status: "active",
+      Status: "Active",
     },
     {
       "Assessment ID": "AS-002",
@@ -38,7 +38,7 @@ export const ASSESSMENT_SAMPLE = {
       "Exam Type": "IMF",
       "Exam Date": "2026-04-18",
       "Total Question": 25,
-      Status: "active",
+      Status: "Active",
     },
   ],
 };
