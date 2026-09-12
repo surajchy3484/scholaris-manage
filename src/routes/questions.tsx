@@ -309,18 +309,25 @@ function QuestionsPage() {
             const aid =
               pick(row, "Assessment ID", "assessment_id") ||
               (assessment !== "all" ? assessment : "");
-            const no = Number(pick(row, "Question No", "Question No.", "question_no", "No"));
-            const ans = (pick(row, "Correct Answer", "correct_answer", "Answer") || "A")
+            const no = Number(pick(row, "Question No", "Question Number", "question_no", "No"));
+            const ans = (
+              pick(row, "Correct Ans", "Correct Answer", "correct_answer", "Answer", "Ans") || "A"
+            )
               .toUpperCase()
+              .replace(/[^A-D]/g, "")
               .slice(0, 1);
             const errors: string[] = [];
+            let duplicate = false;
             if (!aid) errors.push("Assessment ID required");
             else if (!known.has(aid.toLowerCase())) errors.push("Unknown Assessment ID");
             if (!Number.isFinite(no) || no < 1) errors.push("Invalid question number");
             if (!ANSWER_OPTIONS.includes(ans as (typeof ANSWER_OPTIONS)[number]))
-              errors.push("Answer must be A–D");
+              errors.push("Correct Ans must be A, B, C or D");
             const key = `${aid.toLowerCase()}#${no}`;
-            if (existing.has(key) || seen.has(key)) errors.push("Duplicate question — skipped");
+            if (existing.has(key) || seen.has(key)) {
+              duplicate = true;
+              errors.push("Duplicate question — skipped");
+            }
             seen.add(key);
             const diff = pick(row, "Difficulty", "difficulty") || "Medium";
             const status = pick(row, "Status", "status") || "Active";
