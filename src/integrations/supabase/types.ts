@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_users: {
+        Row: {
+          all_schools: boolean
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          is_active: boolean
+          last_login_at: string | null
+          login_count: number
+          must_change_password: boolean
+          password_hash: string
+          permissions: Json
+          phone: string | null
+          role: string
+          school_ids: string[]
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          all_schools?: boolean
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          login_count?: number
+          must_change_password?: boolean
+          password_hash: string
+          permissions?: Json
+          phone?: string | null
+          role?: string
+          school_ids?: string[]
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          all_schools?: boolean
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          login_count?: number
+          must_change_password?: boolean
+          password_hash?: string
+          permissions?: Json
+          phone?: string | null
+          role?: string
+          school_ids?: string[]
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
       assessments: {
         Row: {
           academic_year: string
