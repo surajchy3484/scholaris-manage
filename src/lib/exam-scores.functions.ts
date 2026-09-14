@@ -6,17 +6,7 @@ import { z } from "zod";
  * writable by the Data API roles at all. Every access goes through these
  * server functions, which require the app's shared access password.
  */
-function assertAccess(token: string) {
-  const expected = process.env['APP_ACCESS_PASSWORD'] ?? "123456";
-  if (!token || token !== expected) {
-    throw new Error("Unauthorized");
-  }
-}
-
-async function admin() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return supabaseAdmin;
-}
+import { adminDb as admin, assertAccess } from "./app-access.server";
 
 const tokenSchema = z.object({ token: z.string().min(1) });
 
@@ -30,7 +20,7 @@ export type ExamScoreRow = {
 export const listExamScores = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => tokenSchema.parse(data))
   .handler(async ({ data }): Promise<ExamScoreRow[]> => {
-    assertAccess(data.token);
+    await assertAccess(data.token);
     const db = await admin();
     const out: ExamScoreRow[] = [];
     const batch = 1000;
@@ -58,7 +48,7 @@ const saveSchema = tokenSchema.extend({
 export const saveExamScore = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => saveSchema.parse(data))
   .handler(async ({ data }) => {
-    assertAccess(data.token);
+    await assertAccess(data.token);
     const db = await admin();
     const { schoolId, studentId, examType, score, remarks } = data;
 
@@ -106,7 +96,7 @@ const deleteSchema = tokenSchema.extend({
 export const deleteScoresForStudents = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => deleteSchema.parse(data))
   .handler(async ({ data }) => {
-    assertAccess(data.token);
+    await assertAccess(data.token);
     const db = await admin();
     const { error } = await db.from("exam_scores").delete().in("student_id", data.studentIds);
     if (error) throw new Error("Failed to delete scores");
