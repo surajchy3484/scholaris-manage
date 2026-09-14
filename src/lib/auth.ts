@@ -1,11 +1,17 @@
 import { useEffect, useState } from "react";
 
 import { clearAccessToken, storeAccessToken } from "@/lib/app-access";
+import {
+  can as canDo,
+  canSeeSchool as canSeeSchoolFor,
+  type AccessProfile,
+  type AppAction,
+  type AppModule,
+} from "@/lib/access-control";
 
 const KEY = "scholaris_auth_v1";
-const CREDS = { username: "reapstem", password: "123456" };
 
-type Session = { user: string; remember: boolean };
+type Session = { user: string; remember: boolean; profile?: AccessProfile };
 
 function readSession(): Session | null {
   if (typeof window === "undefined") return null;
@@ -18,19 +24,12 @@ function readSession(): Session | null {
   }
 }
 
-export function verifyCredentials(username: string, password: string): boolean {
-  return (
-    username.trim().toLowerCase() === CREDS.username &&
-    password === CREDS.password
-  );
-}
-
-export function loginLocal(username: string, remember: boolean, password?: string) {
-  const session: Session = { user: username, remember };
+/** Persist a signed-in account (token comes from the appLogin server function). */
+export function loginWithProfile(profile: AccessProfile, token: string, remember: boolean) {
+  const session: Session = { user: profile.username, remember, profile };
   const store = remember ? localStorage : sessionStorage;
   store.setItem(KEY, JSON.stringify(session));
-  if (password) storeAccessToken(password, remember);
-  // Notify listeners in this tab
+  storeAccessToken(token, remember);
   window.dispatchEvent(new Event("scholaris:auth"));
 }
 
@@ -59,5 +58,18 @@ export function useAuth() {
     };
   }, []);
 
-  return { session, isAuthed: !!session, ready };
+  const profile = session?.profile ?? null;
+
+  return {
+    session,
+    profile,
+    isAuthed: !!session,
+    isAdmin: profile ? profile.role === "admin" : !!session && !profile,
+    ready,
+    /** Older sessions predate profiles, so treat them as full admins. */
+    can: (module: AppModule, action: AppAction = "view") =>
+      profile ? canDo(profile, module, action) : !!session,
+    canSeeSchool: (schoolId: string) =>
+      profile ? canSeeSchoolFor(profile, schoolId) : !!session,
+  };
 }
