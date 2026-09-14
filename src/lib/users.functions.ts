@@ -178,8 +178,9 @@ export const saveUser = createServerFn({ method: "POST" })
     };
 
     if (data.id) {
-      const patch: Record<string, unknown> = { ...base };
-      if (data.password) patch['password_hash'] = await hashPassword(data.password);
+      const patch = data.password
+        ? { ...base, password_hash: await hashPassword(data.password) }
+        : base;
       const { error } = await db.from("app_users").update(patch).eq("id", data.id);
       if (error) {
         throw new Error(
