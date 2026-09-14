@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UsersRouteImport } from './routes/users'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SessionStatusRouteImport } from './routes/session-status'
 import { Route as QuestionsRouteImport } from './routes/questions'
@@ -26,6 +27,11 @@ import { Route as ExamReportSchoolIdStudentsRouteImport } from './routes/exam-re
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 
+const UsersRoute = UsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -120,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/questions': typeof QuestionsRoute
   '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
+  '/users': typeof UsersRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/schools/$schoolId': typeof SchoolsSchoolIdRoute
@@ -138,6 +145,7 @@ export interface FileRoutesByTo {
   '/questions': typeof QuestionsRoute
   '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
+  '/users': typeof UsersRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/schools/$schoolId': typeof SchoolsSchoolIdRoute
@@ -157,6 +165,7 @@ export interface FileRoutesById {
   '/questions': typeof QuestionsRoute
   '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
+  '/users': typeof UsersRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/schools/$schoolId': typeof SchoolsSchoolIdRoute
@@ -177,6 +186,7 @@ export interface FileRouteTypes {
     | '/questions'
     | '/session-status'
     | '/settings'
+    | '/users'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/schools/$schoolId'
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
     | '/questions'
     | '/session-status'
     | '/settings'
+    | '/users'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/schools/$schoolId'
@@ -213,6 +224,7 @@ export interface FileRouteTypes {
     | '/questions'
     | '/session-status'
     | '/settings'
+    | '/users'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/schools/$schoolId'
@@ -232,6 +244,7 @@ export interface RootRouteChildren {
   QuestionsRoute: typeof QuestionsRoute
   SessionStatusRoute: typeof SessionStatusRoute
   SettingsRoute: typeof SettingsRoute
+  UsersRoute: typeof UsersRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   SchoolsSchoolIdRoute: typeof SchoolsSchoolIdRoute
@@ -244,6 +257,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -368,6 +388,7 @@ const rootRouteChildren: RootRouteChildren = {
   QuestionsRoute: QuestionsRoute,
   SessionStatusRoute: SessionStatusRoute,
   SettingsRoute: SettingsRoute,
+  UsersRoute: UsersRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
