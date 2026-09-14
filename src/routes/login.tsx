@@ -9,7 +9,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { loginLocal, useAuth, verifyCredentials } from "@/lib/auth";
+import { loginWithProfile, useAuth } from "@/lib/auth";
+import { appLogin } from "@/lib/users.functions";
 import { BrandName } from "@/components/brand";
 
 type LoginSearch = { redirect?: string };
@@ -44,7 +45,7 @@ function LoginPage() {
     }
   }, [ready, isAuthed, router, search.redirect]);
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
     if (!username.trim() || !password) {
@@ -52,17 +53,17 @@ function LoginPage() {
       return;
     }
     setSubmitting(true);
-    // Small delay for UX feedback
-    setTimeout(() => {
-      if (!verifyCredentials(username, password)) {
-        setSubmitting(false);
-        setErr("Invalid username or password.");
-        return;
-      }
-      loginLocal(username.trim(), remember, password);
-      toast.success("Welcome back");
+    try {
+      const { token, profile } = await appLogin({
+        data: { username: username.trim(), password },
+      });
+      loginWithProfile(profile, token, remember);
+      toast.success(`Welcome back, ${profile.fullName || profile.username}`);
       router.navigate({ to: (search.redirect as "/" | undefined) ?? "/", replace: true });
-    }, 120);
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : "Sign in failed.");
+      setSubmitting(false);
+    }
   }
 
   return (
