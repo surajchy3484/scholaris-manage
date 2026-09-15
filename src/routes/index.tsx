@@ -54,19 +54,20 @@ async function fetchSchools(): Promise<SchoolWithCount[]> {
 }
 
 function Dashboard() {
-  const { canSeeSchool, isAdmin } = useAuth();
+  const { canSeeSchool, isAdmin, ready } = useAuth();
   const [addOpen, setAddOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"newest" | "name" | "students">("newest");
   const qc = useQueryClient();
 
-  const { data: allSchools = [], isLoading } = useQuery({
+  const { data: allSchools = [], isLoading: loadingSchools } = useQuery({
     queryKey: ["schools"],
     queryFn: fetchSchools,
   });
 
   // Trainers only see the schools assigned to them.
-  const data = allSchools.filter((s) => canSeeSchool(s.id));
+  const isLoading = loadingSchools || !ready;
+  const data = ready ? allSchools.filter((s) => canSeeSchool(s.id)) : [];
 
   const del = useMutation({
     mutationFn: async (id: string) => {
@@ -219,6 +220,7 @@ function Dashboard() {
                 school={s}
                 onDelete={() => del.mutate(s.id)}
                 onUpdated={() => qc.invalidateQueries({ queryKey: ["schools"] })}
+                canManage={isAdmin}
               />
             </motion.div>
           ))}
