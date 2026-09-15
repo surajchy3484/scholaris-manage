@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useRouter, useSearch } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { GraduationCap, Eye, EyeOff, LogIn } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -38,6 +39,7 @@ function LoginPage() {
   const [remember, setRemember] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const signIn = useServerFn(appLogin);
 
   useEffect(() => {
     if (ready && isAuthed) {
@@ -54,7 +56,7 @@ function LoginPage() {
     }
     setSubmitting(true);
     try {
-      const { token, profile } = await appLogin({
+      const { token, profile } = await signIn({
         data: { username: username.trim(), password },
       });
       loginWithProfile(profile, token, remember);
