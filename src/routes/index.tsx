@@ -6,6 +6,7 @@ import { Plus, Search, School as SchoolIcon, ArrowUpDown, Users } from "lucide-r
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import type { School } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,15 +54,20 @@ async function fetchSchools(): Promise<SchoolWithCount[]> {
 }
 
 function Dashboard() {
+  const { canSeeSchool, isAdmin, ready } = useAuth();
   const [addOpen, setAddOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"newest" | "name" | "students">("newest");
   const qc = useQueryClient();
 
-  const { data = [], isLoading } = useQuery({
+  const { data: allSchools = [], isLoading: loadingSchools } = useQuery({
     queryKey: ["schools"],
     queryFn: fetchSchools,
   });
+
+  // Trainers only see the schools assigned to them.
+  const isLoading = loadingSchools || !ready;
+  const data = ready ? allSchools.filter((s) => canSeeSchool(s.id)) : [];
 
   const del = useMutation({
     mutationFn: async (id: string) => {
@@ -124,6 +130,7 @@ function Dashboard() {
           </div>
         </Card>
 
+        {isAdmin && (
         <Card className="flex flex-col justify-between gap-4 border-warm/40 bg-warm/40 p-5 shadow-soft sm:p-6">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-warm-foreground/70">
@@ -141,6 +148,7 @@ function Dashboard() {
             Add School
           </Button>
         </Card>
+        )}
       </motion.section>
 
 
@@ -185,12 +193,16 @@ function Dashboard() {
           </div>
           <h3 className="font-display text-lg font-semibold">No schools yet</h3>
           <p className="max-w-sm text-sm text-muted-foreground">
-            Add your first school to start managing students and attendance.
+            {isAdmin
+              ? "Add your first school to start managing students and attendance."
+              : "No schools have been assigned to you yet. Ask an administrator for access."}
           </p>
-          <Button onClick={() => setAddOpen(true)} className="mt-1">
-            <Plus className="h-4 w-4" />
-            Add School
-          </Button>
+          {isAdmin && (
+            <Button onClick={() => setAddOpen(true)} className="mt-1">
+              <Plus className="h-4 w-4" />
+              Add School
+            </Button>
+          )}
         </Card>
       ) : (
         <motion.div
@@ -208,6 +220,7 @@ function Dashboard() {
                 school={s}
                 onDelete={() => del.mutate(s.id)}
                 onUpdated={() => qc.invalidateQueries({ queryKey: ["schools"] })}
+                canManage={isAdmin}
               />
             </motion.div>
           ))}

@@ -27,10 +27,13 @@ export function SchoolCard({
   school,
   onDelete,
   onUpdated,
+  canManage = true,
 }: {
   school: School & { student_count: number };
   onDelete: () => void;
   onUpdated: () => void;
+  /** Trainers can open a school but cannot edit or delete it. */
+  canManage?: boolean;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -38,6 +41,7 @@ export function SchoolCard({
   return (
     <>
       <Card className="group relative flex h-full min-w-0 flex-col overflow-hidden p-0 transition-all hover:-translate-y-0.5 hover:shadow-elegant">
+        {canManage && (
         <div className="absolute right-3 top-3 z-10">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -60,6 +64,7 @@ export function SchoolCard({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        )}
 
         <Link
           to="/schools/$schoolId"

@@ -8,9 +8,10 @@
 - Assessment Master import: spec columns (ID, Name, School Name, Class, Section, Exam Type, Exam Date, Total Question, Status), order-independent headers, date/number/status validation, duplicate detection, batched insert, progress, error report, template download
 - Question Master import: "Question No." / "Correct Ans (A,B,C,D)" headers, A–D validation, duplicate detection, batched insert, progress, error report, template download
 
+- User Access: individual accounts (admin / STEM Trainer), per-module and per-action permissions, assigned schools, enable/disable, admin password reset, last-login + sign-in count; enforced server-side via signed session tokens
+
 ## Open
-- Users module: individual accounts, admin vs trainer roles, per-module and per-action permissions (view/add/edit/delete/import/export), enforced server-side
-- Login tracking: last login, login count, enable/disable, admin password reset, forced first-login password change
+- Forced password change on first login
 - Server-side pagination/search/sort for Students, Questions, Clicker, Assessments (50k+ records)
 - Virtualised tables and lazy-loaded photos
 - UI animation polish: page transitions, cards, dialogs, dropdowns, tabs, stat counters (respect reduced motion)
