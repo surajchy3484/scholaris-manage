@@ -6,6 +6,7 @@ import { Plus, Search, School as SchoolIcon, ArrowUpDown, Users } from "lucide-r
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import type { School } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,15 +54,19 @@ async function fetchSchools(): Promise<SchoolWithCount[]> {
 }
 
 function Dashboard() {
+  const { canSeeSchool, isAdmin } = useAuth();
   const [addOpen, setAddOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"newest" | "name" | "students">("newest");
   const qc = useQueryClient();
 
-  const { data = [], isLoading } = useQuery({
+  const { data: allSchools = [], isLoading } = useQuery({
     queryKey: ["schools"],
     queryFn: fetchSchools,
   });
+
+  // Trainers only see the schools assigned to them.
+  const data = allSchools.filter((s) => canSeeSchool(s.id));
 
   const del = useMutation({
     mutationFn: async (id: string) => {
