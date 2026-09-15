@@ -129,6 +129,7 @@ function Dashboard() {
           </div>
         </Card>
 
+        {isAdmin && (
         <Card className="flex flex-col justify-between gap-4 border-warm/40 bg-warm/40 p-5 shadow-soft sm:p-6">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-warm-foreground/70">
@@ -146,6 +147,7 @@ function Dashboard() {
             Add School
           </Button>
         </Card>
+        )}
       </motion.section>
 
 
@@ -190,12 +192,16 @@ function Dashboard() {
           </div>
           <h3 className="font-display text-lg font-semibold">No schools yet</h3>
           <p className="max-w-sm text-sm text-muted-foreground">
-            Add your first school to start managing students and attendance.
+            {isAdmin
+              ? "Add your first school to start managing students and attendance."
+              : "No schools have been assigned to you yet. Ask an administrator for access."}
           </p>
-          <Button onClick={() => setAddOpen(true)} className="mt-1">
-            <Plus className="h-4 w-4" />
-            Add School
-          </Button>
+          {isAdmin && (
+            <Button onClick={() => setAddOpen(true)} className="mt-1">
+              <Plus className="h-4 w-4" />
+              Add School
+            </Button>
+          )}
         </Card>
       ) : (
         <motion.div
