@@ -16,6 +16,7 @@ import {
   Smartphone,
   Sun,
   Users,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -37,17 +38,18 @@ import {
 } from "@/components/ui/sidebar";
 import { useTheme } from "@/hooks/use-theme";
 import { usePwaInstall } from "@/hooks/use-pwa-install";
-import { logoutLocal } from "@/lib/auth";
+import { logoutLocal, useAuth } from "@/lib/auth";
+import type { AppModule } from "@/lib/access-control";
 import { BrandName } from "@/components/brand";
 
 const SCHOLARS_KEY = "scholaris:scholars-menu-open";
 
 const SCHOLARS_ITEMS = [
-  { to: "/", label: "Student Management", icon: Users, match: (p: string) => p === "/" || p.startsWith("/schools") },
-  { to: "/exam-report", label: "Exam Report", icon: BarChart3, match: (p: string) => p.startsWith("/exam-report") },
-  { to: "/assessments", label: "Assessment Master", icon: ClipboardList, match: (p: string) => p.startsWith("/assessments") },
-  { to: "/questions", label: "Question Master", icon: HelpCircle, match: (p: string) => p.startsWith("/questions") },
-  { to: "/clicker", label: "Clicker Data", icon: MousePointerClick, match: (p: string) => p.startsWith("/clicker") },
+  { to: "/", label: "Student Management", icon: Users, module: "students" as AppModule, match: (p: string) => p === "/" || p.startsWith("/schools") },
+  { to: "/exam-report", label: "Exam Report", icon: BarChart3, module: "exam_report" as AppModule, match: (p: string) => p.startsWith("/exam-report") },
+  { to: "/assessments", label: "Assessment Master", icon: ClipboardList, module: "assessments" as AppModule, match: (p: string) => p.startsWith("/assessments") },
+  { to: "/questions", label: "Question Master", icon: HelpCircle, module: "questions" as AppModule, match: (p: string) => p.startsWith("/questions") },
+  { to: "/clicker", label: "Clicker Data", icon: MousePointerClick, module: "clicker" as AppModule, match: (p: string) => p.startsWith("/clicker") },
 ] as const;
 
 /**
@@ -62,6 +64,8 @@ export function AppSidebar() {
   const { setOpenMobile, isMobile } = useSidebar();
   const { installed, canInstall, isIos, promptInstall } = usePwaInstall();
   const [scholarsOpen, setScholarsOpen] = useState(true);
+  const { can, isAdmin } = useAuth();
+  const scholarsItems = SCHOLARS_ITEMS.filter((i) => can(i.module));
 
   useEffect(() => {
     const saved = localStorage.getItem(SCHOLARS_KEY);
@@ -85,7 +89,7 @@ export function AppSidebar() {
     router.navigate({ to: "/login", replace: true });
   };
 
-  const scholarsActive = SCHOLARS_ITEMS.some((i) => i.match(pathname));
+  const scholarsActive = scholarsItems.some((i) => i.match(pathname));
 
   const install = async () => {
     if (canInstall) {
@@ -130,6 +134,7 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
+              {scholarsItems.length > 0 && (
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={toggleScholars}
@@ -149,7 +154,7 @@ export function AppSidebar() {
                 >
                   <div className="overflow-hidden">
                     <SidebarMenuSub>
-                      {SCHOLARS_ITEMS.map((item) => (
+                      {scholarsItems.map((item) => (
                         <SidebarMenuSubItem key={item.label}>
                           <SidebarMenuSubButton asChild isActive={item.match(pathname)}>
                             <Link to={item.to} onClick={close}>
@@ -163,7 +168,9 @@ export function AppSidebar() {
                   </div>
                 </div>
               </SidebarMenuItem>
+              )}
 
+              {can("session_status") && (
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
@@ -176,7 +183,20 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              )}
 
+              {isAdmin && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname.startsWith("/users")} tooltip="User Access">
+                  <Link to="/users" onClick={close}>
+                    <ShieldCheck />
+                    <span>User Access</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              )}
+
+              {can("settings") && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname.startsWith("/settings")} tooltip="Settings">
                   <Link to="/settings" onClick={close}>
@@ -185,6 +205,7 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
