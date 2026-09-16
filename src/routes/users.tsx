@@ -106,23 +106,17 @@ const emptyForm = (): FormState => ({
 function UsersPage() {
   const router = useRouter();
   const qc = useQueryClient();
-  const { ready, isAdmin } = useAuth();
+  const { ready, isAdmin, can } = useAuth();
+  const canManage = isAdmin || can("users", "edit") || can("users", "add");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [pwTarget, setPwTarget] = useState<AppUserRow | null>(null);
   const [newPw, setNewPw] = useState("");
 
-  useEffect(() => {
-    if (ready && !isAdmin) {
-      toast.error("Only an administrator can manage access.");
-      router.navigate({ to: "/", replace: true });
-    }
-  }, [ready, isAdmin, router]);
-
   const usersQ = useQuery({
     queryKey: ["app-users"],
     queryFn: () => listUsers({ data: { token: getAccessToken() } }),
-    enabled: ready && isAdmin,
+    enabled: ready,
   });
 
   const schoolsQ = useQuery({
