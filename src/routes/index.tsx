@@ -21,6 +21,7 @@ import {
 import { AddSchoolDialog } from "@/components/add-school-dialog";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { SchoolCard } from "@/components/school-card";
+import { RequireModule } from "@/components/require-module";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -29,7 +30,11 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "All your schools in one place." },
     ],
   }),
-  component: Dashboard,
+  component: () => (
+    <RequireModule module="dashboard">
+      <Dashboard />
+    </RequireModule>
+  ),
 });
 
 type SchoolWithCount = School & { student_count: number };

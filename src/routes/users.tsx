@@ -49,6 +49,7 @@ import {
   setUserActive,
   type AppUserRow,
 } from "@/lib/users.functions";
+import { RequireModule } from "@/components/require-module";
 
 export const Route = createFileRoute("/users")({
   head: () => ({
@@ -68,7 +69,11 @@ export const Route = createFileRoute("/users")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: UsersPage,
+  component: () => (
+    <RequireModule module="users">
+      <UsersPage />
+    </RequireModule>
+  ),
 });
 
 type FormState = {

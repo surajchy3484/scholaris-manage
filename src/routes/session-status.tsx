@@ -66,6 +66,7 @@ import {
   type SessionStatus,
   type Unit,
 } from "@/lib/sessions";
+import { RequireModule } from "@/components/require-module";
 
 const DEFAULT_CLASSES = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
 
@@ -87,7 +88,11 @@ export const Route = createFileRoute("/session-status")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: SessionStatusPage,
+  component: () => (
+    <RequireModule module="session_status">
+      <SessionStatusPage />
+    </RequireModule>
+  ),
 });
 
 function StatusBadge({ status }: { status: SessionStatus }) {

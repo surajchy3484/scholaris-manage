@@ -8,12 +8,17 @@ import { Card } from "@/components/ui/card";
 import { useTheme } from "@/hooks/use-theme";
 import { backupDatabase, restoreDatabase } from "@/lib/backup";
 import { logoutLocal, useAuth } from "@/lib/auth";
+import { RequireModule } from "@/components/require-module";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [{ title: "Settings — SchoolRise" }],
   }),
-  component: SettingsPage,
+  component: () => (
+    <RequireModule module="settings">
+      <SettingsPage />
+    </RequireModule>
+  ),
 });
 
 function SettingsPage() {

@@ -39,6 +39,7 @@ import {
   type Question,
 } from "@/lib/master";
 import { QUESTION_SAMPLE } from "@/lib/sample-templates";
+import { RequireModule } from "@/components/require-module";
 
 export const Route = createFileRoute("/questions")({
   head: () => ({
@@ -58,7 +59,11 @@ export const Route = createFileRoute("/questions")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: QuestionsPage,
+  component: () => (
+    <RequireModule module="questions">
+      <QuestionsPage />
+    </RequireModule>
+  ),
 });
 
 type ParsedQuestion = ParsedBase & {
