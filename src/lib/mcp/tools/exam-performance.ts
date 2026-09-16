@@ -6,7 +6,7 @@ export default defineTool({
   name: "exam_performance",
   title: "Exam performance",
   description:
-    "Average exam scores by exam type (ICA, IMF, FCA) across all schools or for one school, with the overall performance average.",
+    "Average exam scores by exam type (ICA, MCA, FCA) across all schools or for one school, with the overall performance average.",
   inputSchema: {
     school_code: z.string().optional().describe("School code such as SCH001."),
     academic_year: z.string().optional().describe("Academic year, e.g. 2025-26."),

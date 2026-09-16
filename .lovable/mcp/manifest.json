@@ -103,7 +103,7 @@
       {
         "name": "exam_performance",
         "title": "Exam performance",
-        "description": "Average exam scores by exam type (ICA, IMF, FCA) across all schools or for one school, with the overall performance average.",
+        "description": "Average exam scores by exam type (ICA, MCA, FCA) across all schools or for one school, with the overall performance average.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,

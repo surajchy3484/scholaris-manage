@@ -15,7 +15,7 @@ import {
  * be matched without a UUID lookup.
  */
 
-export const EXAM_TYPE_OPTIONS = ["ICA", "IMF", "FCA"] as const;
+export const EXAM_TYPE_OPTIONS = ["ICA", "MCA", "FCA"] as const;
 export const ASSESSMENT_STATUS_OPTIONS = ["Draft", "Scheduled", "Active", "Completed"] as const;
 export const ANSWER_OPTIONS = ["A", "B", "C", "D"] as const;
 export const DIFFICULTY_OPTIONS = ["Easy", "Medium", "Hard"] as const;

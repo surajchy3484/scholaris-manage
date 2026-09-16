@@ -46,12 +46,12 @@ export const Route = createFileRoute("/exam-report/$schoolId/")({
       { title: "School Exam Dashboard — SchoolRise" },
       {
         name: "description",
-        content: "Class-wise attendance, ICA, IMF and FCA performance for a single school.",
+        content: "Class-wise attendance, ICA, MCA and FCA performance for a single school.",
       },
       { property: "og:title", content: "School Exam Dashboard — SchoolRise" },
       {
         property: "og:description",
-        content: "Class-wise attendance, ICA, IMF and FCA performance for a single school.",
+        content: "Class-wise attendance, ICA, MCA and FCA performance for a single school.",
       },
     ],
   }),
@@ -82,7 +82,7 @@ function SchoolExamDashboard() {
     return {
       attendance: avg(students.map((s) => s.attendance_pct)),
       ica: avg(students.filter((s) => s.ica != null).map((s) => s.ica as number)),
-      imf: avg(students.filter((s) => s.imf != null).map((s) => s.imf as number)),
+      mca: avg(students.filter((s) => s.mca != null).map((s) => s.mca as number)),
       fca: avg(students.filter((s) => s.fca != null).map((s) => s.fca as number)),
       best: ranked[0],
       worst: ranked[ranked.length - 1],
@@ -120,7 +120,7 @@ function SchoolExamDashboard() {
     Students: c.students,
     "Attendance %": c.attendance,
     "ICA Avg": c.ica,
-    "IMF Avg": c.imf,
+    "MCA Avg": c.mca,
     "FCA Avg": c.fca,
     "Performance %": c.performance,
     Status: c.status,
@@ -129,7 +129,7 @@ function SchoolExamDashboard() {
   const chartData = classes.map((c) => ({
     name: `${c.class}-${c.division}`,
     ICA: c.ica,
-    IMF: c.imf,
+    MCA: c.mca,
     FCA: c.fca,
   }));
 
@@ -164,7 +164,7 @@ function SchoolExamDashboard() {
           delay={0.1}
         />
         <StatCard icon={BarChart3} label="ICA Average" value={stats.ica} tone="success" delay={0.15} />
-        <StatCard icon={GraduationCap} label="IMF Average" value={stats.imf} tone="sunset" delay={0.2} />
+        <StatCard icon={GraduationCap} label="MCA Average" value={stats.mca} tone="sunset" delay={0.2} />
         <StatCard icon={ClipboardCheck} label="FCA Average" value={stats.fca} tone="cyan" delay={0.22} />
         <StatCard
           icon={TrendingUp}
@@ -257,7 +257,7 @@ function SchoolExamDashboard() {
         }
       />
 
-      <ChartCard title="Class Performance — ICA vs IMF vs FCA">
+      <ChartCard title="Class Performance — ICA vs MCA vs FCA">
         <BarChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
           <XAxis dataKey="name" fontSize={11} />
@@ -265,7 +265,7 @@ function SchoolExamDashboard() {
           <Tooltip />
           <Legend />
           <Bar dataKey="ICA" fill="#4F46E5" radius={[6, 6, 0, 0]} />
-          <Bar dataKey="IMF" fill="#F59E0B" radius={[6, 6, 0, 0]} />
+          <Bar dataKey="MCA" fill="#F59E0B" radius={[6, 6, 0, 0]} />
           <Bar dataKey="FCA" fill="#06B6D4" radius={[6, 6, 0, 0]} />
         </BarChart>
       </ChartCard>

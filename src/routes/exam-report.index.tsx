@@ -58,12 +58,12 @@ export const Route = createFileRoute("/exam-report/")({
       { title: "Exam Report — SchoolRise" },
       {
         name: "description",
-        content: "Cross-school exam performance: attendance, ICA, IMF and FCA analytics.",
+        content: "Cross-school exam performance: attendance, ICA, MCA and FCA analytics.",
       },
       { property: "og:title", content: "Exam Report — SchoolRise" },
       {
         property: "og:description",
-        content: "Cross-school exam performance: attendance, ICA, IMF and FCA analytics.",
+        content: "Cross-school exam performance: attendance, ICA, MCA and FCA analytics.",
       },
     ],
   }),
@@ -94,7 +94,7 @@ function ExamReportDashboard() {
       students: data?.students.length ?? 0,
       attendance: avg((data?.students ?? []).map((s) => s.attendance_pct)),
       ica: avg((data?.students ?? []).filter((s) => s.ica != null).map((s) => s.ica as number)),
-      imf: avg((data?.students ?? []).filter((s) => s.imf != null).map((s) => s.imf as number)),
+      mca: avg((data?.students ?? []).filter((s) => s.mca != null).map((s) => s.mca as number)),
       fca: avg((data?.students ?? []).filter((s) => s.fca != null).map((s) => s.fca as number)),
       best: ranked[0],
       worst: ranked[ranked.length - 1],
@@ -106,7 +106,7 @@ function ExamReportDashboard() {
     Students: r.students,
     "Avg Attendance %": r.attendance,
     "ICA Avg": r.ica,
-    "IMF Avg": r.imf,
+    "MCA Avg": r.mca,
     "FCA Avg": r.fca,
     "Overall Performance %": r.performance,
     Status: r.status,
@@ -123,7 +123,7 @@ function ExamReportDashboard() {
     students: r.students,
     attendance: r.attendance,
     ICA: r.ica,
-    IMF: r.imf,
+    MCA: r.mca,
     FCA: r.fca,
   }));
 
@@ -145,7 +145,7 @@ function ExamReportDashboard() {
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="font-display text-3xl font-bold">📊 Exam Report</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Attendance, ICA, IMF and FCA performance across every school.
+          Attendance, ICA, MCA and FCA performance across every school.
         </p>
       </motion.div>
 
@@ -160,7 +160,7 @@ function ExamReportDashboard() {
           delay={0.1}
         />
         <StatCard icon={BarChart3} label="Overall ICA Average" value={totals.ica} tone="success" delay={0.15} />
-        <StatCard icon={GraduationCap} label="Overall IMF Average" value={totals.imf} tone="sunset" delay={0.2} />
+        <StatCard icon={GraduationCap} label="Overall MCA Average" value={totals.mca} tone="sunset" delay={0.2} />
         <StatCard icon={ClipboardCheck} label="Overall FCA Average" value={totals.fca} tone="cyan" delay={0.22} />
         <StatCard
           icon={TrendingUp}
@@ -181,8 +181,8 @@ function ExamReportDashboard() {
         <StatCard
           icon={Sparkles}
           label="Overall Performance"
-          value={`${round1((totals.ica + totals.imf + totals.fca) / 3)}%`}
-          hint="(ICA + IMF + FCA) / 3"
+          value={`${round1((totals.ica + totals.mca + totals.fca) / 3)}%`}
+          hint="(ICA + MCA + FCA) / 3"
           tone="violet"
           delay={0.35}
         />
@@ -259,7 +259,7 @@ function ExamReportDashboard() {
           </BarChart>
         </ChartCard>
 
-        <ChartCard title="ICA vs IMF vs FCA Comparison">
+        <ChartCard title="ICA vs MCA vs FCA Comparison">
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
             <XAxis dataKey="name" fontSize={11} />
@@ -267,7 +267,7 @@ function ExamReportDashboard() {
             <Tooltip />
             <Legend />
             <Bar dataKey="ICA" fill={CHART_COLORS[0]} radius={[6, 6, 0, 0]} />
-            <Bar dataKey="IMF" fill={CHART_COLORS[2]} radius={[6, 6, 0, 0]} />
+            <Bar dataKey="MCA" fill={CHART_COLORS[2]} radius={[6, 6, 0, 0]} />
             <Bar dataKey="FCA" fill={CHART_COLORS[1]} radius={[6, 6, 0, 0]} />
           </BarChart>
         </ChartCard>
