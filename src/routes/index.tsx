@@ -59,7 +59,9 @@ async function fetchSchools(): Promise<SchoolWithCount[]> {
 }
 
 function Dashboard() {
-  const { canSeeSchool, isAdmin, ready } = useAuth();
+  const { canSeeSchool, can, ready } = useAuth();
+  const canAddSchool = can("schools", "add");
+  const canManageSchool = can("schools", "edit") || can("schools", "delete");
   const [addOpen, setAddOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"newest" | "name" | "students">("newest");
@@ -135,7 +137,7 @@ function Dashboard() {
           </div>
         </Card>
 
-        {isAdmin && (
+        {canAddSchool && (
         <Card className="flex flex-col justify-between gap-4 border-warm/40 bg-warm/40 p-5 shadow-soft sm:p-6">
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-warm-foreground/70">
@@ -198,11 +200,11 @@ function Dashboard() {
           </div>
           <h3 className="font-display text-lg font-semibold">No schools yet</h3>
           <p className="max-w-sm text-sm text-muted-foreground">
-            {isAdmin
+            {canAddSchool
               ? "Add your first school to start managing students and attendance."
               : "No schools have been assigned to you yet. Ask an administrator for access."}
           </p>
-          {isAdmin && (
+          {canAddSchool && (
             <Button onClick={() => setAddOpen(true)} className="mt-1">
               <Plus className="h-4 w-4" />
               Add School
@@ -225,7 +227,7 @@ function Dashboard() {
                 school={s}
                 onDelete={() => del.mutate(s.id)}
                 onUpdated={() => qc.invalidateQueries({ queryKey: ["schools"] })}
-                canManage={isAdmin}
+                canManage={canManageSchool}
               />
             </motion.div>
           ))}
