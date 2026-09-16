@@ -38,6 +38,7 @@ import {
   fetchExamData,
   type PerfStatus,
 } from "@/lib/exam";
+import { RequireModule } from "@/components/require-module";
 
 export const Route = createFileRoute("/exam-report/$schoolId/")({
   head: () => ({
@@ -54,7 +55,11 @@ export const Route = createFileRoute("/exam-report/$schoolId/")({
       },
     ],
   }),
-  component: SchoolExamDashboard,
+  component: () => (
+    <RequireModule module="exam_report">
+      <SchoolExamDashboard />
+    </RequireModule>
+  ),
 });
 
 function SchoolExamDashboard() {

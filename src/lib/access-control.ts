@@ -8,6 +8,8 @@
 export type AppRole = "admin" | "trainer";
 
 export const MODULES = [
+  "dashboard",
+  "schools",
   "students",
   "attendance",
   "exam_report",
@@ -21,12 +23,14 @@ export const MODULES = [
 
 export type AppModule = (typeof MODULES)[number];
 
-export const ACTIONS = ["view", "add", "edit", "delete", "import", "export"] as const;
+export const ACTIONS = ["view", "add", "edit", "delete", "import", "export", "status"] as const;
 export type AppAction = (typeof ACTIONS)[number];
 
 export type Permissions = Partial<Record<AppModule, AppAction[]>>;
 
 export const MODULE_LABELS: Record<AppModule, string> = {
+  dashboard: "Dashboard",
+  schools: "Schools",
   students: "Student Management",
   attendance: "Attendance",
   exam_report: "Exam Report",
@@ -38,6 +42,21 @@ export const MODULE_LABELS: Record<AppModule, string> = {
   users: "User Access",
 };
 
+/** Landing route for each module, used by menus and the access guard. */
+export const MODULE_ROUTES: Record<AppModule, string> = {
+  dashboard: "/",
+  schools: "/",
+  students: "/",
+  attendance: "/",
+  exam_report: "/exam-report",
+  assessments: "/assessments",
+  questions: "/questions",
+  clicker: "/clicker",
+  session_status: "/session-status",
+  settings: "/settings",
+  users: "/users",
+};
+
 export const ACTION_LABELS: Record<AppAction, string> = {
   view: "View",
   add: "Add",
@@ -45,6 +64,7 @@ export const ACTION_LABELS: Record<AppAction, string> = {
   delete: "Delete",
   import: "Import",
   export: "Export",
+  status: "Change Status",
 };
 
 const ALL_ACTIONS: AppAction[] = [...ACTIONS];
@@ -57,7 +77,8 @@ export const ADMIN_PERMISSIONS: Permissions = MODULES.reduce((acc, m) => {
 
 /** Default STEM Trainer access. */
 export const TRAINER_PERMISSIONS: Permissions = {
-  session_status: ["view", "edit", "import"],
+  dashboard: ["view"],
+  session_status: ["view", "edit", "import", "status"],
   attendance: ["view", "add", "edit"],
   exam_report: ["view", "export"],
   students: ["view", "add", "export"],

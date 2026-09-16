@@ -45,12 +45,17 @@ import { ImportStudentsDialog } from "@/components/import-students-dialog";
 import { AttendancePanel } from "@/components/attendance-panel";
 import { AttendanceReports } from "@/components/attendance-reports";
 import { exportStudentsToExcel, exportStudentsAsZip } from "@/lib/excel";
+import { RequireModule } from "@/components/require-module";
 
 export const Route = createFileRoute("/schools/$schoolId")({
   head: () => ({
     meta: [{ title: "School — SchoolRise" }],
   }),
-  component: SchoolDetail,
+  component: () => (
+    <RequireModule module="students">
+      <SchoolDetail />
+    </RequireModule>
+  ),
 });
 
 function SchoolDetail() {

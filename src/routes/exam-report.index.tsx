@@ -50,6 +50,7 @@ import {
   round1,
   type PerfStatus,
 } from "@/lib/exam";
+import { RequireModule } from "@/components/require-module";
 
 export const Route = createFileRoute("/exam-report/")({
   head: () => ({
@@ -66,7 +67,11 @@ export const Route = createFileRoute("/exam-report/")({
       },
     ],
   }),
-  component: ExamReportDashboard,
+  component: () => (
+    <RequireModule module="exam_report">
+      <ExamReportDashboard />
+    </RequireModule>
+  ),
 });
 
 const CHART_COLORS = ["#4F46E5", "#06B6D4", "#F59E0B", "#EF4444", "#10B981", "#A855F7"];

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, Pencil, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
@@ -49,6 +49,7 @@ import {
   setUserActive,
   type AppUserRow,
 } from "@/lib/users.functions";
+import { RequireModule } from "@/components/require-module";
 
 export const Route = createFileRoute("/users")({
   head: () => ({
@@ -68,7 +69,11 @@ export const Route = createFileRoute("/users")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: UsersPage,
+  component: () => (
+    <RequireModule module="users">
+      <UsersPage />
+    </RequireModule>
+  ),
 });
 
 type FormState = {
@@ -99,25 +104,18 @@ const emptyForm = (): FormState => ({
 });
 
 function UsersPage() {
-  const router = useRouter();
   const qc = useQueryClient();
-  const { ready, isAdmin } = useAuth();
+  const { ready, isAdmin, can } = useAuth();
+  const canManage = isAdmin || can("users", "edit") || can("users", "add");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [pwTarget, setPwTarget] = useState<AppUserRow | null>(null);
   const [newPw, setNewPw] = useState("");
 
-  useEffect(() => {
-    if (ready && !isAdmin) {
-      toast.error("Only an administrator can manage access.");
-      router.navigate({ to: "/", replace: true });
-    }
-  }, [ready, isAdmin, router]);
-
   const usersQ = useQuery({
     queryKey: ["app-users"],
     queryFn: () => listUsers({ data: { token: getAccessToken() } }),
-    enabled: ready && isAdmin,
+    enabled: ready,
   });
 
   const schoolsQ = useQuery({
@@ -233,7 +231,7 @@ function UsersPage() {
         : [...f.schoolIds, id],
     }));
 
-  if (!ready || !isAdmin) return null;
+  if (!ready) return null;
 
   return (
     <div className="mx-auto w-full max-w-6xl px-3 py-6 sm:px-6">
@@ -246,7 +244,7 @@ function UsersPage() {
             Create STEM Trainer logins, pick what they can do, and assign their schools.
           </p>
         </div>
-        <Button onClick={startAdd} className="gap-1.5">
+        <Button onClick={startAdd} disabled={!canManage} className="gap-1.5">
           <UserPlus className="h-4 w-4" />
           Add user
         </Button>
@@ -452,7 +450,7 @@ function UsersPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {MODULES.filter((m) => m !== "users").map((m) => (
+                        {MODULES.map((m) => (
                           <tr key={m} className="border-t border-border/60">
                             <td className="p-2">{MODULE_LABELS[m]}</td>
                             {ACTIONS.map((a) => (

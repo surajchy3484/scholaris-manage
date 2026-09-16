@@ -11,7 +11,7 @@ import {
   adminDb,
   hashPassword,
   issueToken,
-  requireAdmin,
+  requirePermission,
   resolveAccess,
   verifyPassword,
 } from "./app-access.server";
@@ -130,7 +130,7 @@ export const currentProfile = createServerFn({ method: "POST" })
 export const listUsers = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => tokenSchema.parse(data))
   .handler(async ({ data }): Promise<AppUserRow[]> => {
-    await requireAdmin(data.token);
+    await requirePermission(data.token, "users", "view");
     const db = await adminDb();
     const { data: rows, error } = await db
       .from("app_users")
@@ -157,7 +157,12 @@ const upsertSchema = tokenSchema.extend({
 export const saveUser = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => upsertSchema.parse(data))
   .handler(async ({ data }) => {
-    await requireAdmin(data.token);
+    const me = await requirePermission(data.token, "users", data.id ? "edit" : "add");
+    // Only a full administrator may mint or edit administrator accounts, so
+    // someone with User Access rights cannot promote themselves.
+    if (data.role === "admin" && me.role !== "admin") {
+      throw new Error("Only an administrator can create administrator accounts.");
+    }
     const db = await adminDb();
     const username = data.username.trim();
     const permissions =
@@ -213,7 +218,7 @@ export const setUserActive = createServerFn({ method: "POST" })
     tokenSchema.extend({ id: z.string().uuid(), isActive: z.boolean() }).parse(data),
   )
   .handler(async ({ data }) => {
-    const me = await requireAdmin(data.token);
+    const me = await requirePermission(data.token, "users", "edit");
     if (me.userId === data.id && !data.isActive) {
       throw new Error("You cannot disable your own account.");
     }
@@ -233,7 +238,7 @@ export const resetUserPassword = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data }) => {
-    await requireAdmin(data.token);
+    await requirePermission(data.token, "users", "edit");
     const db = await adminDb();
     const { error } = await db
       .from("app_users")
@@ -246,7 +251,7 @@ export const resetUserPassword = createServerFn({ method: "POST" })
 export const deleteUser = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => tokenSchema.extend({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data }) => {
-    const me = await requireAdmin(data.token);
+    const me = await requirePermission(data.token, "users", "delete");
     if (me.userId === data.id) throw new Error("You cannot delete your own account.");
     const db = await adminDb();
     const { error } = await db.from("app_users").delete().eq("id", data.id);

@@ -34,6 +34,7 @@ import {
 } from "@/lib/master";
 import type { School } from "@/lib/types";
 import { ASSESSMENT_SAMPLE } from "@/lib/sample-templates";
+import { RequireModule } from "@/components/require-module";
 
 export const Route = createFileRoute("/assessments")({
   head: () => ({
@@ -53,7 +54,11 @@ export const Route = createFileRoute("/assessments")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: AssessmentsPage,
+  component: () => (
+    <RequireModule module="assessments">
+      <AssessmentsPage />
+    </RequireModule>
+  ),
 });
 
 type ParsedAssessment = ParsedBase & {

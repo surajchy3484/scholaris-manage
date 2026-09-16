@@ -60,6 +60,7 @@ import {
   type StudentReport,
 } from "@/lib/exam";
 import { exportRowsToCsv, exportRowsToExcel, printRows } from "@/lib/exam-export";
+import { RequireModule } from "@/components/require-module";
 
 export const Route = createFileRoute("/exam-report/$schoolId/students")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -80,7 +81,11 @@ export const Route = createFileRoute("/exam-report/$schoolId/students")({
       },
     ],
   }),
-  component: StudentExamDashboard,
+  component: () => (
+    <RequireModule module="exam_report">
+      <StudentExamDashboard />
+    </RequireModule>
+  ),
 });
 
 function toRow(s: StudentReport) {

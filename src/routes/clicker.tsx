@@ -36,6 +36,7 @@ import {
   updateRowsByIds,
 } from "@/lib/master";
 import { clickerSample } from "@/lib/sample-templates";
+import { RequireModule } from "@/components/require-module";
 
 export const Route = createFileRoute("/clicker")({
   head: () => ({
@@ -55,7 +56,11 @@ export const Route = createFileRoute("/clicker")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: ClickerPage,
+  component: () => (
+    <RequireModule module="clicker">
+      <ClickerPage />
+    </RequireModule>
+  ),
 });
 
 type ParsedClicker = ParsedBase & {
