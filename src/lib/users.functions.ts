@@ -11,7 +11,6 @@ import {
   adminDb,
   hashPassword,
   issueToken,
-  requireAdmin,
   requirePermission,
   resolveAccess,
   verifyPassword,
