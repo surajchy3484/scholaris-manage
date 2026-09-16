@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, Pencil, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
@@ -104,7 +104,6 @@ const emptyForm = (): FormState => ({
 });
 
 function UsersPage() {
-  const router = useRouter();
   const qc = useQueryClient();
   const { ready, isAdmin, can } = useAuth();
   const canManage = isAdmin || can("users", "edit") || can("users", "add");
@@ -232,7 +231,7 @@ function UsersPage() {
         : [...f.schoolIds, id],
     }));
 
-  if (!ready || !isAdmin) return null;
+  if (!ready) return null;
 
   return (
     <div className="mx-auto w-full max-w-6xl px-3 py-6 sm:px-6">
@@ -245,7 +244,7 @@ function UsersPage() {
             Create STEM Trainer logins, pick what they can do, and assign their schools.
           </p>
         </div>
-        <Button onClick={startAdd} className="gap-1.5">
+        <Button onClick={startAdd} disabled={!canManage} className="gap-1.5">
           <UserPlus className="h-4 w-4" />
           Add user
         </Button>
@@ -451,7 +450,7 @@ function UsersPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {MODULES.filter((m) => m !== "users").map((m) => (
+                        {MODULES.map((m) => (
                           <tr key={m} className="border-t border-border/60">
                             <td className="p-2">{MODULE_LABELS[m]}</td>
                             {ACTIONS.map((a) => (
