@@ -17,7 +17,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/auth";
+import { refreshProfileFromServer, useAuth } from "@/lib/auth";
 import { setupOffline } from "@/lib/pwa";
 import { BrandName } from "@/components/brand";
 
@@ -170,6 +170,15 @@ function Header() {
 function AuthGate({ children }: { children: ReactNode }) {
   const { isAuthed, ready } = useAuth();
   const router = useRouter();
+  // Permission changes made by an administrator land on the next page focus,
+  // so nobody has to sign out and back in.
+  useEffect(() => {
+    if (!ready || !isAuthed) return;
+    void refreshProfileFromServer();
+    const onFocus = () => void refreshProfileFromServer();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [ready, isAuthed]);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const onLogin = pathname === "/login";
 
