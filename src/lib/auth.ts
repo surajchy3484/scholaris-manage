@@ -40,6 +40,33 @@ export function logoutLocal() {
   window.dispatchEvent(new Event("scholaris:auth"));
 }
 
+/** Replace the cached profile with fresh server-side permissions. */
+export function updateStoredProfile(profile: AccessProfile) {
+  const current = readSession();
+  if (!current) return;
+  const store = current.remember ? localStorage : sessionStorage;
+  store.setItem(KEY, JSON.stringify({ ...current, profile, user: profile.username }));
+  window.dispatchEvent(new Event("scholaris:auth"));
+}
+
+/**
+ * Pull the latest permissions from the server so admin changes take effect
+ * without the user signing out. Permissions are always re-checked server-side,
+ * so this only keeps the visible menus honest.
+ */
+export async function refreshProfileFromServer() {
+  if (typeof window === "undefined") return;
+  if (!readSession()) return;
+  try {
+    const { currentProfile } = await import("@/lib/users.functions");
+    const { getAccessToken } = await import("@/lib/app-access");
+    const profile = await currentProfile({ data: { token: getAccessToken() } });
+    updateStoredProfile(profile);
+  } catch {
+    // Offline or expired token: keep whatever we have; server calls will fail loudly.
+  }
+}
+
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
