@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ShieldAlert } from "lucide-react";
 
@@ -29,12 +29,6 @@ export function RequireModule({
   const fallback = MODULES.find((m) => m !== module && can(m)) ?? null;
   const fallbackTo = fallback ? MODULE_ROUTES[fallback] : "/";
 
-  useEffect(() => {
-    if (ready && isAuthed && !allowed) {
-      // Nothing to do here beyond letting the user choose; kept for future
-      // auto-redirect behaviour without surprising them mid-action.
-    }
-  }, [ready, isAuthed, allowed]);
 
   if (!ready || !isAuthed) return null;
 
