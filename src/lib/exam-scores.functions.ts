@@ -6,7 +6,7 @@ import { z } from "zod";
  * writable by the Data API roles at all. Every access goes through these
  * server functions, which require the app's shared access password.
  */
-import { adminDb as admin, assertAccess } from "./app-access.server";
+import { adminDb as admin, requirePermission } from "./app-access.server";
 
 const tokenSchema = z.object({ token: z.string().min(1) });
 
@@ -20,7 +20,7 @@ export type ExamScoreRow = {
 export const listExamScores = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => tokenSchema.parse(data))
   .handler(async ({ data }): Promise<ExamScoreRow[]> => {
-    await assertAccess(data.token);
+    await requirePermission(data.token, "exam_report", "view");
     const db = await admin();
     const out: ExamScoreRow[] = [];
     const batch = 1000;
@@ -48,7 +48,7 @@ const saveSchema = tokenSchema.extend({
 export const saveExamScore = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => saveSchema.parse(data))
   .handler(async ({ data }) => {
-    await assertAccess(data.token);
+    await requirePermission(data.token, "exam_report", "edit");
     const db = await admin();
     const { schoolId, studentId, examType, score, remarks } = data;
 
@@ -96,7 +96,7 @@ const deleteSchema = tokenSchema.extend({
 export const deleteScoresForStudents = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => deleteSchema.parse(data))
   .handler(async ({ data }) => {
-    await assertAccess(data.token);
+    await requirePermission(data.token, "exam_report", "delete");
     const db = await admin();
     const { error } = await db.from("exam_scores").delete().in("student_id", data.studentIds);
     if (error) throw new Error("Failed to delete scores");

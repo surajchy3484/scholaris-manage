@@ -7,7 +7,20 @@ import { z } from "zod";
  * Every read and write goes through these server functions, which require the
  * app's shared access password before using privileged database access.
  */
-import { adminDb as admin, assertAccess } from "./app-access.server";
+import { adminDb as admin, requirePermission } from "./app-access.server";
+import type { AppAction, AppModule } from "./access-control";
+
+const MODULE_FOR: Record<"assessments" | "questions" | "clicker_records", AppModule> = {
+  assessments: "assessments",
+  questions: "questions",
+  clicker_records: "clicker",
+};
+
+const guard = (
+  token: string,
+  table: "assessments" | "questions" | "clicker_records",
+  action: AppAction,
+) => requirePermission(token, MODULE_FOR[table], action);
 
 const tableSchema = z.enum(["assessments", "questions", "clicker_records"]);
 const tokenSchema = z.object({ token: z.string().min(1) });
@@ -21,7 +34,7 @@ export const listMasterRows = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => listSchema.parse(data))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .handler(async ({ data }): Promise<any[]> => {
-    await assertAccess(data.token);
+    await guard(data.token, data.table, "view");
     const db = await admin();
     const out: Record<string, unknown>[] = [];
     const batch = 1000;
@@ -53,7 +66,7 @@ const insertSchema = tokenSchema.extend({
 export const insertMasterRows = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => insertSchema.parse(data))
   .handler(async ({ data }) => {
-    await assertAccess(data.token);
+    await guard(data.token, data.table, "add");
     const db = await admin();
     const { error } = await db.from(data.table).insert(data.rows as never);
     if (error) {
@@ -73,7 +86,7 @@ const updateSchema = tokenSchema.extend({
 export const updateMasterRows = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => updateSchema.parse(data))
   .handler(async ({ data }) => {
-    await assertAccess(data.token);
+    await guard(data.token, data.table, "edit");
     const db = await admin();
     const { error } = await db
       .from(data.table)
@@ -91,7 +104,7 @@ const deleteSchema = tokenSchema.extend({
 export const deleteMasterRows = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => deleteSchema.parse(data))
   .handler(async ({ data }) => {
-    await assertAccess(data.token);
+    await guard(data.token, data.table, "delete");
     const db = await admin();
     const { error } = await db.from(data.table).delete().in("id", data.ids);
     if (error) throw new Error("Failed to delete records");

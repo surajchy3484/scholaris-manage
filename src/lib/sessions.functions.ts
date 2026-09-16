@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { adminDb, assertAccess } from "./app-access.server";
+import { adminDb, requirePermission } from "./app-access.server";
 
 const token = z.object({ token: z.string().min(1) });
 const status = z.enum(["pending", "complete"]);
@@ -26,7 +26,7 @@ export const listSessions = createServerFn({ method: "POST" })
   )
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .handler(async ({ data }): Promise<any[]> => {
-    await assertAccess(data.token);
+    await requirePermission(data.token, "session_status", "view");
     const db = await adminDb();
     const out: Record<string, unknown>[] = [];
     const batch = 1000;
@@ -62,7 +62,7 @@ export const listDivisionSessions = createServerFn({ method: "POST" })
   )
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .handler(async ({ data }): Promise<any[]> => {
-    await assertAccess(data.token);
+    await requirePermission(data.token, "session_status", "view");
     const db = await adminDb();
 
     const { data: master, error } = await db
@@ -107,7 +107,7 @@ export const sessionUnitCounts = createServerFn({ method: "POST" })
     token.extend({ schoolId: z.string().uuid() }).parse(data),
   )
   .handler(async ({ data }): Promise<Record<string, number>> => {
-    await assertAccess(data.token);
+    await requirePermission(data.token, "session_status", "view");
     const db = await adminDb();
     const out: Record<string, number> = {};
     for (const u of ["Unit-1", "Unit-2", "Unit-3", "Unit-4"]) {
@@ -142,7 +142,7 @@ export const insertSessions = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data }) => {
-    await assertAccess(data.token);
+    await requirePermission(data.token, "session_status", "add");
     const db = await adminDb();
     const { error } = await db.from("sessions").insert(data.rows);
     if (error) throw new Error("Failed to save sessions");
@@ -164,7 +164,7 @@ export const updateSessions = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data }) => {
-    await assertAccess(data.token);
+    await requirePermission(data.token, "session_status", "edit");
     const db = await adminDb();
     const { error } = await db.from("sessions").update(data.patch).in("id", data.ids);
     if (error) throw new Error("Failed to update sessions");
@@ -186,7 +186,7 @@ export const setDivisionStatus = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data }) => {
-    await assertAccess(data.token);
+    await requirePermission(data.token, "session_status", "status");
     const db = await adminDb();
     const rows = data.ids.map((id) => ({
       session_id: id,
@@ -209,7 +209,7 @@ export const deleteSessions = createServerFn({ method: "POST" })
     token.extend({ ids: z.array(z.string().uuid()).min(1).max(2000) }).parse(data),
   )
   .handler(async ({ data }) => {
-    await assertAccess(data.token);
+    await requirePermission(data.token, "session_status", "delete");
     const db = await adminDb();
     const { error } = await db.from("sessions").delete().in("id", data.ids);
     if (error) throw new Error("Failed to delete sessions");
