@@ -69,6 +69,7 @@ export const Route = createFileRoute("/clicker")({
 type ParsedClicker = ParsedBase & {
   assessment_id: string | null;
   keypad_id: string;
+  student_id: string | null;
   student_name: string;
   roll_number: string | null;
   class: string | null;
@@ -180,9 +181,9 @@ function ClickerPage() {
 
   const columns = useMemo<GridColumn<ClickerRecord>[]>(() => {
     const base: GridColumn<ClickerRecord>[] = [
-      { key: "student_name", label: "Student", value: (r) => r.student_name },
-      { key: "roll_number", label: "Roll", value: (r) => r.roll_number ?? "—" },
       { key: "keypad_id", label: "Keypad ID", value: (r) => r.keypad_id },
+      { key: "student_name", label: "Student Name", value: (r) => r.student_name },
+      { key: "roll_number", label: "Roll", value: (r) => r.roll_number ?? "—" },
       { key: "class", label: "Class", value: (r) => r.class ?? "—" },
       { key: "section", label: "Section", value: (r) => r.section ?? "—" },
       { key: "team", label: "Team", value: (r) => r.team ?? "—" },
@@ -335,6 +336,8 @@ function ClickerPage() {
             "assessment id",
             "keypad id",
             "keypad",
+            "student id",
+            "student_id",
             "student name",
             "student",
             "name",
@@ -355,8 +358,9 @@ function ClickerPage() {
             if (!name) errors.push("Student name required");
             const answers: Record<string, string> = {};
             for (const key of Object.keys(row)) {
-              const k = key.trim();
+              const k = key.trim().toUpperCase();
               if (known.has(k.toLowerCase())) continue;
+              if (!/^S\d+$/.test(k)) continue;
               const v = String(row[key] ?? "")
                 .trim()
                 .toUpperCase();
@@ -370,6 +374,7 @@ function ClickerPage() {
               errors,
               assessment_id: aid || null,
               keypad_id: keypad,
+              student_id: pick(row, "Student ID", "student_id") || null,
               student_name: name,
               roll_number: pick(row, "Roll", "Roll Number", "roll_number") || null,
               class: pick(row, "Class", "class") || null,
@@ -401,13 +406,21 @@ function ClickerPage() {
               score: rest.score,
               correct_rate: rest.correct_rate,
             });
-            return { ...rest, ...metrics, ranking: null };
+            const assessmentInfo = (assessments.data ?? []).find((a) => a.assessment_id === rest.assessment_id);
+            return {
+              ...rest,
+              school_id: assessmentInfo?.school_id ?? null,
+              school_name: assessmentInfo?.school_name ?? null,
+              ...metrics,
+              ranking: null,
+            };
           });
           applyCompetitionRanking(calculated);
           const clickerRows = calculated.map(({ correct_answers, wrong_answers, ...row }) => row);
           const resultRows = calculated.map((row) => ({
             assessment_id: row.assessment_id,
             keypad_id: row.keypad_id,
+            student_id: row.student_id,
             student_name: row.student_name,
             school_id: (assessments.data ?? []).find((a) => a.assessment_id === row.assessment_id)?.school_id ?? null,
             school_name: (assessments.data ?? []).find((a) => a.assessment_id === row.assessment_id)?.school_name ?? null,

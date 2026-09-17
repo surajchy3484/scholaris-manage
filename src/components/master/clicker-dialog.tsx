@@ -55,6 +55,7 @@ export function ClickerDialog({
   const [cls, setCls] = useState("");
   const [section, setSection] = useState("");
   const [team, setTeam] = useState("");
+  const [score, setScore] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Errors>({});
 
@@ -68,6 +69,7 @@ export function ClickerDialog({
     setCls(record?.class ?? "");
     setSection(record?.section ?? "");
     setTeam(record?.team ?? "");
+    setScore(record?.score != null ? String(record.score) : "0");
     setAnswers({ ...(record?.answers ?? {}) });
   }, [open, record, defaultAssessmentId]);
 
@@ -80,6 +82,7 @@ export function ClickerDialog({
       const payload = {
         assessment_id: assessmentId || null,
         keypad_id: keypad.trim(),
+        student_id: record?.student_id ?? null,
         student_name: name.trim(),
         roll_number: roll.trim() || null,
         school_id: school?.school_id ?? null,
@@ -87,6 +90,7 @@ export function ClickerDialog({
         class: cls.trim() || null,
         section: section.trim().toUpperCase() || null,
         team: team.trim() || null,
+        score: Number(score) || 0,
         answers,
       };
       if (isEdit && record) {
@@ -157,6 +161,9 @@ export function ClickerDialog({
           </Field>
           <Field label="Team">
             <Input value={team} onChange={(e) => setTeam(e.target.value)} />
+          </Field>
+          <Field label="Score">
+            <Input value={score} onChange={(e) => setScore(e.target.value)} inputMode="numeric" />
           </Field>
         </div>
 

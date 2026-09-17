@@ -62,6 +62,7 @@ export type ClickerRecord = {
   id: string;
   assessment_id: string | null;
   keypad_id: string;
+  student_id: string | null;
   student_name: string;
   roll_number: string | null;
   school_id: string | null;
@@ -218,12 +219,14 @@ export async function deleteRowsByIds(
  */
 export function clickerQuestionColumns(rows: ClickerRecord[]): string[] {
   const keys = new Set<string>();
-  for (const r of rows) for (const k of Object.keys(r.answers)) keys.add(k);
+  for (const r of rows) {
+    for (const k of Object.keys(r.answers)) {
+      const normalized = k.trim().toUpperCase();
+      if (/^S\d+$/.test(normalized)) keys.add(normalized);
+    }
+  }
   return [...keys].sort((a, b) => {
-    const na = Number(a.replace(/\D/g, ""));
-    const nb = Number(b.replace(/\D/g, ""));
-    if (!Number.isNaN(na) && !Number.isNaN(nb) && na !== nb) return na - nb;
-    return a.localeCompare(b, undefined, { numeric: true });
+    return Number(a.slice(1)) - Number(b.slice(1));
   });
 }
 

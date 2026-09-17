@@ -76,6 +76,33 @@ export const insertMasterRows = createServerFn({ method: "POST" })
         error.code === "23505" ? "DUPLICATE" : "Failed to save records",
       );
     }
+    if (data.table === "clicker_records") {
+      for (const row of data.rows) {
+        const studentId = typeof row.student_id === "string" ? row.student_id : null;
+        const schoolId = typeof row.school_id === "string" ? row.school_id : null;
+        const score = Number(row.score);
+        if (!studentId || !schoolId || !Number.isFinite(score)) continue;
+        const { data: existing, error: lookupError } = await db
+          .from("exam_scores")
+          .select("id")
+          .eq("student_id", studentId)
+          .eq("exam_type", "ICA")
+          .limit(1);
+        if (lookupError) throw new Error("Failed to synchronize ICA score");
+        if (existing?.[0]?.id) {
+          const { error: syncError } = await db.from("exam_scores").update({ score }).eq("id", existing[0].id);
+          if (syncError) throw new Error("Failed to synchronize ICA score");
+        } else {
+          const { error: syncError } = await db.from("exam_scores").insert({
+            school_id: schoolId,
+            student_id: studentId,
+            exam_type: "ICA",
+            score,
+          });
+          if (syncError) throw new Error("Failed to synchronize ICA score");
+        }
+      }
+    }
     return { ok: true, count: data.rows.length };
   });
 
@@ -95,6 +122,31 @@ export const updateMasterRows = createServerFn({ method: "POST" })
       .update(data.patch as never)
       .in("id", data.ids);
     if (error) throw new Error("Failed to update records");
+    if (data.table === "clicker_records" && data.patch.score !== undefined && data.patch.student_id) {
+      const score = Number(data.patch.score);
+      const schoolId = typeof data.patch.school_id === "string" ? data.patch.school_id : null;
+      if (Number.isFinite(score) && schoolId) {
+        const { data: existing, error: lookupError } = await db
+          .from("exam_scores")
+          .select("id")
+          .eq("student_id", data.patch.student_id)
+          .eq("exam_type", "ICA")
+          .limit(1);
+        if (lookupError) throw new Error("Failed to synchronize ICA score");
+        if (existing?.[0]?.id) {
+          const { error: syncError } = await db.from("exam_scores").update({ score }).eq("id", existing[0].id);
+          if (syncError) throw new Error("Failed to synchronize ICA score");
+        } else {
+          const { error: syncError } = await db.from("exam_scores").insert({
+            school_id: schoolId,
+            student_id: data.patch.student_id,
+            exam_type: "ICA",
+            score,
+          });
+          if (syncError) throw new Error("Failed to synchronize ICA score");
+        }
+      }
+    }
     return { ok: true };
   });
 
