@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DataGrid, type GridColumn } from "@/components/data-grid";
 import { QuestionDialog } from "@/components/master/question-dialog";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
 import {
   ANSWER_OPTIONS,
@@ -165,20 +166,34 @@ function QuestionsPage() {
         render: (r) => {
           const assessmentInfo = (assessments.data ?? []).find((a) => a.assessment_id === r.assessment_id);
           return (
-            <span
-              className="cursor-help font-mono text-xs underline decoration-dotted underline-offset-2"
-              title={[
-                `Assessment ID: ${r.assessment_id}`,
-                `Assessment: ${assessmentInfo?.name ?? "—"}`,
-                `School: ${assessmentInfo?.school_name ?? "—"}`,
-                `Class: ${assessmentInfo?.class ?? "—"}`,
-                `Section: ${assessmentInfo?.section ?? "—"}`,
-                `Exam Type: ${assessmentInfo?.exam_type ?? "—"}`,
-                `Exam Date: ${assessmentInfo?.date ?? "—"}`,
-              ].join("\\n")}
-            >
-              {r.assessment_id}
-            </span>
+            <HoverCard openDelay={120} closeDelay={80}>
+              <HoverCardTrigger asChild>
+                <button
+                  type="button"
+                  className="cursor-help rounded-md px-1.5 py-1 font-mono text-xs font-semibold text-primary underline decoration-dotted underline-offset-4 transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {r.assessment_id}
+                </button>
+              </HoverCardTrigger>
+              <HoverCardContent align="start" className="w-[340px] overflow-hidden p-0">
+                <div className="border-b border-border/60 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Assessment details</p>
+                  <p className="mt-1 font-mono text-base font-bold text-foreground">{r.assessment_id}</p>
+                  <p className="mt-0.5 truncate text-sm font-medium text-muted-foreground">
+                    {assessmentInfo?.name ?? "Assessment information unavailable"}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 py-4">
+                  <Detail label="School" value={assessmentInfo?.school_name} />
+                  <Detail label="Exam type" value={assessmentInfo?.exam_type} />
+                  <Detail label="Class" value={assessmentInfo?.class} />
+                  <Detail label="Section" value={assessmentInfo?.section} />
+                  <Detail label="Exam date" value={assessmentInfo?.date} />
+                  <Detail label="Questions" value={assessmentInfo?.total_questions} />
+                </div>
+              </HoverCardContent>
+            </HoverCard>
           );
         },
       },
@@ -487,5 +502,14 @@ function QuestionsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+function Detail({ label, value }: { label: string; value?: string | number | null }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="mt-0.5 truncate text-sm font-medium text-foreground">{value || "—"}</p>
+    </div>
   );
 }
