@@ -16,6 +16,7 @@ import {
   Smartphone,
   Sun,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
