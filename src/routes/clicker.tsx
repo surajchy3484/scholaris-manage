@@ -28,9 +28,12 @@ import { ClickerDialog } from "@/components/master/clicker-dialog";
 import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
 import {
   clickerQuestionColumns,
+  applyCompetitionRanking,
+  calculateClickerMetrics,
   deleteRowsByIds,
   fetchAssessments,
   fetchClickerRecords,
+  fetchQuestions,
   type ClickerRecord,
   insertRows,
   updateRowsByIds,
@@ -71,6 +74,9 @@ type ParsedClicker = ParsedBase & {
   class: string | null;
   section: string | null;
   team: string | null;
+  score: number;
+  correct_rate: number;
+  ranking: number | null;
   answers: Record<string, string>;
 };
 
@@ -369,6 +375,9 @@ function ClickerPage() {
               class: pick(row, "Class", "class") || null,
               section: pick(row, "Section", "section") || null,
               team: pick(row, "Team", "team") || null,
+              score: Number(pick(row, "Score", "score")) || 0,
+              correct_rate: Number(pick(row, "Correct Rate", "correct_rate")) || 0,
+              ranking: Number(pick(row, "Ranking", "ranking")) || null,
               answers,
             };
           });
@@ -380,11 +389,40 @@ function ClickerPage() {
           { label: "Questions", get: (r) => Object.keys(r.answers).length },
         ]}
         commit={async (valid) => {
-          await insertRows(
-            "clicker_records",
-            valid.map(({ _row, errors, ...rest }) => rest),
-            300,
+          const assessmentIds = [...new Set(valid.map((r) => r.assessment_id).filter(Boolean))] as string[];
+          const knownAssessments = new Set((assessments.data ?? []).map((a) => a.assessment_id));
+          const invalidAssessment = assessmentIds.find((id) => !knownAssessments.has(id));
+          if (invalidAssessment) throw new Error(`Assessment ID not found in Assessment Master: ${invalidAssessment}`);
+          const questionSets = new Map(
+            await Promise.all(assessmentIds.map(async (id) => [id, await fetchQuestions(id)] as const)),
           );
+          const calculated = valid.map(({ _row, errors, ...rest }) => {
+            const metrics = calculateClickerMetrics(rest.answers, questionSets.get(rest.assessment_id ?? "") ?? [], {
+              score: rest.score,
+              correct_rate: rest.correct_rate,
+            });
+            return { ...rest, ...metrics, ranking: null };
+          });
+          applyCompetitionRanking(calculated);
+          const clickerRows = calculated.map(({ correct_answers, wrong_answers, ...row }) => row);
+          const resultRows = calculated.map((row) => ({
+            assessment_id: row.assessment_id,
+            keypad_id: row.keypad_id,
+            student_name: row.student_name,
+            school_id: (assessments.data ?? []).find((a) => a.assessment_id === row.assessment_id)?.school_id ?? null,
+            school_name: (assessments.data ?? []).find((a) => a.assessment_id === row.assessment_id)?.school_name ?? null,
+            class: row.class,
+            section: row.section,
+            score: row.score,
+            total_questions: (questionSets.get(row.assessment_id ?? "") ?? []).length,
+            correct_answers: row.correct_answers,
+            wrong_answers: row.wrong_answers,
+            correct_rate: row.correct_rate,
+            ranking: row.ranking,
+            answers: row.answers,
+          }));
+          await insertRows("clicker_records", clickerRows, 300);
+          await insertRows("assessment_results", resultRows, 300);
           qc.invalidateQueries({ queryKey: ["clicker"] });
           const detected = new Set<string>();
           for (const v of valid) for (const k of Object.keys(v.answers)) detected.add(k);

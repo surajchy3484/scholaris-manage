@@ -10,19 +10,20 @@ import { z } from "zod";
 import { adminDb as admin, requirePermission } from "./app-access.server";
 import type { AppAction, AppModule } from "./access-control";
 
-const MODULE_FOR: Record<"assessments" | "questions" | "clicker_records", AppModule> = {
+const MODULE_FOR: Record<"assessments" | "questions" | "clicker_records" | "assessment_results", AppModule> = {
   assessments: "assessments",
   questions: "questions",
   clicker_records: "clicker",
+  assessment_results: "clicker",
 };
 
 const guard = (
   token: string,
-  table: "assessments" | "questions" | "clicker_records",
+  table: "assessments" | "questions" | "clicker_records" | "assessment_results",
   action: AppAction,
 ) => requirePermission(token, MODULE_FOR[table], action);
 
-const tableSchema = z.enum(["assessments", "questions", "clicker_records"]);
+const tableSchema = z.enum(["assessments", "questions", "clicker_records", "assessment_results"]);
 const tokenSchema = z.object({ token: z.string().min(1) });
 
 const listSchema = tokenSchema.extend({
@@ -42,6 +43,7 @@ export const listMasterRows = createServerFn({ method: "POST" })
       let q = db.from(data.table).select("*").range(from, from + batch - 1);
       if (data.table === "assessments") q = q.order("created_at", { ascending: false });
       else if (data.table === "questions") q = q.order("question_no");
+      else if (data.table === "assessment_results") q = q.order("ranking", { nullsFirst: false });
       else q = q.order("ranking", { nullsFirst: false });
       if (data.assessmentId && data.assessmentId !== "all" && data.table !== "assessments") {
         q = q.eq("assessment_id", data.assessmentId);

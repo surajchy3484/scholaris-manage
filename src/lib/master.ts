@@ -77,7 +77,14 @@ export type ClickerRecord = {
   updated_at: string;
 };
 
-export type MasterTable = "assessments" | "questions" | "clicker_records";
+export type ClickerMetrics = {
+  score: number;
+  correct_rate: number;
+  correct_answers: number;
+  wrong_answers: number;
+};
+
+export type MasterTable = "assessments" | "questions" | "clicker_records" | "assessment_results";
 
 async function listRows(table: MasterTable, assessmentId?: string) {
   return listMasterRows({ data: { token: getAccessToken(), table, assessmentId } });
@@ -99,6 +106,62 @@ export async function fetchClickerRecords(assessmentId?: string): Promise<Clicke
       ? (r.answers as Record<string, string>)
       : {}) as Record<string, string>,
   }));
+}
+
+/** Calculate a result from the Assessment/Question Master answer key. */
+export function calculateClickerMetrics(
+  answers: Record<string, string>,
+  questions: Question[],
+  fallback?: { score?: number; correct_rate?: number },
+): ClickerMetrics {
+  const key = new Map(questions.map((q) => [`S${q.question_no}`, q.correct_answer.toUpperCase()]));
+  const questionKeys = [...key.keys()];
+  if (questionKeys.length === 0) {
+    const score = Number(fallback?.score ?? 0);
+    const correctRate = Number(fallback?.correct_rate ?? 0);
+    return {
+      score,
+      correct_rate: correctRate,
+      correct_answers: Math.round((correctRate / 100) * questionKeys.length),
+      wrong_answers: 0,
+    };
+  }
+  let correct = 0;
+  for (const question of questionKeys) {
+    if ((answers[question] ?? "").toUpperCase() === key.get(question)) correct += 1;
+  }
+  return {
+    score: correct,
+    correct_rate: Math.round((correct / questionKeys.length) * 1000) / 10,
+    correct_answers: correct,
+    wrong_answers: questionKeys.length - correct,
+  };
+}
+
+/** Competition ranking: 1, 2, 2, 4, grouped by assessment/class/section. */
+export function applyCompetitionRanking<T extends {
+  assessment_id: string | null;
+  class: string | null;
+  section: string | null;
+  score: number;
+  ranking: number | null;
+}>(rows: T[]): T[] {
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const key = `${row.assessment_id ?? ""}|${row.class ?? ""}|${row.section ?? ""}`;
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  }
+  for (const group of groups.values()) {
+    const sorted = [...group].sort((a, b) => b.score - a.score);
+    let previousScore: number | null = null;
+    let rank = 0;
+    sorted.forEach((row, index) => {
+      if (row.score !== previousScore) rank = index + 1;
+      row.ranking = rank;
+      previousScore = row.score;
+    });
+  }
+  return rows;
 }
 
 /** Inserts rows in chunks through the privileged server function. */

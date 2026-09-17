@@ -92,6 +92,8 @@ function QuestionsPage() {
   const [confirm, setConfirm] = useState<"single" | "bulk" | null>(null);
   const [target, setTarget] = useState<Question | null>(null);
   const [bulkAnswer, setBulkAnswer] = useState("");
+  const [copyOpen, setCopyOpen] = useState(false);
+  const [destination, setDestination] = useState("");
 
   const assessments = useQuery({ queryKey: ["assessments"], queryFn: fetchAssessments });
   const list = useQuery({
@@ -128,6 +130,31 @@ function QuestionsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const copyQuestions = useMutation({
+    mutationFn: async () => {
+      if (!destination || destination === assessment) throw new Error("Choose a different destination assessment.");
+      const selectedQuestions = (list.data ?? []).filter((q) => selected.includes(q.id));
+      const destinationRows = await fetchQuestions(destination);
+      const existing = new Set(destinationRows.map((q) => q.question_no));
+      const payload = selectedQuestions
+        .filter((q) => !existing.has(q.question_no))
+        .map(({ id, created_at, updated_at, assessment_id, ...q }) => ({
+          ...q,
+          assessment_id: destination,
+        }));
+      if (payload.length === 0) throw new Error("All selected question numbers already exist in the destination.");
+      await insertRows("questions", payload);
+      return { copied: payload.length, skipped: selectedQuestions.length - payload.length };
+    },
+    onSuccess: ({ copied, skipped }) => {
+      qc.invalidateQueries({ queryKey: ["questions"] });
+      setCopyOpen(false);
+      setSelected([]);
+      toast.success(`${copied} question(s) copied${skipped ? `; ${skipped} duplicate(s) skipped` : ""}.`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const columns = useMemo<GridColumn<Question>[]>(
     () => [
       {
@@ -135,6 +162,25 @@ function QuestionsPage() {
         label: "Assessment ID",
         value: (r) => r.assessment_id,
         className: "font-mono text-xs",
+        render: (r) => {
+          const assessmentInfo = (assessments.data ?? []).find((a) => a.assessment_id === r.assessment_id);
+          return (
+            <span
+              className="cursor-help font-mono text-xs underline decoration-dotted underline-offset-2"
+              title={[
+                `Assessment ID: ${r.assessment_id}`,
+                `Assessment: ${assessmentInfo?.name ?? "—"}`,
+                `School: ${assessmentInfo?.school_name ?? "—"}`,
+                `Class: ${assessmentInfo?.class ?? "—"}`,
+                `Section: ${assessmentInfo?.section ?? "—"}`,
+                `Exam Type: ${assessmentInfo?.exam_type ?? "—"}`,
+                `Exam Date: ${assessmentInfo?.date ?? "—"}`,
+              ].join("\\n")}
+            >
+              {r.assessment_id}
+            </span>
+          );
+        },
       },
       { key: "question_no", label: "Question No.", value: (r) => r.question_no },
       {
@@ -192,7 +238,7 @@ function QuestionsPage() {
         ),
       },
     ],
-    [],
+    [assessments.data],
   );
 
   return (
@@ -268,6 +314,9 @@ function QuestionsPage() {
                   </Select>
                   <Button variant="destructive" size="sm" onClick={() => setConfirm("bulk")}>
                     <Trash2 className="h-4 w-4" /> Delete {selected.length}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setCopyOpen(true)}>
+                    Copy Questions
                   </Button>
                 </>
               )}
@@ -382,6 +431,37 @@ function QuestionsPage() {
           return `Import complete — ${valid.length} question(s) imported.`;
         }}
       />
+
+      <AlertDialog open={copyOpen} onOpenChange={(open) => !copyQuestions.isPending && setCopyOpen(open)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Copy {selected.length} question(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              From {assessment} to the selected destination. Duplicate question numbers are skipped by default.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Select value={destination} onValueChange={setDestination}>
+            <SelectTrigger>
+              <SelectValue placeholder="Choose destination assessment" />
+            </SelectTrigger>
+            <SelectContent>
+              {(assessments.data ?? [])
+                .filter((a) => a.assessment_id !== assessment)
+                .map((a) => (
+                  <SelectItem key={a.id} value={a.assessment_id}>
+                    {a.assessment_id} — {a.name} — Class {a.class ?? "—"} — {a.school_name ?? "—"}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={!destination || copyQuestions.isPending} onClick={() => copyQuestions.mutate()}>
+              {copyQuestions.isPending ? "Copying..." : "Copy Questions"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={confirm !== null} onOpenChange={(o) => !o && setConfirm(null)}>
         <AlertDialogContent>
