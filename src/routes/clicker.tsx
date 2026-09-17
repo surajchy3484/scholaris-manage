@@ -435,7 +435,13 @@ function ClickerPage() {
             answers: row.answers,
           }));
           await insertRows("clicker_records", clickerRows, 300);
-          await insertRows("assessment_results", resultRows, 300);
+          // Keep raw Clicker imports available even before the optional centralized
+          // results migration has been applied to an older Supabase project.
+          try {
+            await insertRows("assessment_results", resultRows, 300);
+          } catch (error) {
+            console.warn("Centralized assessment results are not available yet; raw Clicker data was saved.", error);
+          }
           qc.invalidateQueries({ queryKey: ["clicker"] });
           const detected = new Set<string>();
           for (const v of valid) for (const k of Object.keys(v.answers)) detected.add(k);
