@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ClipboardList,
   Download,
+  FileText,
   GraduationCap,
   HelpCircle,
   LayoutDashboard,
@@ -47,6 +48,7 @@ const SCHOLARS_KEY = "scholaris:scholars-menu-open";
 const SCHOLARS_ITEMS = [
   { to: "/", label: "Student Management", icon: Users, module: "students" as AppModule, match: (p: string) => p === "/" || p.startsWith("/schools") },
   { to: "/exam-report", label: "Reports", icon: BarChart3, module: "exam_report" as AppModule, match: (p: string) => p.startsWith("/exam-report") },
+  { to: "/overall-report", label: "Overall Report", icon: FileText, module: "exam_report" as AppModule, match: (p: string) => p.startsWith("/overall-report") },
   { to: "/assessments", label: "Assessment Master", icon: ClipboardList, module: "assessments" as AppModule, match: (p: string) => p.startsWith("/assessments") },
   { to: "/questions", label: "Question Master", icon: HelpCircle, module: "questions" as AppModule, match: (p: string) => p.startsWith("/questions") },
   { to: "/clicker", label: "Clicker Data", icon: MousePointerClick, module: "clicker" as AppModule, match: (p: string) => p.startsWith("/clicker") },
