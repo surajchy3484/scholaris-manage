@@ -28,12 +28,14 @@ export function SchoolCard({
   onDelete,
   onUpdated,
   canManage = true,
+  clusterOptions = [],
 }: {
   school: School & { student_count: number };
   onDelete: () => void;
   onUpdated: () => void;
   /** Trainers can open a school but cannot edit or delete it. */
   canManage?: boolean;
+  clusterOptions?: string[];
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -108,7 +110,7 @@ export function SchoolCard({
       </Card>
 
 
-      <EditSchoolDialog school={school} open={editOpen} onOpenChange={setEditOpen} onSaved={onUpdated} />
+      <EditSchoolDialog school={school} open={editOpen} onOpenChange={setEditOpen} onSaved={onUpdated} clusterOptions={clusterOptions} />
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>

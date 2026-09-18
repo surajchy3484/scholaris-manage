@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PhotoPicker } from "@/components/photo-picker";
 import { DivisionEditor } from "@/components/division-editor";
 import { fetchSchoolDivisions, saveSchoolDivisions, type DivisionDraft } from "@/lib/divisions";
@@ -21,12 +22,16 @@ import type { School } from "@/lib/types";
 export function AddSchoolDialog({
   open,
   onOpenChange,
+  clusterOptions = [],
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  clusterOptions?: string[];
 }) {
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
+  const [cluster, setCluster] = useState("");
+  const [newCluster, setNewCluster] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [divisions, setDivisions] = useState<DivisionDraft[]>([]);
   const qc = useQueryClient();
@@ -36,7 +41,13 @@ export function AddSchoolDialog({
       // `code` is auto-assigned by a DB trigger (SCH001, SCH002, ...); pass empty string.
       const { data, error } = await supabase
         .from("schools")
-        .insert({ name, location, code: "", image_url: imageUrl })
+        .insert({
+          name,
+          location,
+          cluster_name: cluster === "__new__" ? newCluster.trim() : cluster || null,
+          code: "",
+          image_url: imageUrl,
+        })
         .select("id")
         .single();
       if (error) throw error;
@@ -47,6 +58,8 @@ export function AddSchoolDialog({
       toast.success("School added");
       setName("");
       setLocation("");
+      setCluster("");
+      setNewCluster("");
       setImageUrl(null);
       setDivisions([]);
       onOpenChange(false);
@@ -55,7 +68,7 @@ export function AddSchoolDialog({
   });
 
   const submit = () => {
-    if (!name.trim() || !location.trim()) {
+    if (!name.trim() || !location.trim() || (cluster === "__new__" && !newCluster.trim())) {
       toast.error("Please fill in all fields");
       return;
     }
@@ -93,6 +106,13 @@ export function AddSchoolDialog({
               placeholder="123 Main St, Bengaluru"
             />
           </div>
+          <ClusterField
+            value={cluster}
+            onChange={setCluster}
+            newValue={newCluster}
+            onNewChange={setNewCluster}
+            options={clusterOptions}
+          />
           <DivisionEditor rows={divisions} onChange={setDivisions} />
         </div>
         <DialogFooter>
@@ -113,14 +133,18 @@ export function EditSchoolDialog({
   open,
   onOpenChange,
   onSaved,
+  clusterOptions = [],
 }: {
   school: School;
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onSaved?: () => void;
+  clusterOptions?: string[];
 }) {
   const [name, setName] = useState(school.name);
   const [location, setLocation] = useState(school.location);
+  const [cluster, setCluster] = useState(school.cluster_name ?? "");
+  const [newCluster, setNewCluster] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(school.image_url);
   const [divisions, setDivisions] = useState<DivisionDraft[]>([]);
   const qc = useQueryClient();
@@ -141,7 +165,12 @@ export function EditSchoolDialog({
     mutationFn: async () => {
       const { error } = await supabase
         .from("schools")
-        .update({ name, location, image_url: imageUrl })
+        .update({
+          name,
+          location,
+          cluster_name: cluster === "__new__" ? newCluster.trim() : cluster || null,
+          image_url: imageUrl,
+        })
         .eq("id", school.id);
       if (error) throw error;
       await saveSchoolDivisions(school.id, divisions);
@@ -176,6 +205,13 @@ export function EditSchoolDialog({
             <Label>Location / Address</Label>
             <Input value={location} onChange={(e) => setLocation(e.target.value)} />
           </div>
+          <ClusterField
+            value={cluster}
+            onChange={setCluster}
+            newValue={newCluster}
+            onNewChange={setNewCluster}
+            options={clusterOptions}
+          />
           <DivisionEditor rows={divisions} onChange={setDivisions} />
         </div>
         <DialogFooter>
@@ -184,7 +220,7 @@ export function EditSchoolDialog({
           </Button>
           <Button
             onClick={() => {
-              if (!name.trim() || !location.trim()) return toast.error("Fill all fields");
+              if (!name.trim() || !location.trim() || (cluster === "__new__" && !newCluster.trim())) return toast.error("Fill all fields");
               update.mutate();
             }}
             disabled={update.isPending}
@@ -194,5 +230,37 @@ export function EditSchoolDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ClusterField({
+  value,
+  onChange,
+  newValue,
+  onNewChange,
+  options,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  newValue: string;
+  onNewChange: (value: string) => void;
+  options: string[];
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label>School Cluster</Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger>
+          <SelectValue placeholder="Choose a cluster" />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+          <SelectItem value="__new__">＋ Add new cluster</SelectItem>
+        </SelectContent>
+      </Select>
+      {value === "__new__" && (
+        <Input value={newValue} onChange={(e) => onNewChange(e.target.value)} placeholder="New cluster name" />
+      )}
+    </div>
   );
 }

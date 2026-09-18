@@ -39,6 +39,18 @@ export const Route = createFileRoute("/")({
 
 type SchoolWithCount = School & { student_count: number };
 
+const DEFAULT_CLUSTERS = ["Kalwa Cluster", "Kalwa Centers", "Chembur Cluster", "Shahapur Cluster"];
+
+function displayCluster(school: School) {
+  if (school.cluster_name?.trim()) return school.cluster_name.trim();
+  const value = `${school.name} ${school.location}`.toLowerCase();
+  if (value.includes("center") && value.includes("kalwa")) return "Kalwa Centers";
+  if (value.includes("kalwa")) return "Kalwa Cluster";
+  if (value.includes("chembur") || value.includes("govandi") || value.includes("mankhurd")) return "Chembur Cluster";
+  if (value.includes("shahapur") || value.includes("bamne") || value.includes("dhasai") || value.includes("khadavali")) return "Shahapur Cluster";
+  return "Other / Unassigned";
+}
+
 async function fetchSchools(): Promise<SchoolWithCount[]> {
   const { data: schools, error } = await supabase
     .from("schools")
@@ -101,6 +113,18 @@ function Dashboard() {
     });
 
   const totalStudents = data.reduce((n, s) => n + s.student_count, 0);
+  const clusterOptions = [...new Set([...DEFAULT_CLUSTERS, ...allSchools.map((s) => s.cluster_name).filter((v): v is string => !!v)])];
+  const grouped = filtered.reduce((groups, school) => {
+    const cluster = displayCluster(school);
+    groups.set(cluster, [...(groups.get(cluster) ?? []), school]);
+    return groups;
+  }, new Map<string, SchoolWithCount[]>());
+  const clusterOrder = ["Kalwa Cluster", "Kalwa Centers", "Chembur Cluster", "Shahapur Cluster", "Other / Unassigned"];
+  const orderedClusters = [...grouped.keys()].sort((a, b) => {
+    const ai = clusterOrder.indexOf(a);
+    const bi = clusterOrder.indexOf(b);
+    return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi) || a.localeCompare(b);
+  });
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
@@ -212,29 +236,25 @@ function Dashboard() {
           )}
         </Card>
       ) : (
-        <motion.div
-          layout
-          className="grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          {filtered.map((s, i) => (
-            <motion.div
-              key={s.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-            >
-              <SchoolCard
-                school={s}
-                onDelete={() => del.mutate(s.id)}
-                onUpdated={() => qc.invalidateQueries({ queryKey: ["schools"] })}
-                canManage={canManageSchool}
-              />
-            </motion.div>
+        <div className="space-y-8">
+          {orderedClusters.map((cluster) => (
+            <section key={cluster} className="space-y-3">
+              <div className="flex items-end justify-between border-b border-border/60 pb-2">
+                <div><h2 className="font-display text-xl font-bold text-primary">{cluster}</h2><p className="text-xs text-muted-foreground">{grouped.get(cluster)?.length ?? 0} school(s) in this cluster</p></div>
+              </div>
+              <motion.div layout className="grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-3">
+                {(grouped.get(cluster) ?? []).map((s, i) => (
+                  <motion.div key={s.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                    <SchoolCard school={s} onDelete={() => del.mutate(s.id)} onUpdated={() => qc.invalidateQueries({ queryKey: ["schools"] })} canManage={canManageSchool} clusterOptions={clusterOptions} />
+                  </motion.div>
+                ))}
+              </motion.div>
+            </section>
           ))}
-        </motion.div>
+        </div>
       )}
 
-      <AddSchoolDialog open={addOpen} onOpenChange={setAddOpen} />
+      <AddSchoolDialog open={addOpen} onOpenChange={setAddOpen} clusterOptions={clusterOptions} />
     </div>
   );
 }

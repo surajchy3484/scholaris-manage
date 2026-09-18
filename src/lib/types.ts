@@ -2,6 +2,7 @@ export type School = {
   id: string;
   name: string;
   location: string;
+  cluster_name: string | null;
   code: string;
   image_url: string | null;
   created_at: string;
