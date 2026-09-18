@@ -81,16 +81,64 @@ type ParsedClicker = ParsedBase & {
   answers: Record<string, string>;
 };
 
+function sameValue(left: string | null | undefined, right: string | null | undefined) {
+  const normalize = (value: string | null | undefined) =>
+    (value ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/^class\s*/, "")
+      .replace(/^section\s*/, "");
+  return normalize(left) === normalize(right);
+}
+
+function resolveAssessmentId(
+  row: ParsedClicker,
+  available: Awaited<ReturnType<typeof fetchAssessments>>,
+) {
+  if (row.assessment_id && available.some((a) => a.assessment_id === row.assessment_id)) {
+    return row.assessment_id;
+  }
+  const matches = available.filter(
+    (a) =>
+      sameValue(a.class, row.class) &&
+      (!row.section || !a.section || sameValue(a.section, row.section)),
+  );
+  if (matches.length === 0) return null;
+  // Prefer an exact section match, then the most recently created assessment.
+  return [...matches]
+    .sort((a, b) => {
+      const sectionScore = (x: typeof a) => (row.section && sameValue(x.section, row.section) ? 1 : 0);
+      return sectionScore(b) - sectionScore(a) || b.created_at.localeCompare(a.created_at);
+    })[0].assessment_id;
+}
+
 /** Answer cell that supports inline edit, keyboard save/cancel and undo. */
-function AnswerCell({ value, onSave }: { value: string; onSave: (next: string) => void }) {
+function AnswerCell({
+  value,
+  correctAnswer,
+  onSave,
+}: {
+  value: string;
+  correctAnswer?: string;
+  onSave: (next: string) => void;
+}) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
+  const normalized = value.trim().toUpperCase();
+  const isCorrect = !!normalized && !!correctAnswer && normalized === correctAnswer.toUpperCase();
+  const answerClass = correctAnswer
+    ? isCorrect
+      ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+      : normalized
+        ? "border-red-500 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+        : "border-border text-muted-foreground"
+    : "border-border text-foreground";
 
   if (!editing)
     return (
       <button
         type="button"
-        className="min-w-8 rounded-md px-2 py-0.5 text-center transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+        className={`min-w-8 rounded-full border px-2 py-0.5 text-center font-semibold transition-colors hover:opacity-80 focus-visible:outline-none ${answerClass}`}
         onClick={(e) => {
           e.stopPropagation();
           setDraft(value);
@@ -142,6 +190,16 @@ function ClickerPage() {
   const [target, setTarget] = useState<ClickerRecord | null>(null);
 
   const assessments = useQuery({ queryKey: ["assessments"], queryFn: fetchAssessments });
+  const questionKeys = useQuery({
+    queryKey: ["clicker-question-keys", assessments.data?.map((a) => a.assessment_id).join(",")],
+    enabled: !!assessments.data,
+    queryFn: async () => {
+      const entries = await Promise.all(
+        (assessments.data ?? []).map(async (a) => [a.assessment_id, await fetchQuestions(a.assessment_id)] as const),
+      );
+      return new Map(entries);
+    },
+  });
   const list = useQuery({
     queryKey: ["clicker", assessment],
     queryFn: () => fetchClickerRecords(assessment),
@@ -154,6 +212,13 @@ function ClickerPage() {
   }, [list.data, minScore]);
 
   const questionCols = useMemo(() => clickerQuestionColumns(list.data ?? []), [list.data]);
+  const questionKeysByAssessment = useMemo(() => {
+    const keys = new Map<string, string>();
+    for (const [assessmentId, questions] of questionKeys.data ?? []) {
+      for (const question of questions) keys.set(`${assessmentId}|S${question.question_no}`, question.correct_answer);
+    }
+    return keys;
+  }, [questionKeys.data]);
 
   const saveAnswer = useMutation({
     mutationFn: async ({ row, col, value }: { row: ClickerRecord; col: string; value: string }) => {
@@ -203,6 +268,7 @@ function ClickerPage() {
       render: (r) => (
         <AnswerCell
           value={r.answers[c] ?? ""}
+          correctAnswer={questionKeysByAssessment.get(`${r.assessment_id}|${c}`)}
           onSave={(next) => saveAnswer.mutate({ row: r, col: c, value: next })}
         />
       ),
@@ -243,7 +309,7 @@ function ClickerPage() {
         ),
       },
     ];
-  }, [questionCols, saveAnswer]);
+  }, [questionCols, questionKeysByAssessment, saveAnswer]);
 
   return (
     <>
@@ -394,14 +460,21 @@ function ClickerPage() {
           { label: "Questions", get: (r) => Object.keys(r.answers).length },
         ]}
         commit={async (valid) => {
-          const assessmentIds = [...new Set(valid.map((r) => r.assessment_id).filter(Boolean))] as string[];
+          const resolved = valid.map((row) => ({ ...row, assessment_id: resolveAssessmentId(row, assessments.data ?? []) }));
+          const unresolved = resolved.find((r) => !r.assessment_id);
+          if (unresolved) {
+            throw new Error(
+              `No Assessment Master match for class ${unresolved.class ?? "—"}, section ${unresolved.section ?? "—"}. Add Assessment ID or create a matching assessment.`,
+            );
+          }
+          const assessmentIds = [...new Set(resolved.map((r) => r.assessment_id).filter(Boolean))] as string[];
           const knownAssessments = new Set((assessments.data ?? []).map((a) => a.assessment_id));
           const invalidAssessment = assessmentIds.find((id) => !knownAssessments.has(id));
           if (invalidAssessment) throw new Error(`Assessment ID not found in Assessment Master: ${invalidAssessment}`);
           const questionSets = new Map(
             await Promise.all(assessmentIds.map(async (id) => [id, await fetchQuestions(id)] as const)),
           );
-          const calculated = valid.map(({ _row, errors, ...rest }) => {
+          const calculated = resolved.map(({ _row, errors, ...rest }) => {
             const metrics = calculateClickerMetrics(rest.answers, questionSets.get(rest.assessment_id ?? "") ?? [], {
               score: rest.score,
               correct_rate: rest.correct_rate,
