@@ -435,6 +435,7 @@ function OverallReport() {
         selectedSchool={selectedSchool?.name}
         selectedStudent={selectedStudent}
         allStudents={students}
+        onDownloadPdf={() => downloadPdf("Student Performance Report", buildReport())}
       />
     </main>
   );
@@ -448,6 +449,7 @@ function ReportPreview({
   selectedSchool,
   selectedStudent,
   allStudents,
+  onDownloadPdf,
 }: {
   mode: Mode;
   reports: ReturnType<typeof buildSchoolReports>;
@@ -456,9 +458,16 @@ function ReportPreview({
   selectedSchool?: string;
   selectedStudent?: StudentReport;
   allStudents: StudentReport[];
+  onDownloadPdf: () => void;
 }) {
   if (mode === "student")
-    return <StudentPreview student={selectedStudent} allStudents={allStudents} />;
+    return (
+      <StudentPreview
+        student={selectedStudent}
+        allStudents={allStudents}
+        onDownloadPdf={onDownloadPdf}
+      />
+    );
   if (mode === "school")
     return (
       <PreviewTable
@@ -583,9 +592,11 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 function StudentPreview({
   student,
   allStudents,
+  onDownloadPdf,
 }: {
   student?: StudentReport;
   allStudents: StudentReport[];
+  onDownloadPdf: () => void;
 }) {
   if (!student)
     return (
@@ -611,10 +622,13 @@ function StudentPreview({
           alt="REAP logo"
           className="h-14 w-28 object-contain object-left"
         />
-        <div>
+        <div className="min-w-0 flex-1">
           <h2 className="font-display text-2xl font-bold">STUDENT PERFORMANCE MARKSHEET</h2>
           <p className="text-sm text-muted-foreground">Academic Year: 2026–27 · SchoolRise</p>
         </div>
+        <Button type="button" size="sm" onClick={onDownloadPdf} className="shrink-0">
+          <Printer className="h-4 w-4" /> Download PDF
+        </Button>
       </div>
       <div className="relative z-10 mt-6 grid gap-3 rounded-xl border border-cyan-200/70 bg-cyan-50/30 p-3 sm:grid-cols-2">
         <Info label="School Name" value={student.school_name} />
