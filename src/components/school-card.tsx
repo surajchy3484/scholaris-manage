@@ -44,28 +44,32 @@ export function SchoolCard({
     <>
       <Card className="group relative flex h-full min-w-0 flex-col overflow-hidden p-0 transition-all hover:-translate-y-0.5 hover:shadow-elegant">
         {canManage && (
-        <div className="absolute right-3 top-3 z-10">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 bg-background/70 backdrop-blur">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setEditOpen(true)}>
-                <Pencil className="h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setConfirmOpen(true)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+          <div className="absolute right-3 top-3 z-10">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 bg-background/70 backdrop-blur"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setConfirmOpen(true)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         )}
 
         <Link
@@ -74,9 +78,7 @@ export function SchoolCard({
           aria-label={`Open ${school.name}`}
           className="flex min-w-0 flex-1 cursor-pointer items-start gap-4 p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-accent/40"
         >
-          <div
-            className="relative aspect-square w-24 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-primary/90 to-primary-glow text-primary-foreground shadow-soft sm:w-[140px]"
-          >
+          <div className="relative aspect-square w-24 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-primary/90 to-primary-glow text-primary-foreground shadow-soft sm:w-[140px]">
             {school.image_url ? (
               <img
                 src={school.image_url}
@@ -109,8 +111,13 @@ export function SchoolCard({
         </Link>
       </Card>
 
-
-      <EditSchoolDialog school={school} open={editOpen} onOpenChange={setEditOpen} onSaved={onUpdated} clusterOptions={clusterOptions} />
+      <EditSchoolDialog
+        school={school}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSaved={onUpdated}
+        clusterOptions={clusterOptions}
+      />
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>

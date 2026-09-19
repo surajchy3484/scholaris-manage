@@ -46,8 +46,15 @@ function displayCluster(school: School) {
   const value = `${school.name} ${school.location}`.toLowerCase();
   if (value.includes("center") && value.includes("kalwa")) return "Kalwa Centers";
   if (value.includes("kalwa")) return "Kalwa Cluster";
-  if (value.includes("chembur") || value.includes("govandi") || value.includes("mankhurd")) return "Chembur Cluster";
-  if (value.includes("shahapur") || value.includes("bamne") || value.includes("dhasai") || value.includes("khadavali")) return "Shahapur Cluster";
+  if (value.includes("chembur") || value.includes("govandi") || value.includes("mankhurd"))
+    return "Chembur Cluster";
+  if (
+    value.includes("shahapur") ||
+    value.includes("bamne") ||
+    value.includes("dhasai") ||
+    value.includes("khadavali")
+  )
+    return "Shahapur Cluster";
   return "Other / Unassigned";
 }
 
@@ -113,13 +120,24 @@ function Dashboard() {
     });
 
   const totalStudents = data.reduce((n, s) => n + s.student_count, 0);
-  const clusterOptions = [...new Set([...DEFAULT_CLUSTERS, ...allSchools.map((s) => s.cluster_name).filter((v): v is string => !!v)])];
+  const clusterOptions = [
+    ...new Set([
+      ...DEFAULT_CLUSTERS,
+      ...allSchools.map((s) => s.cluster_name).filter((v): v is string => !!v),
+    ]),
+  ];
   const grouped = filtered.reduce((groups, school) => {
     const cluster = displayCluster(school);
     groups.set(cluster, [...(groups.get(cluster) ?? []), school]);
     return groups;
   }, new Map<string, SchoolWithCount[]>());
-  const clusterOrder = ["Kalwa Cluster", "Kalwa Centers", "Chembur Cluster", "Shahapur Cluster", "Other / Unassigned"];
+  const clusterOrder = [
+    "Kalwa Cluster",
+    "Kalwa Centers",
+    "Chembur Cluster",
+    "Shahapur Cluster",
+    "Other / Unassigned",
+  ];
   const orderedClusters = [...grouped.keys()].sort((a, b) => {
     const ai = clusterOrder.indexOf(a);
     const bi = clusterOrder.indexOf(b);
@@ -162,26 +180,29 @@ function Dashboard() {
         </Card>
 
         {canAddSchool && (
-        <Card className="flex flex-col justify-between gap-4 border-warm/40 bg-warm/40 p-5 shadow-soft sm:p-6">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-warm-foreground/70">
-              Ready to grow?
-            </p>
-            <h2 className="mt-1 font-display text-2xl font-bold text-warm-foreground">
-              Add a new school
-            </h2>
-            <p className="mt-1 text-sm text-warm-foreground/80">
-              Unlimited campuses. Each with its own students &amp; attendance.
-            </p>
-          </div>
-          <Button size="lg" onClick={() => setAddOpen(true)} className="w-full shadow-elegant sm:w-auto sm:self-start">
-            <Plus className="h-4 w-4" />
-            Add School
-          </Button>
-        </Card>
+          <Card className="flex flex-col justify-between gap-4 border-warm/40 bg-warm/40 p-5 shadow-soft sm:p-6">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-warm-foreground/70">
+                Ready to grow?
+              </p>
+              <h2 className="mt-1 font-display text-2xl font-bold text-warm-foreground">
+                Add a new school
+              </h2>
+              <p className="mt-1 text-sm text-warm-foreground/80">
+                Unlimited campuses. Each with its own students &amp; attendance.
+              </p>
+            </div>
+            <Button
+              size="lg"
+              onClick={() => setAddOpen(true)}
+              className="w-full shadow-elegant sm:w-auto sm:self-start"
+            >
+              <Plus className="h-4 w-4" />
+              Add School
+            </Button>
+          </Card>
         )}
       </motion.section>
-
 
       {/* Controls */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -240,12 +261,28 @@ function Dashboard() {
           {orderedClusters.map((cluster) => (
             <section key={cluster} className="space-y-3">
               <div className="flex items-end justify-between border-b border-border/60 pb-2">
-                <div><h2 className="font-display text-xl font-bold text-primary">{cluster}</h2><p className="text-xs text-muted-foreground">{grouped.get(cluster)?.length ?? 0} school(s) in this cluster</p></div>
+                <div>
+                  <h2 className="font-display text-xl font-bold text-primary">{cluster}</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {grouped.get(cluster)?.length ?? 0} school(s) in this cluster
+                  </p>
+                </div>
               </div>
               <motion.div layout className="grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-3">
                 {(grouped.get(cluster) ?? []).map((s, i) => (
-                  <motion.div key={s.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                    <SchoolCard school={s} onDelete={() => del.mutate(s.id)} onUpdated={() => qc.invalidateQueries({ queryKey: ["schools"] })} canManage={canManageSchool} clusterOptions={clusterOptions} />
+                  <motion.div
+                    key={s.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                  >
+                    <SchoolCard
+                      school={s}
+                      onDelete={() => del.mutate(s.id)}
+                      onUpdated={() => qc.invalidateQueries({ queryKey: ["schools"] })}
+                      canManage={canManageSchool}
+                      clusterOptions={clusterOptions}
+                    />
                   </motion.div>
                 ))}
               </motion.div>

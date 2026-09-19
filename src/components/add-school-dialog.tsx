@@ -13,7 +13,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PhotoPicker } from "@/components/photo-picker";
 import { DivisionEditor } from "@/components/division-editor";
 import { fetchSchoolDivisions, saveSchoolDivisions, type DivisionDraft } from "@/lib/divisions";
@@ -80,7 +86,9 @@ export function AddSchoolDialog({
       <DialogContent className="max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add school</DialogTitle>
-          <DialogDescription>Create a new school. You can add students afterwards.</DialogDescription>
+          <DialogDescription>
+            Create a new school. You can add students afterwards.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
@@ -220,7 +228,8 @@ export function EditSchoolDialog({
           </Button>
           <Button
             onClick={() => {
-              if (!name.trim() || !location.trim() || (cluster === "__new__" && !newCluster.trim())) return toast.error("Fill all fields");
+              if (!name.trim() || !location.trim() || (cluster === "__new__" && !newCluster.trim()))
+                return toast.error("Fill all fields");
               update.mutate();
             }}
             disabled={update.isPending}
@@ -254,12 +263,20 @@ function ClusterField({
           <SelectValue placeholder="Choose a cluster" />
         </SelectTrigger>
         <SelectContent>
-          {options.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+          {options.map((option) => (
+            <SelectItem key={option} value={option}>
+              {option}
+            </SelectItem>
+          ))}
           <SelectItem value="__new__">＋ Add new cluster</SelectItem>
         </SelectContent>
       </Select>
       {value === "__new__" && (
-        <Input value={newValue} onChange={(e) => onNewChange(e.target.value)} placeholder="New cluster name" />
+        <Input
+          value={newValue}
+          onChange={(e) => onNewChange(e.target.value)}
+          placeholder="New cluster name"
+        />
       )}
     </div>
   );
