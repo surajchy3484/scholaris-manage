@@ -140,7 +140,18 @@ function downloadPdf(title: string, html: string) {
   popup.document.close();
   popup.document.title = title;
   popup.focus();
-  setTimeout(() => popup.print(), 350);
+  const images = Array.from(popup.document.images);
+  const imageReady = images.map((image) =>
+    image.complete
+      ? Promise.resolve()
+      : new Promise<void>((resolve) => {
+          image.addEventListener("load", () => resolve(), { once: true });
+          image.addEventListener("error", () => resolve(), { once: true });
+        }),
+  );
+  Promise.all(imageReady).then(() => {
+    setTimeout(() => popup.print(), 150);
+  });
 }
 
 function table(headers: string[], rows: (string | number)[][]) {
