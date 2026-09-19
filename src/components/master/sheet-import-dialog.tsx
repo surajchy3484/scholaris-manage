@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from "react";
 import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
+import FileSaver from "file-saver";
+
+const { saveAs } = FileSaver;
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, Copy, Download, Upload } from "lucide-react";

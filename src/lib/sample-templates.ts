@@ -1,5 +1,7 @@
 import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
+import FileSaver from "file-saver";
+
+const { saveAs } = FileSaver;
 
 /** Builds and downloads a small .xlsx sample file showing the expected columns. */
 export function downloadSampleSheet(
@@ -134,4 +136,3 @@ export const SESSION_SAMPLE = {
     { "Session Name": "Fractions", Class: "Class 6", Topic: "Fractions" },
   ],
 };
-

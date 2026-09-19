@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
-import { saveAs } from "file-saver";
+import FileSaver from "file-saver";
+
+const { saveAs } = FileSaver;
 
 export async function backupDatabase() {
   const [schools, students, attendance] = await Promise.all([
