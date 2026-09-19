@@ -174,10 +174,16 @@ function OverallReport() {
   const schools = data?.schools ?? [];
   const students = useMemo(() => data?.students ?? [], [data?.students]);
   const classes = useMemo(
-    () => [...new Set(students.map((s) => `${s.class}|${s.division}`))].sort(),
-    [students],
+    () =>
+      [
+        ...new Set(
+          students
+            .filter((s) => schoolId === "all" || s.school_id === schoolId)
+            .map((s) => `${s.class}|${s.division}`),
+        ),
+      ].sort(),
+    [students, schoolId],
   );
-  const selectedStudent = students.find((s) => s.id === studentId) ?? students[0];
   const selectedSchool = schools.find((s) => s.id === schoolId);
   const visibleStudents = students.filter((s) => {
     const matchesSchool = schoolId === "all" || s.school_id === schoolId;
@@ -190,6 +196,7 @@ function OverallReport() {
       );
     return matchesSchool && matchesClass && matchesSearch;
   });
+  const selectedStudent = visibleStudents.find((s) => s.id === studentId) ?? visibleStudents[0];
 
   const reports = useMemo(() => buildSchoolReports(data ?? { schools: [], students: [] }), [data]);
   const classReports = useMemo(() => buildClassReports(visibleStudents), [visibleStudents]);
@@ -319,6 +326,7 @@ function OverallReport() {
           value={schoolId}
           onValueChange={(value) => {
             setSchoolId(value);
+            setClassKey("all");
             setStudentId("");
           }}
         >
@@ -368,7 +376,7 @@ function OverallReport() {
       </Card>
 
       {mode === "student" && (
-        <Card className="border-border/60 p-4">
+        <Card className="border-border/60 p-4 shadow-soft">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -388,6 +396,33 @@ function OverallReport() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {visibleStudents.length === 0 ? (
+              <p className="col-span-full rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                No students match the selected school, class, or search.
+              </p>
+            ) : (
+              visibleStudents.map((student) => (
+                <button
+                  key={student.id}
+                  type="button"
+                  onClick={() => setStudentId(student.id)}
+                  className={`rounded-xl border p-4 text-left transition hover:-translate-y-0.5 hover:border-primary hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${selectedStudent?.id === student.id ? "border-primary bg-primary/10 shadow-soft" : "border-border/60 bg-card"}`}
+                >
+                  <p className="font-semibold">{student.name}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {student.student_code} · Roll {student.roll_number}
+                  </p>
+                  <div className="mt-3 flex items-center justify-between text-xs">
+                    <span>
+                      Class {student.class} · {student.division}
+                    </span>
+                    <span className="font-semibold text-primary">Open marksheet →</span>
+                  </div>
+                </button>
+              ))
+            )}
           </div>
         </Card>
       )}
