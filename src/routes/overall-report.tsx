@@ -165,6 +165,7 @@ function OverallReport() {
   const [schoolId, setSchoolId] = useState("all");
   const [classKey, setClassKey] = useState("all");
   const [studentId, setStudentId] = useState("");
+  const [studentPreviewOpen, setStudentPreviewOpen] = useState(false);
   const [search, setSearch] = useState("");
   const { data, isLoading, error } = useQuery({
     queryKey: ["overall-report-data"],
@@ -328,6 +329,7 @@ function OverallReport() {
             setSchoolId(value);
             setClassKey("all");
             setStudentId("");
+            setStudentPreviewOpen(false);
           }}
         >
           <SelectTrigger>
@@ -384,7 +386,13 @@ function OverallReport() {
               </p>
               <p className="font-semibold">{selectedStudent?.name ?? "Select a student"}</p>
             </div>
-            <Select value={selectedStudent?.id ?? ""} onValueChange={setStudentId}>
+            <Select
+              value={selectedStudent?.id ?? ""}
+              onValueChange={(value) => {
+                setStudentId(value);
+                setStudentPreviewOpen(true);
+              }}
+            >
               <SelectTrigger className="w-full sm:w-80">
                 <SelectValue placeholder="Choose student" />
               </SelectTrigger>
@@ -407,7 +415,10 @@ function OverallReport() {
                 <button
                   key={student.id}
                   type="button"
-                  onClick={() => setStudentId(student.id)}
+                  onClick={() => {
+                    setStudentId(student.id);
+                    setStudentPreviewOpen(true);
+                  }}
                   className={`rounded-xl border p-4 text-left transition hover:-translate-y-0.5 hover:border-primary hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${selectedStudent?.id === student.id ? "border-primary bg-primary/10 shadow-soft" : "border-border/60 bg-card"}`}
                 >
                   <p className="font-semibold">{student.name}</p>
@@ -427,15 +438,28 @@ function OverallReport() {
         </Card>
       )}
 
+      {mode === "student" && selectedStudent && (
+        <Dialog open={studentPreviewOpen} onOpenChange={setStudentPreviewOpen}>
+          <DialogContent className="max-h-[94vh] max-w-6xl overflow-y-auto p-3 sm:p-6">
+            <DialogHeader className="sr-only">
+              <DialogTitle>{selectedStudent.name} performance marksheet</DialogTitle>
+              <DialogDescription>Student performance preview and PDF download.</DialogDescription>
+            </DialogHeader>
+            <StudentPreview
+              student={selectedStudent}
+              allStudents={students}
+              onDownloadPdf={() => downloadPdf("Student Performance Report", buildReport())}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
       <ReportPreview
         mode={mode}
         reports={reports}
         classReports={classReports}
         students={visibleStudents}
         selectedSchool={selectedSchool?.name}
-        selectedStudent={selectedStudent}
-        allStudents={students}
-        onDownloadPdf={() => downloadPdf("Student Performance Report", buildReport())}
       />
     </main>
   );
@@ -447,27 +471,14 @@ function ReportPreview({
   classReports,
   students,
   selectedSchool,
-  selectedStudent,
-  allStudents,
-  onDownloadPdf,
 }: {
   mode: Mode;
   reports: ReturnType<typeof buildSchoolReports>;
   classReports: ReturnType<typeof buildClassReports>;
   students: StudentReport[];
   selectedSchool?: string;
-  selectedStudent?: StudentReport;
-  allStudents: StudentReport[];
-  onDownloadPdf: () => void;
 }) {
-  if (mode === "student")
-    return (
-      <StudentPreview
-        student={selectedStudent}
-        allStudents={allStudents}
-        onDownloadPdf={onDownloadPdf}
-      />
-    );
+  if (mode === "student") return null;
   if (mode === "school")
     return (
       <PreviewTable
