@@ -27,7 +27,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/integrations/supabase/client";
 import { getAccessToken } from "@/lib/app-access";
 import { useAuth } from "@/lib/auth";
 import {
@@ -43,6 +42,7 @@ import {
 } from "@/lib/access-control";
 import {
   deleteUser,
+  listAssignableSchools,
   listUsers,
   resetUserPassword,
   saveUser,
@@ -119,12 +119,9 @@ function UsersPage() {
   });
 
   const schoolsQ = useQuery({
-    queryKey: ["schools-lite"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("schools").select("id,name").order("name");
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryKey: ["schools-lite", getAccessToken()],
+    queryFn: () => listAssignableSchools({ data: { token: getAccessToken() } }),
+    enabled: ready && can("users", "view"),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -185,11 +182,8 @@ function UsersPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const schools = schoolsQ.data ?? [];
-  const schoolName = useMemo(
-    () => new Map(schools.map((s) => [s.id, s.name])),
-    [schools],
-  );
+  const schools = useMemo(() => schoolsQ.data ?? [], [schoolsQ.data]);
+  const schoolName = useMemo(() => new Map(schools.map((s) => [s.id, s.name])), [schools]);
 
   const startAdd = () => {
     setForm(emptyForm());
@@ -299,17 +293,29 @@ function UsersPage() {
                   <Switch
                     checked={u.is_active}
                     onCheckedChange={(v) => toggleActiveM.mutate({ id: u.id, isActive: v })}
+                    disabled={!isAdmin && !can("users", "edit")}
                     aria-label="Account enabled"
                   />
-                  <Button variant="outline" size="sm" onClick={() => startEdit(u)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => startEdit(u)}
+                    disabled={!canManage}
+                  >
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => setPwTarget(u)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPwTarget(u)}
+                    disabled={!isAdmin && !can("users", "edit")}
+                  >
                     <KeyRound className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled={!isAdmin && !can("users", "delete")}
                     onClick={() => {
                       if (confirm(`Remove ${u.full_name || u.username}?`)) deleteM.mutate(u.id);
                     }}
@@ -395,6 +401,7 @@ function UsersPage() {
                 <Label>Role</Label>
                 <Select
                   value={form.role}
+                  disabled={!isAdmin}
                   onValueChange={(v) =>
                     setForm({
                       ...form,
@@ -418,8 +425,7 @@ function UsersPage() {
                   id="u-pw"
                   type="text"
                   value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
                   placeholder="At least 6 characters"
                 />
               </div>
@@ -519,7 +525,7 @@ function UsersPage() {
                 }
                 saveM.mutate();
               }}
-              disabled={saveM.isPending}
+              disabled={saveM.isPending || !canManage}
               className="gap-1.5"
             >
               <Plus className="h-4 w-4" />
@@ -550,10 +556,7 @@ function UsersPage() {
             <Button variant="outline" onClick={() => setPwTarget(null)}>
               Cancel
             </Button>
-            <Button
-              disabled={newPw.length < 6 || resetM.isPending}
-              onClick={() => resetM.mutate()}
-            >
+            <Button disabled={newPw.length < 6 || resetM.isPending} onClick={() => resetM.mutate()}>
               {resetM.isPending ? "Saving..." : "Update password"}
             </Button>
           </DialogFooter>

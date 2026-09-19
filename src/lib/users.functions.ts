@@ -68,10 +68,8 @@ export const appLogin = createServerFn({ method: "POST" })
     // Bootstrap: the very first sign-in creates the admin account from the
     // original shared operator credentials.
     if (!row) {
-      const { count } = await db
-        .from("app_users")
-        .select("id", { count: "exact", head: true });
-      const legacyPassword = process.env['APP_ACCESS_PASSWORD'] ?? "123456";
+      const { count } = await db.from("app_users").select("id", { count: "exact", head: true });
+      const legacyPassword = process.env["APP_ACCESS_PASSWORD"] ?? "123456";
       if (
         (count ?? 0) === 0 &&
         username === LEGACY_ADMIN_USERNAME &&
@@ -138,6 +136,16 @@ export const listUsers = createServerFn({ method: "POST" })
       .order("created_at", { ascending: true });
     if (error) throw new Error("Failed to load accounts");
     return (rows ?? []) as AppUserRow[];
+  });
+
+export const listAssignableSchools = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => tokenSchema.parse(data))
+  .handler(async ({ data }): Promise<{ id: string; name: string }[]> => {
+    await requirePermission(data.token, "users", "view");
+    const db = await adminDb();
+    const { data: rows, error } = await db.from("schools").select("id,name").order("name");
+    if (error) throw new Error("Failed to load schools for access assignment");
+    return rows ?? [];
   });
 
 const upsertSchema = tokenSchema.extend({
@@ -233,9 +241,7 @@ export const setUserActive = createServerFn({ method: "POST" })
 
 export const resetUserPassword = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
-    tokenSchema
-      .extend({ id: z.string().uuid(), password: z.string().min(6).max(200) })
-      .parse(data),
+    tokenSchema.extend({ id: z.string().uuid(), password: z.string().min(6).max(200) }).parse(data),
   )
   .handler(async ({ data }) => {
     await requirePermission(data.token, "users", "edit");
