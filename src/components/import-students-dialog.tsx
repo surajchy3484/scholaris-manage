@@ -170,12 +170,11 @@ export function ImportStudentsDialog({
                 </TableHeader>
                 <TableBody>
                   {rows.map((r) => (
-                    <TableRow
-                      key={r._row}
-                      className={r._errors.length ? "bg-destructive/5" : ""}
-                    >
+                    <TableRow key={r._row} className={r._errors.length ? "bg-destructive/5" : ""}>
                       <TableCell className="text-xs text-muted-foreground">{r._row}</TableCell>
-                      <TableCell>{r.name || <span className="text-muted-foreground">—</span>}</TableCell>
+                      <TableCell>
+                        {r.name || <span className="text-muted-foreground">—</span>}
+                      </TableCell>
                       <TableCell>{r.class || "—"}</TableCell>
                       <TableCell>{r.division || "—"}</TableCell>
                       <TableCell>{r.roll_number || "—"}</TableCell>

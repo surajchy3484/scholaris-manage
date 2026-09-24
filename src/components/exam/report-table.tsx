@@ -1,5 +1,14 @@
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, FileText, Printer, Search } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FileText,
+  Printer,
+  Search,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -40,9 +49,7 @@ export function ReportTable({
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const base = needle
-      ? rows.filter((r) =>
-          Object.values(r).some((v) => String(v).toLowerCase().includes(needle)),
-        )
+      ? rows.filter((r) => Object.values(r).some((v) => String(v).toLowerCase().includes(needle)))
       : rows;
     if (!sortCol) return base;
     return [...base].sort((a, b) => {
@@ -96,7 +103,8 @@ export function ReportTable({
             variant="outline"
             size="sm"
             onClick={() => {
-              if (!printRows(title, filtered)) toast.error("Allow pop-ups to print or save as PDF.");
+              if (!printRows(title, filtered))
+                toast.error("Allow pop-ups to print or save as PDF.");
             }}
           >
             <Printer className="h-4 w-4" /> Print / PDF
@@ -130,7 +138,10 @@ export function ReportTable({
           <TableBody>
             {slice.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={Math.max(1, cols.length)} className="py-10 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={Math.max(1, cols.length)}
+                  className="py-10 text-center text-muted-foreground"
+                >
                   No records found.
                 </TableCell>
               </TableRow>

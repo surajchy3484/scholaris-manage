@@ -122,9 +122,7 @@ function makeWorkbookWithHyperlinks(shaped: ReturnType<typeof shapeRows>) {
         // Normalize any Drive URL variant to a link that opens the exact
         // image in a new browser tab. Non-Drive https URLs pass through.
         const fileId = extractDriveFileId(raw);
-        const target = fileId
-          ? `https://lh3.googleusercontent.com/d/${fileId}=w1600`
-          : raw;
+        const target = fileId ? `https://lh3.googleusercontent.com/d/${fileId}=w1600` : raw;
         ws[addr] = {
           t: "s",
           v: "View Image",

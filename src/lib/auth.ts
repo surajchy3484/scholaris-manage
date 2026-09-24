@@ -96,7 +96,6 @@ export function useAuth() {
     /** Older sessions predate profiles, so treat them as full admins. */
     can: (module: AppModule, action: AppAction = "view") =>
       profile ? canDo(profile, module, action) : !!session,
-    canSeeSchool: (schoolId: string) =>
-      profile ? canSeeSchoolFor(profile, schoolId) : !!session,
+    canSeeSchool: (schoolId: string) => (profile ? canSeeSchoolFor(profile, schoolId) : !!session),
   };
 }

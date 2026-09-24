@@ -83,9 +83,7 @@ export function DataGrid<T>({
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const base = needle
-      ? rows.filter((r) =>
-          columns.some((c) => String(c.value(r)).toLowerCase().includes(needle)),
-        )
+      ? rows.filter((r) => columns.some((c) => String(c.value(r)).toLowerCase().includes(needle)))
       : rows;
     const col = columns.find((c) => c.key === sortKey);
     if (!col) return base;
@@ -119,8 +117,7 @@ export function DataGrid<T>({
     setPage(0);
   };
 
-  const allOnPageSelected =
-    slice.length > 0 && slice.every((r) => selected.includes(getId(r)));
+  const allOnPageSelected = slice.length > 0 && slice.every((r) => selected.includes(getId(r)));
 
   return (
     <Card className="overflow-hidden border-border/60 p-0 shadow-soft">
@@ -128,9 +125,7 @@ export function DataGrid<T>({
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h3 className="truncate font-display text-lg font-semibold">{title}</h3>
-            {description && (
-              <p className="truncate text-xs text-muted-foreground">{description}</p>
-            )}
+            {description && <p className="truncate text-xs text-muted-foreground">{description}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-2">{toolbar}</div>
         </div>
@@ -157,7 +152,11 @@ export function DataGrid<T>({
             >
               <Download className="h-4 w-4" /> Excel
             </Button>
-            <Button variant="outline" size="sm" onClick={() => exportRowsToCsv(filename, exportRows)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportRowsToCsv(filename, exportRows)}
+            >
               <FileText className="h-4 w-4" /> CSV
             </Button>
             <Button

@@ -38,7 +38,8 @@ export default defineTool({
     if (schoolId) query = query.eq("school_id", schoolId);
     if (input.class) query = query.eq("class", input.class);
     if (input.division) query = query.eq("division", input.division);
-    if (input.search) query = query.or(`name.ilike.%${input.search}%,roll_number.ilike.%${input.search}%`);
+    if (input.search)
+      query = query.or(`name.ilike.%${input.search}%,roll_number.ilike.%${input.search}%`);
 
     const { data, error } = await query;
     if (error) return { content: [{ type: "text", text: error.message }], isError: true };

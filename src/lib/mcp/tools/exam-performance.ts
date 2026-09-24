@@ -15,7 +15,10 @@ export default defineTool({
   handler: async (input, ctx) => {
     const supabase = await requireApprovedOperator(ctx);
 
-    let query = supabase.from("exam_scores").select("exam_type, score, academic_year, school_id").limit(20000);
+    let query = supabase
+      .from("exam_scores")
+      .select("exam_type, score, academic_year, school_id")
+      .limit(20000);
     if (input.school_code) {
       const { data: school } = await supabase
         .from("schools")

@@ -6,7 +6,9 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".output", ".vinxi"] },
+  {
+    ignores: ["dist", ".output", ".vinxi"],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -37,4 +39,12 @@ export default tseslint.config(
     },
   },
   eslintPluginPrettier,
+  {
+    files: ["src/routes/**/*.ts", "src/routes/**/*.tsx"],
+    rules: {
+      // TanStack's generated MCP routes are rewritten by the dev plugin and
+      // are not stable Prettier inputs. Keep their TypeScript/React checks.
+      "prettier/prettier": "off",
+    },
+  },
 );

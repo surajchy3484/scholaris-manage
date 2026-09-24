@@ -111,9 +111,7 @@ export function AssessmentDialog({
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Failed to save assessment";
           throw new Error(
-            msg === "DUPLICATE"
-              ? `Assessment ID "${payload.assessment_id}" already exists.`
-              : msg,
+            msg === "DUPLICATE" ? `Assessment ID "${payload.assessment_id}" already exists.` : msg,
           );
         }
       }

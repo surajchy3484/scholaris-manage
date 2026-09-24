@@ -21,21 +21,11 @@ import { uploadPhotoToDrive } from "@/lib/drive.functions";
 import { ATTENDANCE_TYPE, saveScore, type StudentReport } from "@/lib/exam";
 
 type Mode =
-  | { mode: "add"; schoolId: string; schoolCode: string }
-  | { mode: "edit"; student: StudentReport };
+  { mode: "add"; schoolId: string; schoolCode: string } | { mode: "edit"; student: StudentReport };
 
 type Errors = Partial<
   Record<
-    | "code"
-    | "name"
-    | "class"
-    | "division"
-    | "roll"
-    | "attendance"
-    | "ica"
-    | "mca"
-    | "fca"
-    | "date",
+    "code" | "name" | "class" | "division" | "roll" | "attendance" | "ica" | "mca" | "fca" | "date",
     string
   >
 >;
@@ -113,11 +103,7 @@ export function ExamStudentDialog({
     if (!cls.trim()) e.class = "Class is required.";
     if (!division.trim()) e.division = "Division is required.";
     if (!roll.trim()) e.roll = "Roll number is required.";
-    const rangeCheck = (
-      raw: string,
-      key: "attendance" | "ica" | "mca" | "fca",
-      label: string,
-    ) => {
+    const rangeCheck = (raw: string, key: "attendance" | "ica" | "mca" | "fca", label: string) => {
       const n = numOrNull(raw);
       if (n === null) return;
       if (Number.isNaN(n)) e[key] = `${label} must be a number.`;
@@ -148,7 +134,8 @@ export function ExamStudentDialog({
       if (rest.mode === "edit") dupQ = dupQ.neq("id", rest.student.id);
       const { data: dupes, error: dupErr } = await dupQ.limit(1);
       if (dupErr) throw dupErr;
-      if (dupes && dupes.length > 0) throw new Error(`Student ID "${values.student_code}" already exists.`);
+      if (dupes && dupes.length > 0)
+        throw new Error(`Student ID "${values.student_code}" already exists.`);
 
       let rollQ = supabase
         .from("students")
@@ -161,7 +148,9 @@ export function ExamStudentDialog({
       const { data: rollDupes, error: rollErr } = await rollQ.limit(1);
       if (rollErr) throw rollErr;
       if (rollDupes && rollDupes.length > 0)
-        throw new Error(`Roll number "${values.roll_number}" already exists in that class/division.`);
+        throw new Error(
+          `Roll number "${values.roll_number}" already exists in that class/division.`,
+        );
 
       let photoUrl: string | null = photo;
       if (photo && photo.startsWith("data:")) {
@@ -170,7 +159,9 @@ export function ExamStudentDialog({
         try {
           photoUrl = (await uploadPhoto({ data: { dataUrl: photo, filename } })).url;
         } catch (err) {
-          throw new Error(`Photo upload failed: ${err instanceof Error ? err.message : String(err)}`);
+          throw new Error(
+            `Photo upload failed: ${err instanceof Error ? err.message : String(err)}`,
+          );
         }
       }
 
@@ -234,8 +225,8 @@ export function ExamStudentDialog({
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit student" : "Add student"}</DialogTitle>
           <DialogDescription>
-            Attendance, ICA, MCA and FCA accept values between 0 and 100. Leave a score blank if
-            not recorded.
+            Attendance, ICA, MCA and FCA accept values between 0 and 100. Leave a score blank if not
+            recorded.
           </DialogDescription>
         </DialogHeader>
 
@@ -244,7 +235,11 @@ export function ExamStudentDialog({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Student ID" error={errors.code}>
-              <Input value={code} onChange={(e) => setCode(e.target.value)} className="font-mono text-xs" />
+              <Input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className="font-mono text-xs"
+              />
             </Field>
             <Field label="Student Name" error={errors.name}>
               <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
@@ -253,7 +248,11 @@ export function ExamStudentDialog({
               <Input value={cls} onChange={(e) => setCls(e.target.value)} placeholder="e.g. 5" />
             </Field>
             <Field label="Division" error={errors.division}>
-              <Input value={division} onChange={(e) => setDivision(e.target.value)} placeholder="A" />
+              <Input
+                value={division}
+                onChange={(e) => setDivision(e.target.value)}
+                placeholder="A"
+              />
             </Field>
             <Field label="Roll Number" error={errors.roll}>
               <Input value={roll} onChange={(e) => setRoll(e.target.value)} />

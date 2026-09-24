@@ -20,13 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
-export function AttendancePanel({
-  schoolId,
-  students,
-}: {
-  schoolId: string;
-  students: Student[];
-}) {
+export function AttendancePanel({ schoolId, students }: { schoolId: string; students: Student[] }) {
   const qc = useQueryClient();
   const [cls, setCls] = useState<string>("all");
   const [division, setDivision] = useState<string>("all");

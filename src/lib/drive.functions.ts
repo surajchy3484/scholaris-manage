@@ -56,7 +56,7 @@ async function tryUpload(
 }
 
 export const uploadPhotoToDrive = createServerFn({ method: "POST" })
-  .inputValidator((d: { dataUrl: string; filename: string }) => {
+  .validator((d: { dataUrl: string; filename: string }) => {
     if (!d?.dataUrl || !d?.filename) throw new Error("Missing photo data");
     if (!/^data:image\//.test(d.dataUrl)) throw new Error("Not a valid image data URL");
     return d;
@@ -76,7 +76,7 @@ export const uploadPhotoToDrive = createServerFn({ method: "POST" })
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
 
-    const safeName = data.filename.replace(/[^\w.\-]+/g, "_");
+    const safeName = data.filename.replace(/[^\w.-]+/g, "_");
     const headers = {
       Authorization: `Bearer ${lovableKey}`,
       "X-Connection-Api-Key": connKey,
@@ -119,21 +119,18 @@ export const uploadPhotoToDrive = createServerFn({ method: "POST" })
   });
 
 export const deletePhotoFromDrive = createServerFn({ method: "POST" })
-  .inputValidator((d: { fileId: string }) => d)
+  .validator((d: { fileId: string }) => d)
   .handler(async ({ data }) => {
     const lovableKey = process.env.LOVABLE_API_KEY;
     const connKey = process.env.GOOGLE_DRIVE_API_KEY;
     if (!lovableKey || !connKey) return { ok: false };
-    const res = await fetch(
-      `${GATEWAY}/drive/v3/files/${data.fileId}?supportsAllDrives=true`,
-      {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${lovableKey}`,
-          "X-Connection-Api-Key": connKey,
-        },
+    const res = await fetch(`${GATEWAY}/drive/v3/files/${data.fileId}?supportsAllDrives=true`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${lovableKey}`,
+        "X-Connection-Api-Key": connKey,
       },
-    );
+    });
     return { ok: res.ok };
   });
 

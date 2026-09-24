@@ -133,7 +133,8 @@ function QuestionsPage() {
 
   const copyQuestions = useMutation({
     mutationFn: async () => {
-      if (!destination || destination === assessment) throw new Error("Choose a different destination assessment.");
+      if (!destination || destination === assessment)
+        throw new Error("Choose a different destination assessment.");
       const selectedQuestions = (list.data ?? []).filter((q) => selected.includes(q.id));
       const destinationRows = await fetchQuestions(destination);
       const existing = new Set(destinationRows.map((q) => q.question_no));
@@ -143,7 +144,8 @@ function QuestionsPage() {
           ...q,
           assessment_id: destination,
         }));
-      if (payload.length === 0) throw new Error("All selected question numbers already exist in the destination.");
+      if (payload.length === 0)
+        throw new Error("All selected question numbers already exist in the destination.");
       await insertRows("questions", payload);
       return { copied: payload.length, skipped: selectedQuestions.length - payload.length };
     },
@@ -151,7 +153,9 @@ function QuestionsPage() {
       qc.invalidateQueries({ queryKey: ["questions"] });
       setCopyOpen(false);
       setSelected([]);
-      toast.success(`${copied} question(s) copied${skipped ? `; ${skipped} duplicate(s) skipped` : ""}.`);
+      toast.success(
+        `${copied} question(s) copied${skipped ? `; ${skipped} duplicate(s) skipped` : ""}.`,
+      );
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -164,7 +168,9 @@ function QuestionsPage() {
         value: (r) => r.assessment_id,
         className: "font-mono text-xs",
         render: (r) => {
-          const assessmentInfo = (assessments.data ?? []).find((a) => a.assessment_id === r.assessment_id);
+          const assessmentInfo = (assessments.data ?? []).find(
+            (a) => a.assessment_id === r.assessment_id,
+          );
           return (
             <HoverCard openDelay={120} closeDelay={80}>
               <HoverCardTrigger asChild>
@@ -178,8 +184,12 @@ function QuestionsPage() {
               </HoverCardTrigger>
               <HoverCardContent align="start" className="w-[340px] overflow-hidden p-0">
                 <div className="border-b border-border/60 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-4 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Assessment details</p>
-                  <p className="mt-1 font-mono text-base font-bold text-foreground">{r.assessment_id}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
+                    Assessment details
+                  </p>
+                  <p className="mt-1 font-mono text-base font-bold text-foreground">
+                    {r.assessment_id}
+                  </p>
                   <p className="mt-0.5 truncate text-sm font-medium text-muted-foreground">
                     {assessmentInfo?.name ?? "Assessment information unavailable"}
                   </p>
@@ -447,12 +457,16 @@ function QuestionsPage() {
         }}
       />
 
-      <AlertDialog open={copyOpen} onOpenChange={(open) => !copyQuestions.isPending && setCopyOpen(open)}>
+      <AlertDialog
+        open={copyOpen}
+        onOpenChange={(open) => !copyQuestions.isPending && setCopyOpen(open)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Copy {selected.length} question(s)?</AlertDialogTitle>
             <AlertDialogDescription>
-              From {assessment} to the selected destination. Duplicate question numbers are skipped by default.
+              From {assessment} to the selected destination. Duplicate question numbers are skipped
+              by default.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Select value={destination} onValueChange={setDestination}>
@@ -471,7 +485,10 @@ function QuestionsPage() {
           </Select>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction disabled={!destination || copyQuestions.isPending} onClick={() => copyQuestions.mutate()}>
+            <AlertDialogAction
+              disabled={!destination || copyQuestions.isPending}
+              onClick={() => copyQuestions.mutate()}
+            >
               {copyQuestions.isPending ? "Copying..." : "Copy Questions"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -508,7 +525,9 @@ function QuestionsPage() {
 function Detail({ label, value }: { label: string; value?: string | number | null }) {
   return (
     <div className="min-w-0">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-0.5 truncate text-sm font-medium text-foreground">{value || "—"}</p>
     </div>
   );

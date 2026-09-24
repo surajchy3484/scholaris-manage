@@ -66,14 +66,21 @@ export function normalizeStatus(value: string): SessionStatus | null {
 }
 
 export function normalizeUnit(value: string): Unit | null {
-  const v = value.trim().toLowerCase().replace(/\s+/g, "").replace(/^unit-?/, "");
+  const v = value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/^unit-?/, "");
   const match = UNITS.find((u) => u.toLowerCase().endsWith(v));
   return match ?? null;
 }
 
 /** Strips a leading "Class " so sheets and manual entry agree. */
 export function normalizeClass(value: string): string {
-  return value.trim().replace(/^class\s*/i, "").trim();
+  return value
+    .trim()
+    .replace(/^class\s*/i, "")
+    .trim();
 }
 
 export async function fetchSessions(

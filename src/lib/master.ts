@@ -140,13 +140,15 @@ export function calculateClickerMetrics(
 }
 
 /** Competition ranking: 1, 2, 2, 4, grouped by assessment/class/section. */
-export function applyCompetitionRanking<T extends {
-  assessment_id: string | null;
-  class: string | null;
-  section: string | null;
-  score: number;
-  ranking: number | null;
-}>(rows: T[]): T[] {
+export function applyCompetitionRanking<
+  T extends {
+    assessment_id: string | null;
+    class: string | null;
+    section: string | null;
+    score: number;
+    ranking: number | null;
+  },
+>(rows: T[]): T[] {
   const groups = new Map<string, T[]>();
   for (const row of rows) {
     const key = `${row.assessment_id ?? ""}|${row.class ?? ""}|${row.section ?? ""}`;
@@ -231,10 +233,7 @@ export function clickerQuestionColumns(rows: ClickerRecord[]): string[] {
 }
 
 /** Score / correct-rate / ranking recomputed from the answer key of an assessment. */
-export function scoreClickerRows(
-  rows: ClickerRecord[],
-  key: Map<number, string>,
-): ClickerRecord[] {
+export function scoreClickerRows(rows: ClickerRecord[], key: Map<number, string>): ClickerRecord[] {
   if (key.size === 0) return rows;
   const scored = rows.map((r) => {
     let correct = 0;

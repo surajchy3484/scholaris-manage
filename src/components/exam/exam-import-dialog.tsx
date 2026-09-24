@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, Download, Upload } from "lucide-react";
 import { downloadSampleSheet, EXAM_SAMPLE } from "@/lib/sample-templates";
 
-
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -89,7 +88,9 @@ export function ExamImportDialog({
       const code = String(get("student id", "student code", "id") ?? "").trim();
       const name = String(get("student name", "name") ?? "").trim();
       const cls = String(get("class") ?? "").trim();
-      const division = String(get("division", "section") ?? "").trim().toUpperCase();
+      const division = String(get("division", "section") ?? "")
+        .trim()
+        .toUpperCase();
       const roll = String(get("roll no", "roll number", "roll", "rollno") ?? "").trim();
       const photo = String(get("photo", "photo url") ?? "").trim();
 
@@ -167,7 +168,10 @@ export function ExamImportDialog({
         };
         let studentId = byCode.get(code);
         if (studentId) {
-          const { error: uErr } = await supabase.from("students").update(payload).eq("id", studentId);
+          const { error: uErr } = await supabase
+            .from("students")
+            .update(payload)
+            .eq("id", studentId);
           if (uErr) throw uErr;
           updated++;
         } else {
@@ -248,8 +252,6 @@ export function ExamImportDialog({
             </Button>
           </div>
 
-
-
           {rows.length > 0 && (
             <>
               <div className="flex flex-wrap gap-2 text-sm">
@@ -267,13 +269,23 @@ export function ExamImportDialog({
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-muted">
                     <tr>
-                      {["Row", "Student ID", "Name", "Class", "Div", "Roll", "Att", "ICA", "MCA", "FCA", "Issues"].map(
-                        (h) => (
-                          <th key={h} className="px-2 py-2 text-left font-semibold">
-                            {h}
-                          </th>
-                        ),
-                      )}
+                      {[
+                        "Row",
+                        "Student ID",
+                        "Name",
+                        "Class",
+                        "Div",
+                        "Roll",
+                        "Att",
+                        "ICA",
+                        "MCA",
+                        "FCA",
+                        "Issues",
+                      ].map((h) => (
+                        <th key={h} className="px-2 py-2 text-left font-semibold">
+                          {h}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>

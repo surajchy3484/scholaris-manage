@@ -14,6 +14,7 @@ import { Route as AssessmentsRouteImport } from './routes/assessments'
 import { Route as ClickerRouteImport } from './routes/clicker'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as OverallReportRouteImport } from './routes/overall-report'
 import { Route as QuestionsRouteImport } from './routes/questions'
 import { Route as SessionStatusRouteImport } from './routes/session-status'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -50,6 +51,11 @@ const LoginRoute = LoginRouteImport.update({
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OverallReportRoute = OverallReportRouteImport.update({
+  id: '/overall-report',
+  path: '/overall-report',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QuestionsRoute = QuestionsRouteImport.update({
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/overall-report': typeof OverallReportRoute
   '/questions': typeof QuestionsRoute
   '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByTo {
   '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/overall-report': typeof OverallReportRoute
   '/questions': typeof QuestionsRoute
   '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/overall-report': typeof OverallReportRoute
   '/questions': typeof QuestionsRoute
   '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
     | '/clicker'
     | '/login'
     | '/mcp'
+    | '/overall-report'
     | '/questions'
     | '/session-status'
     | '/settings'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/clicker'
     | '/login'
     | '/mcp'
+    | '/overall-report'
     | '/questions'
     | '/session-status'
     | '/settings'
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/clicker'
     | '/login'
     | '/mcp'
+    | '/overall-report'
     | '/questions'
     | '/session-status'
     | '/settings'
@@ -241,6 +253,7 @@ export interface RootRouteChildren {
   ClickerRoute: typeof ClickerRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
+  OverallReportRoute: typeof OverallReportRoute
   QuestionsRoute: typeof QuestionsRoute
   SessionStatusRoute: typeof SessionStatusRoute
   SettingsRoute: typeof SettingsRoute
@@ -290,6 +303,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/overall-report': {
+      id: '/overall-report'
+      path: '/overall-report'
+      fullPath: '/overall-report'
+      preLoaderRoute: typeof OverallReportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/questions': {
@@ -385,6 +405,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClickerRoute: ClickerRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
+  OverallReportRoute: OverallReportRoute,
   QuestionsRoute: QuestionsRoute,
   SessionStatusRoute: SessionStatusRoute,
   SettingsRoute: SettingsRoute,

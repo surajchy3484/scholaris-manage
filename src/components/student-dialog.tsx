@@ -16,7 +16,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PhotoPicker } from "./photo-picker";
 import { nextStudentCode } from "@/lib/student-id";
-import { uploadPhotoToDrive, deletePhotoFromDrive, extractDriveFileId, toDisplayablePhotoUrl } from "@/lib/drive.functions";
+import {
+  uploadPhotoToDrive,
+  deletePhotoFromDrive,
+  extractDriveFileId,
+  toDisplayablePhotoUrl,
+} from "@/lib/drive.functions";
 import type { Student } from "@/lib/types";
 
 type Mode =
@@ -107,9 +112,7 @@ export function StudentDialog({
         const { data: dupes, error: dupErr } = await q;
         if (dupErr) throw dupErr;
         if (dupes && dupes.length > 0) {
-          throw new Error(
-            `Roll number "${rollV}" already exists for Class ${clsV} Div ${divV}.`,
-          );
+          throw new Error(`Roll number "${rollV}" already exists for Class ${clsV} Div ${divV}.`);
         }
       }
 
@@ -227,9 +230,7 @@ export function StudentDialog({
                 if (v) setErrors((prev) => ({ ...prev, photo: undefined }));
               }}
             />
-            {errors.photo && (
-              <p className="mt-1.5 text-xs text-destructive">{errors.photo}</p>
-            )}
+            {errors.photo && <p className="mt-1.5 text-xs text-destructive">{errors.photo}</p>}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -278,11 +279,7 @@ export function StudentDialog({
           )}
         </div>
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={save.isPending}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={save.isPending}>
             Cancel
           </Button>
           <Button onClick={submit} disabled={save.isPending}>
@@ -339,7 +336,6 @@ export function ViewStudentDialog({
                 className="h-full w-full object-cover"
                 referrerPolicy="no-referrer"
               />
-
             ) : (
               <div className="grid h-full w-full place-items-center text-muted-foreground">
                 No Photo

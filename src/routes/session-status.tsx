@@ -39,18 +39,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  SheetImportDialog,
-  pick,
-  type ParsedBase,
-} from "@/components/master/sheet-import-dialog";
+import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
 import { SESSION_SAMPLE } from "@/lib/sample-templates";
 import { exportRowsToExcel } from "@/lib/exam-export";
-import {
-  DIVISION_EXAMPLES,
-  divisionsForClass,
-  fetchSchoolDivisions,
-} from "@/lib/divisions";
+import { DIVISION_EXAMPLES, divisionsForClass, fetchSchoolDivisions } from "@/lib/divisions";
 import {
   UNITS,
   createSessions,
@@ -76,8 +68,7 @@ export const Route = createFileRoute("/session-status")({
       { title: "Session Status — SchoolRise" },
       {
         name: "description",
-        content:
-          "Track and update training session progress by school, unit, class and division.",
+        content: "Track and update training session progress by school, unit, class and division.",
       },
       { property: "og:title", content: "Session Status — SchoolRise" },
       {
@@ -201,8 +192,7 @@ function SessionStatusPage() {
     return names.length ? names : DIVISION_EXAMPLES;
   }, [divisionsQuery.data, klass]);
 
-  const hasConfiguredDivisions =
-    divisionsForClass(divisionsQuery.data ?? [], klass).length > 0;
+  const hasConfiguredDivisions = divisionsForClass(divisionsQuery.data ?? [], klass).length > 0;
 
   useEffect(() => {
     if (!divisionOptions.includes(division)) {
@@ -304,7 +294,9 @@ function SessionStatusPage() {
               </motion.button>
             ))}
             {schoolsQuery.data?.length === 0 && (
-              <p className="text-sm text-muted-foreground">Add a school first from the dashboard.</p>
+              <p className="text-sm text-muted-foreground">
+                Add a school first from the dashboard.
+              </p>
             )}
           </div>
         )}
@@ -413,8 +405,8 @@ function SessionStatusPage() {
         </div>
         {!hasConfiguredDivisions && (
           <p className="text-xs text-muted-foreground">
-            This school has no divisions / batches set up yet — showing examples. Add the real
-            names (e.g. “Batch 1”, “Morning Batch”) by editing the school on the dashboard.
+            This school has no divisions / batches set up yet — showing examples. Add the real names
+            (e.g. “Batch 1”, “Morning Batch”) by editing the school on the dashboard.
           </p>
         )}
       </Card>
@@ -457,7 +449,10 @@ function SessionStatusPage() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
+            >
               <SelectTrigger className="h-9 w-[150px]">
                 <SelectValue />
               </SelectTrigger>
@@ -705,8 +700,7 @@ function AddSessionDialog({
   const [klass, setKlass] = useState(defaultClass ?? "");
 
   const save = useMutation({
-    mutationFn: () =>
-      onSave({ session_name: name.trim(), class: klass, topic: topic.trim() }),
+    mutationFn: () => onSave({ session_name: name.trim(), class: klass, topic: topic.trim() }),
     onSuccess: () => {
       toast.success("Session added for every division of this class");
       setName("");
@@ -755,10 +749,7 @@ function AddSessionDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={save.isPending}>
             Cancel
           </Button>
-          <Button
-            onClick={() => save.mutate()}
-            disabled={!name.trim() || !klass || save.isPending}
-          >
+          <Button onClick={() => save.mutate()} disabled={!name.trim() || !klass || save.isPending}>
             {save.isPending ? "Saving..." : "Save Session"}
           </Button>
         </DialogFooter>

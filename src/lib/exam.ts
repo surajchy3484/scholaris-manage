@@ -1,10 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getAccessToken } from "./app-access";
-import {
-  deleteScoresForStudents,
-  listExamScores,
-  saveExamScore,
-} from "./exam-scores.functions";
+import { deleteScoresForStudents, listExamScores, saveExamScore } from "./exam-scores.functions";
 import { fetchAllRows } from "./fetch-all";
 import type { School, Student } from "./types";
 
@@ -22,12 +18,7 @@ export const EXAM_TYPES = ["ICA", "MCA", "FCA"] as const;
 export type ExamType = (typeof EXAM_TYPES)[number];
 export const ATTENDANCE_TYPE = "ATTENDANCE";
 
-export type PerfStatus =
-  | "Excellent"
-  | "Very Good"
-  | "Good"
-  | "Average"
-  | "Needs Improvement";
+export type PerfStatus = "Excellent" | "Very Good" | "Good" | "Average" | "Needs Improvement";
 
 export function performanceStatus(pct: number): PerfStatus {
   if (pct >= 90) return "Excellent";
@@ -46,12 +37,7 @@ export const STATUS_COLORS: Record<PerfStatus, string> = {
 };
 
 /** Distribution buckets used by the pie chart. */
-export const DISTRIBUTION_BUCKETS = [
-  "Excellent",
-  "Good",
-  "Average",
-  "Needs Improvement",
-] as const;
+export const DISTRIBUTION_BUCKETS = ["Excellent", "Good", "Average", "Needs Improvement"] as const;
 
 export function distributionBucket(pct: number): (typeof DISTRIBUTION_BUCKETS)[number] {
   if (pct >= 90) return "Excellent";
@@ -127,7 +113,6 @@ export async function fetchExamData(): Promise<ExamData> {
   const studentsRes = { data: studentRows };
   const attendanceRes = { data: attendanceRows };
   const scoresRes = { data: scoreRows };
-
 
   const schools = (schoolsRes.data ?? []) as School[];
   const schoolById = new Map(schools.map((s) => [s.id, s]));
@@ -271,7 +256,6 @@ export async function deleteScoresForStudentIds(studentIds: string[]) {
   if (studentIds.length === 0) return;
   await deleteScoresForStudents({ data: { token: getAccessToken(), studentIds } });
 }
-
 
 export const CLASS_OPTIONS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 export const DIVISION_OPTIONS = ["A", "B", "C", "D"];

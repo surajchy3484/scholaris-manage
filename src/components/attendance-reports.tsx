@@ -177,8 +177,8 @@ export function AttendanceReports({
       )}
 
       <p className="text-xs text-muted-foreground">
-        Showing data since {format(from, "PPP")}. Only students with at least one record
-        contribute to averages.
+        Showing data since {format(from, "PPP")}. Only students with at least one record contribute
+        to averages.
       </p>
     </div>
   );

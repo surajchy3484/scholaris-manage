@@ -24,7 +24,5 @@ export function getAccessToken(): string {
   if (typeof window === "undefined") return "";
   // Sessions created before this token existed still hold a valid app login,
   // so fall back to the shared default until the next sign-in refreshes it.
-  return (
-    localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY) ?? "123456"
-  );
+  return localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY) ?? "123456";
 }

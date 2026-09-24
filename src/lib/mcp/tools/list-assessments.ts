@@ -5,7 +5,8 @@ import { jsonResult, requireApprovedOperator } from "../access";
 export default defineTool({
   name: "list_assessments",
   title: "List assessments",
-  description: "List assessments from the Assessment Master, optionally filtered by school name or status.",
+  description:
+    "List assessments from the Assessment Master, optionally filtered by school name or status.",
   inputSchema: {
     school_name: z.string().optional().describe("Partial school name to filter by."),
     status: z.string().optional().describe("Assessment status, e.g. Active or Draft."),

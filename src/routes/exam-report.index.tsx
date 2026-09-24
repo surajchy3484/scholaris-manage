@@ -82,13 +82,12 @@ function ExamReportDashboard() {
 
   const { data, isLoading } = useQuery({ queryKey: ["exam-data"], queryFn: fetchExamData });
 
-  const reports = useMemo(
-    () => (data ? buildSchoolReports(data) : []),
-    [data],
-  );
+  const reports = useMemo(() => (data ? buildSchoolReports(data) : []), [data]);
 
   const totals = useMemo(() => {
-    const ranked = [...reports].filter((r) => r.students > 0).sort((a, b) => b.performance - a.performance);
+    const ranked = [...reports]
+      .filter((r) => r.students > 0)
+      .sort((a, b) => b.performance - a.performance);
     return {
       schools: reports.length,
       students: data?.students.length ?? 0,
@@ -115,7 +114,8 @@ function ExamReportDashboard() {
 
   const distribution = DISTRIBUTION_BUCKETS.map((bucket) => ({
     name: bucket,
-    value: (data?.students ?? []).filter((s) => distributionBucket(s.performance) === bucket).length,
+    value: (data?.students ?? []).filter((s) => distributionBucket(s.performance) === bucket)
+      .length,
   })).filter((d) => d.value > 0);
 
   const chartData = reports.map((r) => ({
@@ -150,8 +150,20 @@ function ExamReportDashboard() {
       </motion.div>
 
       <section className="grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={SchoolIcon} label="Total Schools" value={totals.schools} tone="primary" delay={0} />
-        <StatCard icon={Users} label="Total Students" value={totals.students} tone="violet" delay={0.05} />
+        <StatCard
+          icon={SchoolIcon}
+          label="Total Schools"
+          value={totals.schools}
+          tone="primary"
+          delay={0}
+        />
+        <StatCard
+          icon={Users}
+          label="Total Students"
+          value={totals.students}
+          tone="violet"
+          delay={0.05}
+        />
         <StatCard
           icon={CalendarCheck}
           label="Average Attendance"
@@ -159,9 +171,27 @@ function ExamReportDashboard() {
           tone="cyan"
           delay={0.1}
         />
-        <StatCard icon={BarChart3} label="Overall ICA Average" value={totals.ica} tone="success" delay={0.15} />
-        <StatCard icon={GraduationCap} label="Overall MCA Average" value={totals.mca} tone="sunset" delay={0.2} />
-        <StatCard icon={ClipboardCheck} label="Overall FCA Average" value={totals.fca} tone="cyan" delay={0.22} />
+        <StatCard
+          icon={BarChart3}
+          label="Overall ICA Average"
+          value={totals.ica}
+          tone="success"
+          delay={0.15}
+        />
+        <StatCard
+          icon={GraduationCap}
+          label="Overall MCA Average"
+          value={totals.mca}
+          tone="sunset"
+          delay={0.2}
+        />
+        <StatCard
+          icon={ClipboardCheck}
+          label="Overall FCA Average"
+          value={totals.fca}
+          tone="cyan"
+          delay={0.22}
+        />
         <StatCard
           icon={TrendingUp}
           label="Best Performing School"
@@ -211,9 +241,7 @@ function ExamReportDashboard() {
         <Button
           className="shadow-elegant"
           disabled={selected === "all"}
-          onClick={() =>
-            navigate({ to: "/exam-report/$schoolId", params: { schoolId: selected } })
-          }
+          onClick={() => navigate({ to: "/exam-report/$schoolId", params: { schoolId: selected } })}
         >
           Submit
         </Button>
@@ -234,7 +262,8 @@ function ExamReportDashboard() {
         }
         onRowClick={(row) => {
           const match = reports.find((r) => r.school.name === row["School Name"]);
-          if (match) navigate({ to: "/exam-report/$schoolId", params: { schoolId: match.school.id } });
+          if (match)
+            navigate({ to: "/exam-report/$schoolId", params: { schoolId: match.school.id } });
         }}
       />
 
@@ -255,7 +284,12 @@ function ExamReportDashboard() {
             <XAxis dataKey="name" fontSize={11} />
             <YAxis fontSize={11} domain={[0, 100]} />
             <Tooltip />
-            <Bar dataKey="attendance" name="Attendance %" fill={CHART_COLORS[1]} radius={[6, 6, 0, 0]} />
+            <Bar
+              dataKey="attendance"
+              name="Attendance %"
+              fill={CHART_COLORS[1]}
+              radius={[6, 6, 0, 0]}
+            />
           </BarChart>
         </ChartCard>
 

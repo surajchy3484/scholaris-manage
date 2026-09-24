@@ -23,7 +23,7 @@ const TOKEN_PREFIX = "st1.";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
 function secret(): string {
-  return process.env['APP_ACCESS_PASSWORD'] ?? "123456";
+  return process.env["APP_ACCESS_PASSWORD"] ?? "123456";
 }
 
 function b64url(bytes: Uint8Array): string {

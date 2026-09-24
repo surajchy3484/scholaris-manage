@@ -272,9 +272,8 @@ function AssessmentsPage() {
 
             const schoolName = pick(row, "School Name", "School", "school_name");
             const school = schoolName
-              ? schoolList.find(
-                  (s) => s.name.trim().toLowerCase() === schoolName.toLowerCase(),
-                ) ?? null
+              ? (schoolList.find((s) => s.name.trim().toLowerCase() === schoolName.toLowerCase()) ??
+                null)
               : null;
             if (schoolName && !school) errors.push("Unknown School Name");
 

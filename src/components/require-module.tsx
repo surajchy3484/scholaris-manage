@@ -5,7 +5,13 @@ import { ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth";
-import { MODULES, MODULE_LABELS, MODULE_ROUTES, type AppAction, type AppModule } from "@/lib/access-control";
+import {
+  MODULES,
+  MODULE_LABELS,
+  MODULE_ROUTES,
+  type AppAction,
+  type AppModule,
+} from "@/lib/access-control";
 
 /**
  * Page-level access guard. Hiding a sidebar link is not enough: someone can
@@ -28,7 +34,6 @@ export function RequireModule({
   // Somewhere they *can* go, so the "Access denied" screen is never a dead end.
   const fallback = MODULES.find((m) => m !== module && can(m)) ?? null;
   const fallbackTo = fallback ? MODULE_ROUTES[fallback] : "/";
-
 
   if (!ready || !isAuthed) return null;
 

@@ -21,7 +21,6 @@ import { refreshProfileFromServer, useAuth } from "@/lib/auth";
 import { setupOffline } from "@/lib/pwa";
 import { BrandName } from "@/components/brand";
 
-
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -82,21 +81,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Dashboard — SchoolRise" },
       {
         name: "description",
-        content:
-          "All your schools in one place.",
+        content: "All your schools in one place.",
       },
       { property: "og:title", content: "Dashboard — SchoolRise" },
       {
         property: "og:description",
-        content:
-          "All your schools in one place.",
+        content: "All your schools in one place.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Dashboard — SchoolRise" },
       { name: "twitter:description", content: "All your schools in one place." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4abcf4b6-0d2b-4d20-98ae-c150d68028f3/id-preview-295903e0--cc90d495-f9b5-4bed-aad1-c4d52efaac77.lovable.app-1783762067691.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4abcf4b6-0d2b-4d20-98ae-c150d68028f3/id-preview-295903e0--cc90d495-f9b5-4bed-aad1-c4d52efaac77.lovable.app-1783762067691.png" },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4abcf4b6-0d2b-4d20-98ae-c150d68028f3/id-preview-295903e0--cc90d495-f9b5-4bed-aad1-c4d52efaac77.lovable.app-1783762067691.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4abcf4b6-0d2b-4d20-98ae-c150d68028f3/id-preview-295903e0--cc90d495-f9b5-4bed-aad1-c4d52efaac77.lovable.app-1783762067691.png",
+      },
     ],
     links: [
       { rel: "manifest", href: "/manifest.webmanifest" },
@@ -165,8 +170,6 @@ function Header() {
   );
 }
 
-
-
 function AuthGate({ children }: { children: ReactNode }) {
   const { isAuthed, ready } = useAuth();
   const router = useRouter();
@@ -228,4 +231,3 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
-

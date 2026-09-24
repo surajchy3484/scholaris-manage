@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { EditSchoolDialog } from "@/components/add-school-dialog";
 
-
 import { supabase } from "@/integrations/supabase/client";
 import type { School, Student, AttendanceRecord } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -68,13 +67,19 @@ function SchoolDetail() {
   const [q, setQ] = useState("");
   const [filterClass, setFilterClass] = useState("all");
   const [filterDiv, setFilterDiv] = useState("all");
-  const [sortBy, setSortBy] = useState<"roll-asc" | "roll-desc" | "name-asc" | "name-desc">("roll-asc");
+  const [sortBy, setSortBy] = useState<"roll-asc" | "roll-desc" | "name-asc" | "name-desc">(
+    "roll-asc",
+  );
   const [editSchoolOpen, setEditSchoolOpen] = useState(false);
 
   const { data: school } = useQuery({
     queryKey: ["school", schoolId],
     queryFn: async (): Promise<School> => {
-      const { data, error } = await supabase.from("schools").select("*").eq("id", schoolId).single();
+      const { data, error } = await supabase
+        .from("schools")
+        .select("*")
+        .eq("id", schoolId)
+        .single();
 
       if (error) throw error;
       if (!data) throw notFound();
@@ -124,7 +129,6 @@ function SchoolDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-
   const classes = useMemo(
     () => Array.from(new Set(students.map((s) => s.class))).sort(),
     [students],
@@ -133,7 +137,9 @@ function SchoolDetail() {
     () =>
       Array.from(
         new Set(
-          students.filter((s) => filterClass === "all" || s.class === filterClass).map((s) => s.division),
+          students
+            .filter((s) => filterClass === "all" || s.class === filterClass)
+            .map((s) => s.division),
         ),
       ).sort(),
     [students, filterClass],
@@ -184,10 +190,7 @@ function SchoolDetail() {
 
   async function handleExport(zipFmt: boolean) {
     if (!school) return;
-    const { data: recs } = await supabase
-      .from("attendance")
-      .select("*")
-      .eq("school_id", schoolId);
+    const { data: recs } = await supabase.from("attendance").select("*").eq("school_id", schoolId);
     const records = (recs ?? []) as AttendanceRecord[];
     const rows = students.map((s) => {
       const own = records.filter((r) => r.student_id === s.id);
@@ -233,11 +236,7 @@ function SchoolDetail() {
       </Button>
 
       {/* School hero */}
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-6"
-      >
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
         <Card className="flex flex-col gap-5 overflow-hidden bg-gradient-to-br from-primary/95 to-primary-glow p-6 text-primary-foreground sm:flex-row sm:items-center">
           <div
             className="relative shrink-0 overflow-hidden rounded-2xl bg-white/15 ring-1 ring-white/20 backdrop-blur-sm"
@@ -274,11 +273,7 @@ function SchoolDetail() {
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setEditSchoolOpen(true)}
-              >
+              <Button size="sm" variant="secondary" onClick={() => setEditSchoolOpen(true)}>
                 <Pencil className="h-4 w-4" />
                 {school.image_url ? "Change Image" : "Add Image"}
               </Button>
@@ -304,7 +299,6 @@ function SchoolDetail() {
         onOpenChange={setEditSchoolOpen}
         onSaved={() => qc.invalidateQueries({ queryKey: ["school", schoolId] })}
       />
-
 
       <Tabs defaultValue="students" className="space-y-4">
         <TabsList className="flex w-full flex-wrap gap-1 bg-muted p-1 sm:w-auto">

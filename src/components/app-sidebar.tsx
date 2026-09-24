@@ -46,12 +46,48 @@ import { BrandName } from "@/components/brand";
 const SCHOLARS_KEY = "scholaris:scholars-menu-open";
 
 const SCHOLARS_ITEMS = [
-  { to: "/", label: "Student Management", icon: Users, module: "students" as AppModule, match: (p: string) => p === "/" || p.startsWith("/schools") },
-  { to: "/exam-report", label: "Reports", icon: BarChart3, module: "exam_report" as AppModule, match: (p: string) => p.startsWith("/exam-report") },
-  { to: "/overall-report", label: "Overall Report", icon: FileText, module: "exam_report" as AppModule, match: (p: string) => p.startsWith("/overall-report") },
-  { to: "/assessments", label: "Assessment Master", icon: ClipboardList, module: "assessments" as AppModule, match: (p: string) => p.startsWith("/assessments") },
-  { to: "/questions", label: "Question Master", icon: HelpCircle, module: "questions" as AppModule, match: (p: string) => p.startsWith("/questions") },
-  { to: "/clicker", label: "Clicker Data", icon: MousePointerClick, module: "clicker" as AppModule, match: (p: string) => p.startsWith("/clicker") },
+  {
+    to: "/",
+    label: "Student Management",
+    icon: Users,
+    module: "students" as AppModule,
+    match: (p: string) => p === "/" || p.startsWith("/schools"),
+  },
+  {
+    to: "/exam-report",
+    label: "Reports",
+    icon: BarChart3,
+    module: "exam_report" as AppModule,
+    match: (p: string) => p.startsWith("/exam-report"),
+  },
+  {
+    to: "/overall-report",
+    label: "Overall Report",
+    icon: FileText,
+    module: "exam_report" as AppModule,
+    match: (p: string) => p.startsWith("/overall-report"),
+  },
+  {
+    to: "/assessments",
+    label: "Assessment Master",
+    icon: ClipboardList,
+    module: "assessments" as AppModule,
+    match: (p: string) => p.startsWith("/assessments"),
+  },
+  {
+    to: "/questions",
+    label: "Question Master",
+    icon: HelpCircle,
+    module: "questions" as AppModule,
+    match: (p: string) => p.startsWith("/questions"),
+  },
+  {
+    to: "/clicker",
+    label: "Clicker Data",
+    icon: MousePointerClick,
+    module: "clicker" as AppModule,
+    match: (p: string) => p.startsWith("/clicker"),
+  },
 ] as const;
 
 /**
@@ -128,87 +164,95 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {can("dashboard") && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === "/"} tooltip="Dashboard">
-                  <Link to="/" onClick={close}>
-                    <LayoutDashboard />
-                    <span>Dashboard</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname === "/"} tooltip="Dashboard">
+                    <Link to="/" onClick={close}>
+                      <LayoutDashboard />
+                      <span>Dashboard</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               )}
 
               {scholarsItems.length > 0 && (
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={toggleScholars}
-                  isActive={scholarsActive && !scholarsOpen}
-                  aria-expanded={scholarsOpen}
-                >
-                  <Users />
-                  <span>Scholars</span>
-                  <ChevronDown
-                    className={`ml-auto transition-transform duration-200 ${scholarsOpen ? "rotate-180" : ""}`}
-                  />
-                </SidebarMenuButton>
-                <div
-                  className={`grid transition-all duration-200 ease-out ${
-                    scholarsOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                  }`}
-                >
-                  <div className="overflow-hidden">
-                    <SidebarMenuSub>
-                      {scholarsItems.map((item) => (
-                        <SidebarMenuSubItem key={item.label}>
-                          <SidebarMenuSubButton asChild isActive={item.match(pathname)}>
-                            <Link to={item.to} onClick={close}>
-                              <item.icon />
-                              <span>{item.label}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={toggleScholars}
+                    isActive={scholarsActive && !scholarsOpen}
+                    aria-expanded={scholarsOpen}
+                  >
+                    <Users />
+                    <span>Scholars</span>
+                    <ChevronDown
+                      className={`ml-auto transition-transform duration-200 ${scholarsOpen ? "rotate-180" : ""}`}
+                    />
+                  </SidebarMenuButton>
+                  <div
+                    className={`grid transition-all duration-200 ease-out ${
+                      scholarsOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                    }`}
+                  >
+                    <div className="overflow-hidden">
+                      <SidebarMenuSub>
+                        {scholarsItems.map((item) => (
+                          <SidebarMenuSubItem key={item.label}>
+                            <SidebarMenuSubButton asChild isActive={item.match(pathname)}>
+                              <Link to={item.to} onClick={close}>
+                                <item.icon />
+                                <span>{item.label}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </div>
                   </div>
-                </div>
-              </SidebarMenuItem>
+                </SidebarMenuItem>
               )}
 
               {can("session_status") && (
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/session-status")}
-                  tooltip="Session Status"
-                >
-                  <Link to="/session-status" onClick={close}>
-                    <CalendarCheck />
-                    <span>Session Status</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith("/session-status")}
+                    tooltip="Session Status"
+                  >
+                    <Link to="/session-status" onClick={close}>
+                      <CalendarCheck />
+                      <span>Session Status</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               )}
 
               {can("users") && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith("/users")} tooltip="User Access">
-                  <Link to="/users" onClick={close}>
-                    <ShieldCheck />
-                    <span>User Access</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith("/users")}
+                    tooltip="User Access"
+                  >
+                    <Link to="/users" onClick={close}>
+                      <ShieldCheck />
+                      <span>User Access</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               )}
 
               {can("settings") && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith("/settings")} tooltip="Settings">
-                  <Link to="/settings" onClick={close}>
-                    <SettingsIcon />
-                    <span>Settings</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith("/settings")}
+                    tooltip="Settings"
+                  >
+                    <Link to="/settings" onClick={close}>
+                      <SettingsIcon />
+                      <span>Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               )}
             </SidebarMenu>
           </SidebarGroupContent>

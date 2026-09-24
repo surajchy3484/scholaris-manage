@@ -23,7 +23,10 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       { title: "Sign in — SchoolRise" },
-      { name: "description", content: "Sign in to SchoolRise to manage your schools and attendance." },
+      {
+        name: "description",
+        content: "Sign in to SchoolRise to manage your schools and attendance.",
+      },
     ],
   }),
   component: LoginPage,
@@ -83,9 +86,7 @@ function LoginPage() {
             <h1 className="font-display text-3xl font-bold tracking-tight">
               <BrandName />
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              School Management &amp; Attendance
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">School Management &amp; Attendance</p>
           </div>
         </motion.div>
 

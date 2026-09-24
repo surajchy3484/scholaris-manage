@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft,
   Download,
-  
   FileSpreadsheet,
   Pencil,
   Plus,
@@ -16,7 +15,16 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -42,12 +50,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExamStudentDialog } from "@/components/exam/exam-student-dialog";
 import { ExamImportDialog } from "@/components/exam/exam-import-dialog";
 import { toDisplayablePhotoUrl } from "@/lib/drive.functions";
@@ -248,14 +251,18 @@ function StudentExamDashboard() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => exportRowsToExcel(filenameBase, exportRows(selection.length ? selection : undefined))}
+            onClick={() =>
+              exportRowsToExcel(filenameBase, exportRows(selection.length ? selection : undefined))
+            }
           >
             <FileSpreadsheet className="h-4 w-4" /> Excel
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => exportRowsToCsv(filenameBase, exportRows(selection.length ? selection : undefined))}
+            onClick={() =>
+              exportRowsToCsv(filenameBase, exportRows(selection.length ? selection : undefined))
+            }
           >
             <Download className="h-4 w-4" /> CSV
           </Button>
@@ -363,7 +370,9 @@ function StudentExamDashboard() {
                   <Metric label="FCA" value={s.fca ?? "—"} />
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
-                  <span>Class {s.class}-{s.division} · Roll {s.roll_number}</span>
+                  <span>
+                    Class {s.class}-{s.division} · Roll {s.roll_number}
+                  </span>
                   <span className="text-right">
                     Enrolled {s.enrollment_date ?? s.created_at.slice(0, 10)}
                   </span>
@@ -449,7 +458,11 @@ function StudentExamDashboard() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete {pendingDelete?.length === 1 ? pendingDelete[0].name : `${pendingDelete?.length} students`}?
+              Delete{" "}
+              {pendingDelete?.length === 1
+                ? pendingDelete[0].name
+                : `${pendingDelete?.length} students`}
+              ?
             </AlertDialogTitle>
             <AlertDialogDescription>
               This permanently removes the student record and all related exam scores. This cannot

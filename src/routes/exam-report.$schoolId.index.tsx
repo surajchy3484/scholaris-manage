@@ -154,8 +154,20 @@ function SchoolExamDashboard() {
       </motion.div>
 
       <section className="grid gap-4 [&>*]:min-w-0 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={SchoolIcon} label="School" value={school.name} hint={school.code} tone="primary" />
-        <StatCard icon={Users} label="Total Students" value={students.length} tone="violet" delay={0.05} />
+        <StatCard
+          icon={SchoolIcon}
+          label="School"
+          value={school.name}
+          hint={school.code}
+          tone="primary"
+        />
+        <StatCard
+          icon={Users}
+          label="Total Students"
+          value={students.length}
+          tone="violet"
+          delay={0.05}
+        />
         <StatCard
           icon={CalendarCheck}
           label="Average Attendance"
@@ -163,9 +175,27 @@ function SchoolExamDashboard() {
           tone="cyan"
           delay={0.1}
         />
-        <StatCard icon={BarChart3} label="ICA Average" value={stats.ica} tone="success" delay={0.15} />
-        <StatCard icon={GraduationCap} label="MCA Average" value={stats.mca} tone="sunset" delay={0.2} />
-        <StatCard icon={ClipboardCheck} label="FCA Average" value={stats.fca} tone="cyan" delay={0.22} />
+        <StatCard
+          icon={BarChart3}
+          label="ICA Average"
+          value={stats.ica}
+          tone="success"
+          delay={0.15}
+        />
+        <StatCard
+          icon={GraduationCap}
+          label="MCA Average"
+          value={stats.mca}
+          tone="sunset"
+          delay={0.2}
+        />
+        <StatCard
+          icon={ClipboardCheck}
+          label="FCA Average"
+          value={stats.fca}
+          tone="cyan"
+          delay={0.22}
+        />
         <StatCard
           icon={TrendingUp}
           label="Best Class"

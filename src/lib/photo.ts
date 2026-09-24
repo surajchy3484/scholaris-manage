@@ -1,5 +1,9 @@
 // Compress an image File/Blob to a small JPEG data URL (~ max side 400px, quality 0.8)
-export async function fileToCompressedDataUrl(file: File | Blob, maxSide = 480, quality = 0.82): Promise<string> {
+export async function fileToCompressedDataUrl(
+  file: File | Blob,
+  maxSide = 480,
+  quality = 0.82,
+): Promise<string> {
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {

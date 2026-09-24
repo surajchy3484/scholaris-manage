@@ -10,7 +10,10 @@ import { z } from "zod";
 import { adminDb as admin, requirePermission } from "./app-access.server";
 import type { AppAction, AppModule } from "./access-control";
 
-const MODULE_FOR: Record<"assessments" | "questions" | "clicker_records" | "assessment_results", AppModule> = {
+const MODULE_FOR: Record<
+  "assessments" | "questions" | "clicker_records" | "assessment_results",
+  AppModule
+> = {
   assessments: "assessments",
   questions: "questions",
   clicker_records: "clicker",
@@ -40,7 +43,10 @@ export const listMasterRows = createServerFn({ method: "POST" })
     const out: Record<string, unknown>[] = [];
     const batch = 1000;
     for (let from = 0; ; from += batch) {
-      let q = db.from(data.table).select("*").range(from, from + batch - 1);
+      let q = db
+        .from(data.table)
+        .select("*")
+        .range(from, from + batch - 1);
       if (data.table === "assessments") q = q.order("created_at", { ascending: false });
       else if (data.table === "questions") q = q.order("question_no");
       else if (data.table === "assessment_results") q = q.order("ranking", { nullsFirst: false });
@@ -72,9 +78,7 @@ export const insertMasterRows = createServerFn({ method: "POST" })
     const db = await admin();
     const { error } = await db.from(data.table).insert(data.rows as never);
     if (error) {
-      throw new Error(
-        error.code === "23505" ? "DUPLICATE" : "Failed to save records",
-      );
+      throw new Error(error.code === "23505" ? "DUPLICATE" : "Failed to save records");
     }
     if (data.table === "clicker_records") {
       for (const row of data.rows) {
@@ -90,7 +94,10 @@ export const insertMasterRows = createServerFn({ method: "POST" })
           .limit(1);
         if (lookupError) throw new Error("Failed to synchronize ICA score");
         if (existing?.[0]?.id) {
-          const { error: syncError } = await db.from("exam_scores").update({ score }).eq("id", existing[0].id);
+          const { error: syncError } = await db
+            .from("exam_scores")
+            .update({ score })
+            .eq("id", existing[0].id);
           if (syncError) throw new Error("Failed to synchronize ICA score");
         } else {
           const { error: syncError } = await db.from("exam_scores").insert({
@@ -122,7 +129,11 @@ export const updateMasterRows = createServerFn({ method: "POST" })
       .update(data.patch as never)
       .in("id", data.ids);
     if (error) throw new Error("Failed to update records");
-    if (data.table === "clicker_records" && data.patch.score !== undefined && data.patch.student_id) {
+    if (
+      data.table === "clicker_records" &&
+      data.patch.score !== undefined &&
+      data.patch.student_id
+    ) {
       const score = Number(data.patch.score);
       const schoolId = typeof data.patch.school_id === "string" ? data.patch.school_id : null;
       if (Number.isFinite(score) && schoolId) {
@@ -134,7 +145,10 @@ export const updateMasterRows = createServerFn({ method: "POST" })
           .limit(1);
         if (lookupError) throw new Error("Failed to synchronize ICA score");
         if (existing?.[0]?.id) {
-          const { error: syncError } = await db.from("exam_scores").update({ score }).eq("id", existing[0].id);
+          const { error: syncError } = await db
+            .from("exam_scores")
+            .update({ score })
+            .eq("id", existing[0].id);
           if (syncError) throw new Error("Failed to synchronize ICA score");
         } else {
           const { error: syncError } = await db.from("exam_scores").insert({

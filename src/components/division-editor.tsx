@@ -23,9 +23,7 @@ export function DivisionEditor({
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
         <Label>Divisions / Batches</Label>
-        <span className="text-xs text-muted-foreground">
-          e.g. A, Batch 1, Morning Batch
-        </span>
+        <span className="text-xs text-muted-foreground">e.g. A, Batch 1, Morning Batch</span>
       </div>
 
       {rows.length === 0 && (

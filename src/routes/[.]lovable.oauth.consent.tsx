@@ -17,9 +17,15 @@ type AuthorizationDetails = {
 };
 
 type OAuthApi = {
-  getAuthorizationDetails: (id: string) => Promise<{ data: AuthorizationDetails | null; error: { message: string } | null }>;
-  approveAuthorization: (id: string) => Promise<{ data: AuthorizationDetails | null; error: { message: string } | null }>;
-  denyAuthorization: (id: string) => Promise<{ data: AuthorizationDetails | null; error: { message: string } | null }>;
+  getAuthorizationDetails: (
+    id: string,
+  ) => Promise<{ data: AuthorizationDetails | null; error: { message: string } | null }>;
+  approveAuthorization: (
+    id: string,
+  ) => Promise<{ data: AuthorizationDetails | null; error: { message: string } | null }>;
+  denyAuthorization: (
+    id: string,
+  ) => Promise<{ data: AuthorizationDetails | null; error: { message: string } | null }>;
 };
 
 const oauth = () => (supabase.auth as unknown as { oauth: OAuthApi }).oauth;
@@ -33,9 +39,15 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
   head: () => ({
     meta: [
       { title: "Authorize access — SchoolRise" },
-      { name: "description", content: "Approve or deny an assistant's request to connect to your SchoolRise account." },
+      {
+        name: "description",
+        content: "Approve or deny an assistant's request to connect to your SchoolRise account.",
+      },
       { property: "og:title", content: "Authorize access — SchoolRise" },
-      { property: "og:description", content: "Approve or deny an assistant's request to connect to your SchoolRise account." },
+      {
+        property: "og:description",
+        content: "Approve or deny an assistant's request to connect to your SchoolRise account.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -117,7 +129,9 @@ function ConsentPage() {
   if (!authorizationId) {
     return (
       <Shell>
-        <p className="text-sm text-muted-foreground">This authorization link is missing its request id.</p>
+        <p className="text-sm text-muted-foreground">
+          This authorization link is missing its request id.
+        </p>
       </Shell>
     );
   }
@@ -140,7 +154,13 @@ function ConsentPage() {
         <form onSubmit={signIn} className="mt-5 space-y-3 text-left">
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="password">Password</Label>
@@ -152,7 +172,11 @@ function ConsentPage() {
               required
             />
           </div>
-          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           <Button type="submit" className="w-full" disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}
           </Button>
@@ -174,9 +198,15 @@ function ConsentPage() {
         Tools still refuse requests from accounts that are not on the approved operator list.
       </p>
       {details?.redirect_uri && (
-        <p className="mt-3 break-all text-xs text-muted-foreground">Redirects to {details.redirect_uri}</p>
+        <p className="mt-3 break-all text-xs text-muted-foreground">
+          Redirects to {details.redirect_uri}
+        </p>
       )}
-      {error && <p role="alert" className="mt-3 text-sm text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-3 text-sm text-destructive">
+          {error}
+        </p>
+      )}
       <div className="mt-6 flex gap-2">
         <Button className="flex-1" disabled={busy} onClick={() => decide(true)}>
           Approve

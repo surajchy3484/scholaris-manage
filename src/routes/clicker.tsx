@@ -105,11 +105,11 @@ function resolveAssessmentId(
   );
   if (matches.length === 0) return null;
   // Prefer an exact section match, then the most recently created assessment.
-  return [...matches]
-    .sort((a, b) => {
-      const sectionScore = (x: typeof a) => (row.section && sameValue(x.section, row.section) ? 1 : 0);
-      return sectionScore(b) - sectionScore(a) || b.created_at.localeCompare(a.created_at);
-    })[0].assessment_id;
+  return [...matches].sort((a, b) => {
+    const sectionScore = (x: typeof a) =>
+      row.section && sameValue(x.section, row.section) ? 1 : 0;
+    return sectionScore(b) - sectionScore(a) || b.created_at.localeCompare(a.created_at);
+  })[0].assessment_id;
 }
 
 /** Answer cell that supports inline edit, keyboard save/cancel and undo. */
@@ -195,7 +195,9 @@ function ClickerPage() {
     enabled: !!assessments.data,
     queryFn: async () => {
       const entries = await Promise.all(
-        (assessments.data ?? []).map(async (a) => [a.assessment_id, await fetchQuestions(a.assessment_id)] as const),
+        (assessments.data ?? []).map(
+          async (a) => [a.assessment_id, await fetchQuestions(a.assessment_id)] as const,
+        ),
       );
       return new Map(entries);
     },
@@ -215,7 +217,8 @@ function ClickerPage() {
   const questionKeysByAssessment = useMemo(() => {
     const keys = new Map<string, string>();
     for (const [assessmentId, questions] of questionKeys.data ?? []) {
-      for (const question of questions) keys.set(`${assessmentId}|S${question.question_no}`, question.correct_answer);
+      for (const question of questions)
+        keys.set(`${assessmentId}|S${question.question_no}`, question.correct_answer);
     }
     return keys;
   }, [questionKeys.data]);
@@ -460,26 +463,40 @@ function ClickerPage() {
           { label: "Questions", get: (r) => Object.keys(r.answers).length },
         ]}
         commit={async (valid) => {
-          const resolved = valid.map((row) => ({ ...row, assessment_id: resolveAssessmentId(row, assessments.data ?? []) }));
+          const resolved = valid.map((row) => ({
+            ...row,
+            assessment_id: resolveAssessmentId(row, assessments.data ?? []),
+          }));
           const unresolved = resolved.find((r) => !r.assessment_id);
           if (unresolved) {
             throw new Error(
               `No Assessment Master match for class ${unresolved.class ?? "—"}, section ${unresolved.section ?? "—"}. Add Assessment ID or create a matching assessment.`,
             );
           }
-          const assessmentIds = [...new Set(resolved.map((r) => r.assessment_id).filter(Boolean))] as string[];
+          const assessmentIds = [
+            ...new Set(resolved.map((r) => r.assessment_id).filter(Boolean)),
+          ] as string[];
           const knownAssessments = new Set((assessments.data ?? []).map((a) => a.assessment_id));
           const invalidAssessment = assessmentIds.find((id) => !knownAssessments.has(id));
-          if (invalidAssessment) throw new Error(`Assessment ID not found in Assessment Master: ${invalidAssessment}`);
+          if (invalidAssessment)
+            throw new Error(`Assessment ID not found in Assessment Master: ${invalidAssessment}`);
           const questionSets = new Map(
-            await Promise.all(assessmentIds.map(async (id) => [id, await fetchQuestions(id)] as const)),
+            await Promise.all(
+              assessmentIds.map(async (id) => [id, await fetchQuestions(id)] as const),
+            ),
           );
           const calculated = resolved.map(({ _row, errors, ...rest }) => {
-            const metrics = calculateClickerMetrics(rest.answers, questionSets.get(rest.assessment_id ?? "") ?? [], {
-              score: rest.score,
-              correct_rate: rest.correct_rate,
-            });
-            const assessmentInfo = (assessments.data ?? []).find((a) => a.assessment_id === rest.assessment_id);
+            const metrics = calculateClickerMetrics(
+              rest.answers,
+              questionSets.get(rest.assessment_id ?? "") ?? [],
+              {
+                score: rest.score,
+                correct_rate: rest.correct_rate,
+              },
+            );
+            const assessmentInfo = (assessments.data ?? []).find(
+              (a) => a.assessment_id === rest.assessment_id,
+            );
             return {
               ...rest,
               school_id: assessmentInfo?.school_id ?? null,
@@ -495,8 +512,12 @@ function ClickerPage() {
             keypad_id: row.keypad_id,
             student_id: row.student_id,
             student_name: row.student_name,
-            school_id: (assessments.data ?? []).find((a) => a.assessment_id === row.assessment_id)?.school_id ?? null,
-            school_name: (assessments.data ?? []).find((a) => a.assessment_id === row.assessment_id)?.school_name ?? null,
+            school_id:
+              (assessments.data ?? []).find((a) => a.assessment_id === row.assessment_id)
+                ?.school_id ?? null,
+            school_name:
+              (assessments.data ?? []).find((a) => a.assessment_id === row.assessment_id)
+                ?.school_name ?? null,
             class: row.class,
             section: row.section,
             score: row.score,
@@ -513,7 +534,10 @@ function ClickerPage() {
           try {
             await insertRows("assessment_results", resultRows, 300);
           } catch (error) {
-            console.warn("Centralized assessment results are not available yet; raw Clicker data was saved.", error);
+            console.warn(
+              "Centralized assessment results are not available yet; raw Clicker data was saved.",
+              error,
+            );
           }
           qc.invalidateQueries({ queryKey: ["clicker"] });
           const detected = new Set<string>();

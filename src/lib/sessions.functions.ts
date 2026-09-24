@@ -86,9 +86,7 @@ export const listDivisionSessions = createServerFn({ method: "POST" })
       .eq("division", data.division);
     if (sErr) throw new Error("Failed to load session status");
 
-    const byId = new Map(
-      (statuses ?? []).map((s) => [s.session_id as string, s] as const),
-    );
+    const byId = new Map((statuses ?? []).map((s) => [s.session_id as string, s] as const));
     return rows.map((r) => {
       const s = byId.get(r.id as string);
       return {
@@ -103,9 +101,7 @@ export const listDivisionSessions = createServerFn({ method: "POST" })
 
 /** Lightweight per-unit counts for the unit dashboard. */
 export const sessionUnitCounts = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) =>
-    token.extend({ schoolId: z.string().uuid() }).parse(data),
-  )
+  .inputValidator((data: unknown) => token.extend({ schoolId: z.string().uuid() }).parse(data))
   .handler(async ({ data }): Promise<Record<string, number>> => {
     await requirePermission(data.token, "session_status", "view");
     const db = await adminDb();

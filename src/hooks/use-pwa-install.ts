@@ -36,8 +36,7 @@ export function usePwaInstall() {
     };
   }, []);
 
-  const isIos =
-    typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isIos = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
 
   return {
     installed,
