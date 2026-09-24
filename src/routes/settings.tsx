@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { ArrowLeft, Moon, Sun, Download, Upload, Info, LogOut } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Download, Upload, Info, LogOut, Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -94,17 +94,20 @@ function SettingsPage() {
                   type="button"
                   aria-pressed={color === option.value}
                   onClick={() => setColor(option.value)}
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-muted ${
+                  className={`group relative flex items-center gap-2 overflow-hidden rounded-lg border px-3 py-2 text-left text-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-muted hover:shadow-md active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                     color === option.value
                       ? "border-primary bg-primary/10 font-semibold text-primary ring-2 ring-primary/20"
-                      : "border-border"
+                      : "border-border hover:border-primary/50"
                   }`}
                 >
                   <span
-                    className="h-4 w-4 shrink-0 rounded-full shadow-sm"
+                    className="h-4 w-4 shrink-0 rounded-full shadow-sm transition-transform duration-200 group-hover:scale-125"
                     style={{ backgroundColor: option.swatch }}
                   />
                   {option.label}
+                  {color === option.value && (
+                    <Check className="ml-auto h-4 w-4 animate-in zoom-in-50 duration-200" />
+                  )}
                 </button>
               ))}
             </div>
