@@ -18,7 +18,7 @@ export type ExamScoreRow = {
 };
 
 export const listExamScores = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => tokenSchema.parse(data))
+  .validator((data: unknown) => tokenSchema.parse(data))
   .handler(async ({ data }): Promise<ExamScoreRow[]> => {
     await requirePermission(data.token, "exam_report", "view");
     const db = await admin();
@@ -46,7 +46,7 @@ const saveSchema = tokenSchema.extend({
 });
 
 export const saveExamScore = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => saveSchema.parse(data))
+  .validator((data: unknown) => saveSchema.parse(data))
   .handler(async ({ data }) => {
     await requirePermission(data.token, "exam_report", "edit");
     const db = await admin();
@@ -94,7 +94,7 @@ const deleteSchema = tokenSchema.extend({
 });
 
 export const deleteScoresForStudents = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => deleteSchema.parse(data))
+  .validator((data: unknown) => deleteSchema.parse(data))
   .handler(async ({ data }) => {
     await requirePermission(data.token, "exam_report", "delete");
     const db = await admin();

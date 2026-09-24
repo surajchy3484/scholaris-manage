@@ -15,6 +15,11 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    server: {
+      // Manus exposes the dev server through a *.manus.computer hostname.
+      // Vite otherwise rejects the public URL before TanStack Start can render.
+      allowedHosts: [".manus.computer"],
+    },
     plugins: [
       mcpPlugin(),
       // Offline support for the installed SchoolRise PWA. Registration happens
