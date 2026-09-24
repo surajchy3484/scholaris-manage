@@ -103,7 +103,14 @@ type ScoreRow = {
 export async function fetchExamData(): Promise<ExamData> {
   const [schoolsRes, studentRows, attendanceRows, scoreRows] = await Promise.all([
     supabase.from("schools").select("*").order("name"),
-    fetchAllRows<Student>((from, to) => supabase.from("students").select("*").range(from, to)),
+    fetchAllRows<Student>((from, to) =>
+      supabase
+        .from("students")
+        .select(
+          "id,school_id,student_code,name,class,division,roll_number,photo_url,enrollment_date,created_at,updated_at",
+        )
+        .range(from, to),
+    ),
     fetchAllRows<{ student_id: string; status: string }>((from, to) =>
       supabase.from("attendance").select("student_id,status").range(from, to),
     ),
