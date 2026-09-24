@@ -69,14 +69,15 @@ type AssessmentName = keyof typeof ASSESSMENT_TOTALS;
 
 function marksAndPercentage(value: number | null, total: number) {
   if (value == null) return { marks: null, percentage: null };
-  // Exam scores are entered and stored as percentages (0–100). Convert the
-  // percentage to the assessment's mark total only for display in the
-  // marksheet. Treating values below the total as raw marks makes, for
-  // example, an MCA score of 10 display as 50% instead of 10%.
-  const percentage = Math.max(0, Math.min(100, value));
+  // Scores at or below the assessment total are raw marks (ICA 4 means 4/10).
+  // Values above the total are legacy percentage scores and are converted for
+  // display so older imported records remain compatible.
+  const marks =
+    value <= total ? Math.max(0, value) : (Math.max(0, Math.min(100, value)) / 100) * total;
+  const percentage = Math.round((marks / total) * 1000) / 10;
   return {
-    marks: Math.round((percentage / 100) * total * 10) / 10,
-    percentage: Math.round(percentage * 10) / 10,
+    marks: Math.round(marks * 10) / 10,
+    percentage,
   };
 }
 
