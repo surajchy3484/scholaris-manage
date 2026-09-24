@@ -24,6 +24,7 @@ import { PhotoPicker } from "@/components/photo-picker";
 import { DivisionEditor } from "@/components/division-editor";
 import { fetchSchoolDivisions, saveSchoolDivisions, type DivisionDraft } from "@/lib/divisions";
 import type { School } from "@/lib/types";
+import { isMissingClustersTable, saveLocalCluster } from "@/lib/clusters";
 
 export function AddSchoolDialog({
   open,
@@ -62,12 +63,16 @@ export function AddSchoolDialog({
         const { error: clusterError } = await supabase
           .from("school_clusters")
           .insert({ name: clusterName });
-        if (clusterError && clusterError.code !== "23505") throw clusterError;
+        if (clusterError && clusterError.code !== "23505") {
+          if (isMissingClustersTable(clusterError)) saveLocalCluster(clusterName);
+          else throw clusterError;
+        }
       }
       if (divisions.length) await saveSchoolDivisions(data.id, divisions);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools"] });
+      qc.invalidateQueries({ queryKey: ["clusters"] });
       toast.success("School added");
       setName("");
       setLocation("");
@@ -194,7 +199,10 @@ export function EditSchoolDialog({
         const { error: clusterError } = await supabase
           .from("school_clusters")
           .insert({ name: clusterName });
-        if (clusterError && clusterError.code !== "23505") throw clusterError;
+        if (clusterError && clusterError.code !== "23505") {
+          if (isMissingClustersTable(clusterError)) saveLocalCluster(clusterName);
+          else throw clusterError;
+        }
       }
       await saveSchoolDivisions(school.id, divisions);
     },

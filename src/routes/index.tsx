@@ -23,6 +23,7 @@ import { AddClusterDialog } from "@/components/add-cluster-dialog";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { SchoolCard } from "@/components/school-card";
 import { RequireModule } from "@/components/require-module";
+import { isMissingClustersTable, readLocalClusters } from "@/lib/clusters";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -96,8 +97,11 @@ function Dashboard() {
     queryKey: ["clusters"],
     queryFn: async () => {
       const { data, error } = await supabase.from("school_clusters").select("name").order("name");
-      if (error) throw error;
-      return data.map((row) => row.name);
+      if (error) {
+        if (isMissingClustersTable(error)) return readLocalClusters();
+        throw error;
+      }
+      return [...data.map((row) => row.name), ...readLocalClusters()];
     },
     enabled: ready && canAddSchool,
     staleTime: 5 * 60_000,

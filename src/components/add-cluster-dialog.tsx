@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { isMissingClustersTable, saveLocalCluster } from "@/lib/clusters";
 
 export function AddClusterDialog({
   open,
@@ -32,6 +33,10 @@ export function AddClusterDialog({
       const { error } = await supabase.from("school_clusters").insert({ name: clusterName });
       if (error) {
         if (error.code === "23505") throw new Error("That cluster already exists.");
+        if (isMissingClustersTable(error)) {
+          saveLocalCluster(clusterName);
+          return;
+        }
         throw error;
       }
     },
