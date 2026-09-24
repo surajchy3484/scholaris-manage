@@ -44,13 +44,14 @@ export function AddSchoolDialog({
 
   const create = useMutation({
     mutationFn: async () => {
+      const clusterName = cluster === "__new__" ? newCluster.trim() : cluster.trim();
       // `code` is auto-assigned by a DB trigger (SCH001, SCH002, ...); pass empty string.
       const { data, error } = await supabase
         .from("schools")
         .insert({
           name,
           location,
-          cluster_name: cluster === "__new__" ? newCluster.trim() : cluster || null,
+          cluster_name: clusterName || null,
           code: "",
           image_url: imageUrl,
         })
@@ -74,7 +75,8 @@ export function AddSchoolDialog({
   });
 
   const submit = () => {
-    if (!name.trim() || !location.trim() || (cluster === "__new__" && !newCluster.trim())) {
+    const clusterName = cluster === "__new__" ? newCluster.trim() : cluster.trim();
+    if (!name.trim() || !location.trim() || !clusterName) {
       toast.error("Please fill in all fields");
       return;
     }
@@ -171,12 +173,13 @@ export function EditSchoolDialog({
 
   const update = useMutation({
     mutationFn: async () => {
+      const clusterName = cluster === "__new__" ? newCluster.trim() : cluster.trim();
       const { error } = await supabase
         .from("schools")
         .update({
           name,
           location,
-          cluster_name: cluster === "__new__" ? newCluster.trim() : cluster || null,
+          cluster_name: clusterName || null,
           image_url: imageUrl,
         })
         .eq("id", school.id);
@@ -272,11 +275,18 @@ function ClusterField({
         </SelectContent>
       </Select>
       {value === "__new__" && (
-        <Input
-          value={newValue}
-          onChange={(e) => onNewChange(e.target.value)}
-          placeholder="New cluster name"
-        />
+        <>
+          <Input
+            id="new-cluster-name"
+            value={newValue}
+            onChange={(e) => onNewChange(e.target.value)}
+            placeholder="New cluster name"
+            autoFocus
+          />
+          <p className="text-xs text-muted-foreground">
+            This creates the cluster and assigns it to this school when you save.
+          </p>
+        </>
       )}
     </div>
   );

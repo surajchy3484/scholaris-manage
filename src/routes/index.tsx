@@ -120,12 +120,14 @@ function Dashboard() {
     });
 
   const totalStudents = data.reduce((n, s) => n + s.student_count, 0);
-  const clusterOptions = [
-    ...new Set([
-      ...DEFAULT_CLUSTERS,
-      ...allSchools.map((s) => s.cluster_name).filter((v): v is string => !!v),
-    ]),
-  ];
+  const clusterOptions = Array.from(
+    new Map(
+      [...DEFAULT_CLUSTERS, ...allSchools.map((s) => s.cluster_name ?? "")]
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .map((value) => [value.toLowerCase(), value] as const),
+    ).values(),
+  );
   const grouped = filtered.reduce((groups, school) => {
     const cluster = displayCluster(school);
     groups.set(cluster, [...(groups.get(cluster) ?? []), school]);
