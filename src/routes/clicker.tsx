@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2, Upload } from "lucide-react";
 
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -40,6 +41,7 @@ import {
 } from "@/lib/master";
 import { clickerSample } from "@/lib/sample-templates";
 import { RequireModule } from "@/components/require-module";
+import { fetchAllRows } from "@/lib/fetch-all";
 
 export const Route = createFileRoute("/clicker")({
   head: () => ({
@@ -110,6 +112,56 @@ function resolveAssessmentId(
       row.section && sameValue(x.section, row.section) ? 1 : 0;
     return sectionScore(b) - sectionScore(a) || b.created_at.localeCompare(a.created_at);
   })[0].assessment_id;
+}
+
+type StudentLookup = {
+  id: string;
+  name: string;
+  roll_number: string;
+  class: string;
+  division: string;
+  school_id: string;
+};
+
+function normalizeMatch(value: string | null | undefined) {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/^class\s*/, "")
+    .replace(/^section\s*/, "")
+    .replace(/\s+/g, " ");
+}
+
+async function fetchStudentLookup(schoolIds: string[]) {
+  const entries = await Promise.all(
+    schoolIds.map(async (schoolId) => {
+      const rows = await fetchAllRows<StudentLookup>((from, to) =>
+        supabase
+          .from("students")
+          .select("id,name,roll_number,class,division,school_id")
+          .eq("school_id", schoolId)
+          .range(from, to),
+      );
+      return [schoolId, rows] as const;
+    }),
+  );
+  return new Map(entries);
+}
+
+function resolveStudentId(row: ParsedClicker, students: StudentLookup[]) {
+  if (row.student_id) return row.student_id;
+  const name = normalizeMatch(row.student_name);
+  const roll = normalizeMatch(row.roll_number);
+  const cls = normalizeMatch(row.class);
+  const section = normalizeMatch(row.section);
+  const matches = students.filter((student) => {
+    if (name && normalizeMatch(student.name) !== name) return false;
+    if (roll && normalizeMatch(student.roll_number) !== roll) return false;
+    if (cls && normalizeMatch(student.class) !== cls) return false;
+    if (section && normalizeMatch(student.division) !== section) return false;
+    return true;
+  });
+  return matches.length === 1 ? matches[0].id : null;
 }
 
 /** Answer cell that supports inline edit, keyboard save/cancel and undo. */
@@ -399,7 +451,7 @@ function ClickerPage() {
         onOpenChange={setImportOpen}
         title="Import clicker data"
         sample={clickerSample(questionCols)}
-        description="Student columns (Keypad ID, Student Name, Roll, Class, Section, Team) are mapped automatically; every other column becomes a question column."
+        description="Include Assessment ID and Student ID when possible. Otherwise use exact Student Name + Roll + Class + Section. Scores, percentages, and ranks update the linked student report."
         parse={(raw) => {
           const known = new Set([
             "assessment id",
@@ -480,12 +532,40 @@ function ClickerPage() {
           const invalidAssessment = assessmentIds.find((id) => !knownAssessments.has(id));
           if (invalidAssessment)
             throw new Error(`Assessment ID not found in Assessment Master: ${invalidAssessment}`);
+          const schoolIds = [
+            ...new Set(
+              assessmentIds
+                .map(
+                  (id) => (assessments.data ?? []).find((a) => a.assessment_id === id)?.school_id,
+                )
+                .filter((id): id is string => !!id),
+            ),
+          ];
+          const studentLookup = await fetchStudentLookup(schoolIds);
+          const linked = resolved.map((row) => {
+            const assessmentInfo = (assessments.data ?? []).find(
+              (a) => a.assessment_id === row.assessment_id,
+            );
+            const schoolStudents = assessmentInfo?.school_id
+              ? (studentLookup.get(assessmentInfo.school_id) ?? [])
+              : [];
+            return {
+              ...row,
+              student_id: resolveStudentId(row, schoolStudents),
+            };
+          });
+          const unresolvedStudent = linked.find((row) => !row.student_id);
+          if (unresolvedStudent) {
+            throw new Error(
+              `Could not match student "${unresolvedStudent.student_name}". Include Student ID or an exact Student Name + Roll + Class + Section.`,
+            );
+          }
           const questionSets = new Map(
             await Promise.all(
               assessmentIds.map(async (id) => [id, await fetchQuestions(id)] as const),
             ),
           );
-          const calculated = resolved.map(({ _row, errors, ...rest }) => {
+          const calculated = linked.map(({ _row, errors, ...rest }) => {
             const metrics = calculateClickerMetrics(
               rest.answers,
               questionSets.get(rest.assessment_id ?? "") ?? [],
