@@ -1,3 +1,4 @@
+import { VisualAnalytics, useVisualAnalytics } from "@/components/exam/visual-analytics";
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -216,6 +217,18 @@ function OverallReport() {
   const reports = useMemo(() => buildSchoolReports(data ?? { schools: [], students: [] }), [data]);
   const classReports = useMemo(() => buildClassReports(visibleStudents), [visibleStudents]);
 
+  const analytics = useVisualAnalytics({
+    students,
+    schoolId,
+    schoolName: selectedSchool?.name ?? "",
+    classKey,
+    studentId: selectedStudent?.id ?? "",
+    mode,
+  });
+  const analyticsRequired =
+    mode === "class" || ((mode === "school" || mode === "student") && schoolId !== "all");
+  const exportDisabled = analyticsRequired && !analytics.ready;
+
   const buildReport = () => {
     const schoolRows = reports.filter((r) => schoolId === "all" || r.school.id === schoolId);
     const all = schoolRows.flatMap((r) => students.filter((s) => s.school_id === r.school.id));
@@ -223,38 +236,16 @@ function OverallReport() {
     const total = base.length;
     const body = (() => {
       if (mode === "student")
-        return studentHtml(selectedStudent, students, studentRank(selectedStudent, students));
+        return (
+          studentHtml(selectedStudent, students, studentRank(selectedStudent, students)) +
+          analytics.html
+        );
+      if (mode === "class" || (mode === "school" && schoolId !== "all")) return analytics.html;
       if (mode === "school") {
         return `<h2>SCHOOL-WISE REPORT</h2>${table(
           ["School", "Students", "Attendance %", "ICA", "MCA", "FCA", "Overall %", "Grade"],
           schoolRows.map((r) => [
             r.school.name,
-            r.students,
-            r.attendance,
-            r.ica,
-            r.mca,
-            r.fca,
-            r.performance,
-            grade(r.performance),
-          ]),
-        )}`;
-      }
-      if (mode === "class") {
-        return `<h2>CLASS-WISE REPORT</h2>${table(
-          [
-            "Class",
-            "Division",
-            "Students",
-            "Attendance %",
-            "ICA",
-            "MCA",
-            "FCA",
-            "Overall %",
-            "Grade",
-          ],
-          classReports.map((r) => [
-            r.class,
-            r.division,
             r.students,
             r.attendance,
             r.ica,
@@ -383,10 +374,17 @@ function OverallReport() {
             className="pl-9"
           />
         </div>
-        <Button variant="outline" onClick={() => downloadWord("schoolrise-report", buildReport())}>
+        <Button
+          disabled={exportDisabled}
+          variant="outline"
+          onClick={() => downloadWord("schoolrise-report", buildReport())}
+        >
           <FileText className="h-4 w-4" /> Word
         </Button>
-        <Button onClick={() => downloadPdf("SchoolRise Report", buildReport())}>
+        <Button
+          disabled={exportDisabled}
+          onClick={() => downloadPdf("SchoolRise Report", buildReport())}
+        >
           <Printer className="h-4 w-4" /> PDF
         </Button>
       </Card>
@@ -462,19 +460,27 @@ function OverallReport() {
             <StudentPreview
               student={selectedStudent}
               allStudents={students}
-              onDownloadPdf={() => downloadPdf("Student Performance Report", buildReport())}
+              onDownloadPdf={() =>
+                exportDisabled
+                  ? toast.info("Wait for analytics to load before exporting.")
+                  : downloadPdf("Student Performance Report", buildReport())
+              }
             />
           </DialogContent>
         </Dialog>
       )}
 
-      <ReportPreview
-        mode={mode}
-        reports={reports}
-        classReports={classReports}
-        students={visibleStudents}
-        selectedSchool={selectedSchool?.name}
-      />
+      <VisualAnalytics analytics={analytics} />
+
+      {!analyticsRequired && (
+        <ReportPreview
+          mode={mode}
+          reports={reports}
+          classReports={classReports}
+          students={visibleStudents}
+          selectedSchool={selectedSchool?.name}
+        />
+      )}
     </main>
   );
 }

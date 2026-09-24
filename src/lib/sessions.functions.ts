@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { fetchAllRows } from "./fetch-all";
 import { adminDb, requirePermission } from "./app-access.server";
 
 const token = z.object({ token: z.string().min(1) });
@@ -65,26 +66,41 @@ export const listDivisionSessions = createServerFn({ method: "POST" })
     await requirePermission(data.token, "session_status", "view");
     const db = await adminDb();
 
-    const { data: master, error } = await db
-      .from("sessions")
-      .select("id, session_name, class, topic, unit, school_id")
-      .eq("school_id", data.schoolId)
-      .eq("unit", data.unit)
-      .eq("class", data.class)
-      .order("created_at", { ascending: true });
-    if (error) throw new Error("Failed to load sessions");
-
-    const rows = master ?? [];
+    const rows = await fetchAllRows<{
+      id: string;
+      session_name: string;
+      class: string;
+      topic: string;
+      unit: string;
+      school_id: string;
+    }>((from, to) =>
+      db
+        .from("sessions")
+        .select("id, session_name, class, topic, unit, school_id")
+        .eq("school_id", data.schoolId)
+        .eq("unit", data.unit)
+        .eq("class", data.class)
+        .order("created_at", { ascending: true })
+        .order("id")
+        .range(from, to),
+    );
     if (rows.length === 0) return [];
-
-    const { data: statuses, error: sErr } = await db
-      .from("session_division_status")
-      .select("session_id, status, updated_at, updated_by")
-      .eq("school_id", data.schoolId)
-      .eq("unit", data.unit)
-      .eq("class", data.class)
-      .eq("division", data.division);
-    if (sErr) throw new Error("Failed to load session status");
+    const statuses = await fetchAllRows<{
+      session_id: string;
+      status: string;
+      updated_at: string;
+      updated_by: string | null;
+    }>((from, to) =>
+      db
+        .from("session_division_status")
+        .select("session_id, status, updated_at, updated_by")
+        .eq("school_id", data.schoolId)
+        .eq("unit", data.unit)
+        .eq("class", data.class)
+        .eq("division", data.division)
+        .order("session_id")
+        .range(from, to),
+    );
 
     const byId = new Map((statuses ?? []).map((s) => [s.session_id as string, s] as const));
     return rows.map((r) => {

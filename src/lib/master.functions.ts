@@ -54,6 +54,7 @@ export const listMasterRows = createServerFn({ method: "POST" })
       if (data.assessmentId && data.assessmentId !== "all" && data.table !== "assessments") {
         q = q.eq("assessment_id", data.assessmentId);
       }
+      q = q.order("id"); // Stable tie-breaker prevents skipped/repeated rows across pages.
       const { data: rows, error } = await q;
       if (error) throw new Error("Failed to load records");
       const list = (rows ?? []) as Record<string, unknown>[];
