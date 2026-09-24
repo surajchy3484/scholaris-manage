@@ -58,6 +58,12 @@ export function AddSchoolDialog({
         .select("id")
         .single();
       if (error) throw error;
+      if (cluster === "__new__") {
+        const { error: clusterError } = await supabase
+          .from("school_clusters")
+          .insert({ name: clusterName });
+        if (clusterError && clusterError.code !== "23505") throw clusterError;
+      }
       if (divisions.length) await saveSchoolDivisions(data.id, divisions);
     },
     onSuccess: () => {
@@ -184,6 +190,12 @@ export function EditSchoolDialog({
         })
         .eq("id", school.id);
       if (error) throw error;
+      if (cluster === "__new__") {
+        const { error: clusterError } = await supabase
+          .from("school_clusters")
+          .insert({ name: clusterName });
+        if (clusterError && clusterError.code !== "23505") throw clusterError;
+      }
       await saveSchoolDivisions(school.id, divisions);
     },
     onSuccess: () => {

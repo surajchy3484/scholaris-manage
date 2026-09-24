@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AddSchoolDialog } from "@/components/add-school-dialog";
+import { AddClusterDialog } from "@/components/add-cluster-dialog";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { SchoolCard } from "@/components/school-card";
 import { RequireModule } from "@/components/require-module";
@@ -82,6 +83,7 @@ function Dashboard() {
   const canAddSchool = can("schools", "add");
   const canManageSchool = can("schools", "edit") || can("schools", "delete");
   const [addOpen, setAddOpen] = useState(false);
+  const [clusterOpen, setClusterOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"newest" | "name" | "students">("newest");
   const qc = useQueryClient();
@@ -89,6 +91,16 @@ function Dashboard() {
   const { data: allSchools = [], isLoading: loadingSchools } = useQuery({
     queryKey: ["schools"],
     queryFn: fetchSchools,
+  });
+  const { data: savedClusters = [] } = useQuery({
+    queryKey: ["clusters"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("school_clusters").select("name").order("name");
+      if (error) throw error;
+      return data.map((row) => row.name);
+    },
+    enabled: ready && canAddSchool,
+    staleTime: 5 * 60_000,
   });
 
   // Trainers only see the schools assigned to them.
@@ -122,7 +134,7 @@ function Dashboard() {
   const totalStudents = data.reduce((n, s) => n + s.student_count, 0);
   const clusterOptions = Array.from(
     new Map(
-      [...DEFAULT_CLUSTERS, ...allSchools.map((s) => s.cluster_name ?? "")]
+      [...DEFAULT_CLUSTERS, ...savedClusters, ...allSchools.map((s) => s.cluster_name ?? "")]
         .map((value) => value.trim())
         .filter(Boolean)
         .map((value) => [value.toLowerCase(), value] as const),
@@ -194,14 +206,16 @@ function Dashboard() {
                 Unlimited campuses. Each with its own students &amp; attendance.
               </p>
             </div>
-            <Button
-              size="lg"
-              onClick={() => setAddOpen(true)}
-              className="w-full shadow-elegant sm:w-auto sm:self-start"
-            >
-              <Plus className="h-4 w-4" />
-              Add School
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="lg" onClick={() => setAddOpen(true)} className="shadow-elegant">
+                <Plus className="h-4 w-4" />
+                Add School
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setClusterOpen(true)}>
+                <Plus className="h-3.5 w-3.5" />
+                Add Cluster
+              </Button>
+            </div>
           </Card>
         )}
       </motion.section>
@@ -294,6 +308,7 @@ function Dashboard() {
       )}
 
       <AddSchoolDialog open={addOpen} onOpenChange={setAddOpen} clusterOptions={clusterOptions} />
+      <AddClusterDialog open={clusterOpen} onOpenChange={setClusterOpen} />
     </div>
   );
 }

@@ -399,8 +399,30 @@ export type Database = {
           },
         ];
       };
+      school_clusters: {
+        Row: {
+          created_at: string;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       schools: {
         Row: {
+          cluster_name: string | null;
           code: string;
           created_at: string;
           id: string;
@@ -410,6 +432,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          cluster_name?: string | null;
           code: string;
           created_at?: string;
           id?: string;
@@ -419,6 +442,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          cluster_name?: string | null;
           code?: string;
           created_at?: string;
           id?: string;
