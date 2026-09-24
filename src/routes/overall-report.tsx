@@ -179,8 +179,10 @@ function OverallReport() {
   const [studentPreviewOpen, setStudentPreviewOpen] = useState(false);
   const [search, setSearch] = useState("");
   const { data, isLoading, error } = useQuery({
-    queryKey: ["overall-report-data"],
+    queryKey: ["exam-data"],
     queryFn: fetchExamData,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
   });
 
   const schools = data?.schools ?? [];

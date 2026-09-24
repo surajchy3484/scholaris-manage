@@ -24,15 +24,24 @@ export const listExamScores = createServerFn({ method: "POST" })
     const db = await admin();
     const out: ExamScoreRow[] = [];
     const batch = 1000;
-    for (let from = 0; ; from += batch) {
-      const { data: rows, error } = await db
-        .from("exam_scores")
-        .select("student_id,exam_type,score,remarks")
-        .range(from, from + batch - 1);
-      if (error) throw new Error("Failed to load exam scores");
-      const list = (rows ?? []) as ExamScoreRow[];
-      out.push(...list);
-      if (list.length < batch) break;
+    const pageWidth = 4;
+    for (let page = 0; ; page += pageWidth) {
+      const pages = await Promise.all(
+        Array.from({ length: pageWidth }, (_, offset) =>
+          db
+            .from("exam_scores")
+            .select("student_id,exam_type,score,remarks")
+            .range((page + offset) * batch, (page + offset + 1) * batch - 1),
+        ),
+      );
+      let hasMore = true;
+      for (const { data: rows, error } of pages) {
+        if (error) throw new Error("Failed to load exam scores");
+        const list = (rows ?? []) as ExamScoreRow[];
+        out.push(...list);
+        if (list.length < batch) hasMore = false;
+      }
+      if (!hasMore) break;
     }
     return out;
   });

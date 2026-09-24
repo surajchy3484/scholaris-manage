@@ -8,12 +8,30 @@ export async function fetchAllRows<T>(
   batchSize = 1000,
 ): Promise<T[]> {
   const out: T[] = [];
-  for (let from = 0; ; from += batchSize) {
-    const { data, error } = await makeQuery(from, from + batchSize - 1);
-    if (error) throw error;
-    const rows = data ?? [];
-    out.push(...rows);
-    if (rows.length < batchSize) break;
+  const first = await makeQuery(0, batchSize - 1);
+  if (first.error) throw first.error;
+  const firstRows = first.data ?? [];
+  out.push(...firstRows);
+  if (firstRows.length < batchSize) return out;
+
+  // Fetch a bounded window of pages concurrently. This preserves the existing
+  // ordering while avoiding one network round-trip per 1,000 rows.
+  const pageWidth = 4;
+  for (let page = 1; ; page += pageWidth) {
+    const results = await Promise.all(
+      Array.from({ length: pageWidth }, (_, offset) => {
+        const from = (page + offset) * batchSize;
+        return makeQuery(from, from + batchSize - 1);
+      }),
+    );
+    let hasMore = true;
+    for (const result of results) {
+      if (result.error) throw result.error;
+      const rows = result.data ?? [];
+      out.push(...rows);
+      if (rows.length < batchSize) hasMore = false;
+    }
+    if (!hasMore) break;
   }
   return out;
 }
