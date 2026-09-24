@@ -24,7 +24,12 @@ import { PhotoPicker } from "@/components/photo-picker";
 import { DivisionEditor } from "@/components/division-editor";
 import { fetchSchoolDivisions, saveSchoolDivisions, type DivisionDraft } from "@/lib/divisions";
 import type { School } from "@/lib/types";
-import { isMissingClustersTable, saveLocalCluster } from "@/lib/clusters";
+import {
+  isMissingClustersTable,
+  isMissingSchoolClusterColumn,
+  saveLocalCluster,
+  saveLocalSchoolCluster,
+} from "@/lib/clusters";
 
 export function AddSchoolDialog({
   open,
@@ -47,7 +52,7 @@ export function AddSchoolDialog({
     mutationFn: async () => {
       const clusterName = cluster === "__new__" ? newCluster.trim() : cluster.trim();
       // `code` is auto-assigned by a DB trigger (SCH001, SCH002, ...); pass empty string.
-      const { data, error } = await supabase
+      let schoolInsert = await supabase
         .from("schools")
         .insert({
           name,
@@ -58,7 +63,18 @@ export function AddSchoolDialog({
         })
         .select("id")
         .single();
+      let usedLocalCluster = false;
+      if (schoolInsert.error && isMissingSchoolClusterColumn(schoolInsert.error)) {
+        usedLocalCluster = true;
+        schoolInsert = await supabase
+          .from("schools")
+          .insert({ name, location, code: "", image_url: imageUrl })
+          .select("id")
+          .single();
+      }
+      const { data, error } = schoolInsert;
       if (error) throw error;
+      if (usedLocalCluster) saveLocalSchoolCluster(data.id, clusterName);
       if (cluster === "__new__") {
         const { error: clusterError } = await supabase
           .from("school_clusters")
@@ -194,7 +210,16 @@ export function EditSchoolDialog({
           image_url: imageUrl,
         })
         .eq("id", school.id);
-      if (error) throw error;
+      if (error && isMissingSchoolClusterColumn(error)) {
+        await supabase
+          .from("schools")
+          .update({ name, location, image_url: imageUrl })
+          .eq("id", school.id)
+          .throwOnError();
+        saveLocalSchoolCluster(school.id, clusterName);
+      } else if (error) {
+        throw error;
+      }
       if (cluster === "__new__") {
         const { error: clusterError } = await supabase
           .from("school_clusters")

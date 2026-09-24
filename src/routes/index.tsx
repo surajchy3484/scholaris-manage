@@ -23,7 +23,7 @@ import { AddClusterDialog } from "@/components/add-cluster-dialog";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { SchoolCard } from "@/components/school-card";
 import { RequireModule } from "@/components/require-module";
-import { isMissingClustersTable, readLocalClusters } from "@/lib/clusters";
+import { isMissingClustersTable, readLocalClusters, readLocalSchoolClusters } from "@/lib/clusters";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -109,7 +109,15 @@ function Dashboard() {
 
   // Trainers only see the schools assigned to them.
   const isLoading = loadingSchools || !ready;
-  const data = ready ? allSchools.filter((s) => canSeeSchool(s.id)) : [];
+  const localSchoolClusters = readLocalSchoolClusters();
+  const data = ready
+    ? allSchools
+        .map((school) => ({
+          ...school,
+          cluster_name: localSchoolClusters[school.id] ?? school.cluster_name,
+        }))
+        .filter((s) => canSeeSchool(s.id))
+    : [];
 
   const del = useMutation({
     mutationFn: async (id: string) => {
