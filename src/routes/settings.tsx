@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useTheme } from "@/hooks/use-theme";
+import { useTheme, type ThemeColor } from "@/hooks/use-theme";
 import { backupDatabase, restoreDatabase } from "@/lib/backup";
 import { logoutLocal, useAuth } from "@/lib/auth";
 import { RequireModule } from "@/components/require-module";
@@ -21,8 +21,17 @@ export const Route = createFileRoute("/settings")({
   ),
 });
 
+const COLOR_OPTIONS: { value: ThemeColor; label: string; swatch: string }[] = [
+  { value: "indigo", label: "Indigo", swatch: "oklch(0.55 0.22 265)" },
+  { value: "emerald", label: "Emerald", swatch: "oklch(0.55 0.17 160)" },
+  { value: "rose", label: "Rose", swatch: "oklch(0.58 0.2 350)" },
+  { value: "amber", label: "Amber", swatch: "oklch(0.62 0.17 75)" },
+  { value: "cyan", label: "Cyan", swatch: "oklch(0.58 0.16 205)" },
+  { value: "violet", label: "Violet", swatch: "oklch(0.55 0.22 305)" },
+];
+
 function SettingsPage() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, color, setColor } = useTheme();
   const { session } = useAuth();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -75,6 +84,33 @@ function SettingsPage() {
             >
               <Moon className="h-4 w-4" /> Dark
             </Button>
+          </div>
+          <div className="mt-5 border-t border-border/60 pt-4">
+            <p className="mb-3 text-sm font-medium">Theme color</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {COLOR_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={color === option.value}
+                  onClick={() => setColor(option.value)}
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-muted ${
+                    color === option.value
+                      ? "border-primary bg-primary/10 font-semibold text-primary ring-2 ring-primary/20"
+                      : "border-border"
+                  }`}
+                >
+                  <span
+                    className="h-4 w-4 shrink-0 rounded-full shadow-sm"
+                    style={{ backgroundColor: option.swatch }}
+                  />
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Changes apply across the dashboard and are saved on this device.
+            </p>
           </div>
         </Card>
 
