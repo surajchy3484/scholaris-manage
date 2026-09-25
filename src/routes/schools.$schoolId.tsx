@@ -1,5 +1,10 @@
 import { useDebounced } from "@/hooks/use-master-page";
-import { listStudentPage, studentFacets } from "@/lib/performance.functions";
+import {
+  listStudentDetails,
+  studentFacets,
+  deleteStudentDetails,
+  updateStudentGrouping,
+} from "@/lib/performance.functions";
 import { getAccessToken } from "@/lib/app-access";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { attendanceTotals } from "@/lib/paging";
@@ -45,7 +50,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { StudentCard } from "@/components/student-card";
+import { StudentListTable, StudentScoreFilters } from "@/components/student-list";
+import { EMPTY_SCORE_FILTERS, type ScoreFilters } from "@/lib/student-list";
 import { StudentDialog, ViewStudentDialog } from "@/components/student-dialog";
 import { ImportStudentsDialog } from "@/components/import-students-dialog";
 import { AttendancePanel } from "@/components/attendance-panel";
@@ -103,11 +109,21 @@ function SchoolDetail() {
     "roll-asc",
   );
   const [editSchoolOpen, setEditSchoolOpen] = useState(false);
+  const [scoreFilters, setScoreFilters] = useState<ScoreFilters>(EMPTY_SCORE_FILTERS);
+  const debouncedScores = useDebounced(scoreFilters);
+  const scoreArgs = {
+    ...debouncedScores,
+    min: debouncedScores.min === "" ? null : Number(debouncedScores.min),
+    max: debouncedScores.max === "" ? null : Number(debouncedScores.max),
+  };
   const [page, setPage] = useState(0);
   const [tab, setTab] = useState("students");
   const [exporting, setExporting] = useState(false);
   const debouncedSearch = useDebounced(q);
-  useEffect(() => setPage(0), [debouncedSearch, filterClass, filterDiv, sortBy, schoolId]);
+  useEffect(
+    () => setPage(0),
+    [debouncedSearch, filterClass, filterDiv, sortBy, schoolId, debouncedScores],
+  );
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
@@ -135,11 +151,23 @@ function SchoolDetail() {
     queryFn: () => studentFacets({ data: { token: getAccessToken(), schoolId } }),
   });
   const pageQuery = useQuery({
-    queryKey: ["students", schoolId, "page", page, debouncedSearch, filterClass, filterDiv, sortBy],
+    queryKey: [
+      "students",
+      schoolId,
+      "page",
+      page,
+      debouncedSearch,
+      filterClass,
+      filterDiv,
+      sortBy,
+      scoreArgs,
+    ],
     queryFn: () =>
-      listStudentPage({
+      listStudentDetails({
         data: {
           token: getAccessToken(),
+          module: "students",
+          ...scoreArgs,
           schoolId,
           page,
           pageSize: 50,
@@ -152,7 +180,8 @@ function SchoolDetail() {
       }),
   });
   const students = pageQuery.data?.rows ?? [];
-  const isLoading = pageQuery.isLoading;
+  const isLoading =
+    pageQuery.isLoading || q !== debouncedSearch || scoreFilters !== debouncedScores;
   const total = pageQuery.data?.total ?? 0;
   useEffect(() => {
     if (pageQuery.data && page > 0 && page * 50 >= total)
@@ -170,12 +199,9 @@ function SchoolDetail() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("students")
-        .delete()
-        .eq("school_id", schoolId)
-        .eq("id", id);
-      if (error) throw error;
+      await deleteStudentDetails({
+        data: { token: getAccessToken(), module: "students", schoolId, ids: [id] },
+      });
     },
     onSuccess: (_data, id) => {
       setSelectedIds((current) => current.filter((selectedId) => selectedId !== id));
@@ -189,15 +215,14 @@ function SchoolDetail() {
   const bulkDelete = useMutation({
     mutationFn: async (ids: string[]) => {
       for (let offset = 0; offset < ids.length; offset += 250) {
-        const { error } = await supabase
-          .from("students")
-          .delete()
-          .eq("school_id", schoolId)
-          .in("id", ids.slice(offset, offset + 250));
-        if (error)
-          throw new Error(
-            `Bulk delete stopped at batch ${offset / 250 + 1}; earlier batches may have completed. ${error.message}`,
-          );
+        await deleteStudentDetails({
+          data: {
+            token: getAccessToken(),
+            module: "students",
+            schoolId,
+            ids: ids.slice(offset, offset + 250),
+          },
+        });
       }
     },
     onSuccess: () => {
@@ -223,15 +248,14 @@ function SchoolDetail() {
       if (!Object.keys(payload).length) throw new Error("Enter at least one change");
       const ids = [...selectedIds];
       for (let offset = 0; offset < ids.length; offset += 250) {
-        const { error } = await supabase
-          .from("students")
-          .update(payload)
-          .eq("school_id", schoolId)
-          .in("id", ids.slice(offset, offset + 250));
-        if (error)
-          throw new Error(
-            `Bulk update stopped at batch ${offset / 250 + 1}; earlier batches may have completed. ${error.message}`,
-          );
+        await updateStudentGrouping({
+          data: {
+            token: getAccessToken(),
+            schoolId,
+            ids: ids.slice(offset, offset + 250),
+            values: payload,
+          },
+        });
       }
     },
     onSuccess: () => {
@@ -284,7 +308,7 @@ function SchoolDetail() {
   const filtered = students;
 
   const [selecting, setSelecting] = useState(false);
-  const selectionScope = `${schoolId}|${q}|${filterClass}|${filterDiv}`;
+  const selectionScope = `${schoolId}|${q}|${filterClass}|${filterDiv}|${JSON.stringify(scoreFilters)}`;
   const scopeRef = useRef(selectionScope);
   scopeRef.current = selectionScope;
   useEffect(() => {
@@ -297,9 +321,13 @@ function SchoolDetail() {
     try {
       const ids: string[] = [];
       for (let selectedPage = 0; ; selectedPage++) {
-        const result = await listStudentPage({
+        const result = await listStudentDetails({
           data: {
             token: getAccessToken(),
+            module: "students",
+            ...scoreFilters,
+            min: scoreFilters.min === "" ? null : Number(scoreFilters.min),
+            max: scoreFilters.max === "" ? null : Number(scoreFilters.max),
             schoolId,
             page: selectedPage,
             pageSize: 250,
@@ -559,6 +587,7 @@ function SchoolDetail() {
             </Select>
           </div>
 
+          <StudentScoreFilters value={scoreFilters} onChange={setScoreFilters} />
           <Card className="flex flex-wrap items-center gap-3 border-border/60 bg-muted/20 p-3">
             <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
               <Checkbox
@@ -573,14 +602,16 @@ function SchoolDetail() {
                 <span className="mr-1 text-sm font-semibold text-primary">
                   {selectedIds.length} selected
                 </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setMoveOpen(true)}
-                  disabled={!canEdit}
-                >
-                  <CheckSquare className="h-4 w-4" /> Change Class/Division
-                </Button>
+                {canEdit && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setMoveOpen(true)}
+                    disabled={!canEdit}
+                  >
+                    <CheckSquare className="h-4 w-4" /> Change Class/Division
+                  </Button>
+                )}
                 {canDelete && (
                   <Button
                     size="sm"
@@ -606,45 +637,31 @@ function SchoolDetail() {
             )}
           </Card>
 
-          {pageQuery.isError || facets.isError ? (
+          {(pageQuery.isError || facets.isError) && (
             <p role="alert" className="text-destructive">
               {pageQuery.error?.message ?? facets.error?.message}
             </p>
-          ) : isLoading ? (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-20 animate-pulse rounded-lg bg-muted" />
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <Card className="flex flex-col items-center gap-2 border-dashed p-10 text-center">
-              <Users className="h-8 w-8 text-muted-foreground" />
-              <h3 className="font-display text-lg font-semibold">No students found</h3>
-              <p className="text-sm text-muted-foreground">
-                Add students individually or import from Excel/CSV.
-              </p>
-            </Card>
-          ) : (
-            <motion.div layout className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((s) => (
-                <StudentCard
-                  key={s.id}
-                  student={s}
-                  onView={() => setViewStudent(s)}
-                  onEdit={canEdit ? () => setEditStudent(s) : undefined}
-                  onDelete={canDelete ? () => del.mutate(s.id) : undefined}
-                  selected={selectedIds.includes(s.id)}
-                  onSelect={(checked) =>
-                    setSelectedIds((current) =>
-                      checked
-                        ? [...new Set([...current, s.id])]
-                        : current.filter((id) => id !== s.id),
-                    )
-                  }
-                />
-              ))}
-            </motion.div>
           )}
+          <StudentListTable
+            rows={students}
+            selectedIds={selectedIds}
+            loading={isLoading}
+            onView={setViewStudent}
+            onEdit={canEdit ? setEditStudent : undefined}
+            onDelete={
+              canDelete
+                ? (row) => {
+                    if (window.confirm(`Delete ${row.name}? This cannot be undone.`))
+                      del.mutate(row.id);
+                  }
+                : undefined
+            }
+            onSelect={(id, checked) =>
+              setSelectedIds((current) =>
+                checked ? [...new Set([...current, id])] : current.filter((value) => value !== id),
+              )
+            }
+          />
           <div className="flex items-center justify-between gap-3 text-sm">
             <Button
               variant="outline"

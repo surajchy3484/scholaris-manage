@@ -1,3 +1,4 @@
+import { StudentReportList } from "@/components/student-report-list";
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -264,6 +265,17 @@ function SchoolExamDashboard() {
           Submit
         </Button>
       </Card>
+
+      <StudentReportList
+        schoolId={schoolId}
+        cls={cls}
+        division={division}
+        onClassChange={(value) => {
+          setCls(value);
+          setDivision("all");
+        }}
+        onDivisionChange={setDivision}
+      />
 
       <ReportTable
         title="Class Performance"
