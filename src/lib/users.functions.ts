@@ -1,12 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import {
-  defaultPermissions,
-  sanitizePermissions,
-  type AccessProfile,
-  type Permissions,
-} from "./access-control";
+import { sanitizePermissions, type AccessProfile, type Permissions } from "./access-control";
 import {
   adminDb,
   hashPassword,
@@ -173,10 +168,7 @@ export const saveUser = createServerFn({ method: "POST" })
     }
     const db = await adminDb();
     const username = data.username.trim();
-    const permissions =
-      data.role === "admin"
-        ? {}
-        : sanitizePermissions(data.permissions ?? defaultPermissions("trainer"));
+    const permissions = data.role === "admin" ? {} : sanitizePermissions(data.permissions ?? {});
 
     const base = {
       username,

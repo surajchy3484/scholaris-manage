@@ -75,17 +75,8 @@ export const ADMIN_PERMISSIONS: Permissions = MODULES.reduce((acc, m) => {
   return acc;
 }, {} as Permissions);
 
-/** Default STEM Trainer access. */
-export const TRAINER_PERMISSIONS: Permissions = {
-  dashboard: ["view"],
-  session_status: ["view", "edit", "import", "status"],
-  attendance: ["view", "add", "edit"],
-  exam_report: ["view", "export"],
-  students: ["view", "add", "export"],
-  assessments: ["view", "edit"],
-  questions: ["view", "edit"],
-  clicker: ["view", "edit"],
-};
+/** New non-admin accounts start with no access; an administrator grants actions explicitly. */
+export const TRAINER_PERMISSIONS: Permissions = {};
 
 export function defaultPermissions(role: AppRole): Permissions {
   return role === "admin" ? ADMIN_PERMISSIONS : TRAINER_PERMISSIONS;

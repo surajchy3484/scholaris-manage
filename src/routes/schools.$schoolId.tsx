@@ -47,6 +47,7 @@ import { AttendancePanel } from "@/components/attendance-panel";
 import { AttendanceReports } from "@/components/attendance-reports";
 import { exportStudentsToExcel, exportStudentsAsZip } from "@/lib/excel";
 import { RequireModule } from "@/components/require-module";
+import { useAuth } from "@/lib/auth";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
@@ -79,6 +80,12 @@ export const Route = createFileRoute("/schools/$schoolId")({
 
 function SchoolDetail() {
   const { schoolId } = Route.useParams();
+  const { can } = useAuth();
+  const canAdd = can("students", "add");
+  const canEdit = can("students", "edit");
+  const canDelete = can("students", "delete");
+  const canImport = can("students", "import");
+  const canExport = can("students", "export");
   const qc = useQueryClient();
   const [addStudent, setAddStudent] = useState(false);
   const [editStudent, setEditStudent] = useState<Student | null>(null);
@@ -395,11 +402,11 @@ function SchoolDetail() {
         {/* STUDENTS */}
         <TabsContent value="students" className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={() => setAddStudent(true)}>
+            <Button onClick={() => setAddStudent(true)} disabled={!canAdd}>
               <Plus className="h-4 w-4" />
               Add Student
             </Button>
-            <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Button variant="outline" onClick={() => setImportOpen(true)} disabled={!canImport}>
               <Upload className="h-4 w-4" />
               Import
             </Button>
@@ -411,10 +418,10 @@ function SchoolDetail() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleExport(false)}>
+                <DropdownMenuItem onClick={() => handleExport(false)} disabled={!canExport}>
                   <FileSpreadsheet className="h-4 w-4" /> Excel only
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport(true)}>
+                <DropdownMenuItem onClick={() => handleExport(true)} disabled={!canExport}>
                   <FileArchive className="h-4 w-4" /> ZIP (Excel + photos)
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -480,20 +487,27 @@ function SchoolDetail() {
                 <span className="mr-1 text-sm font-semibold text-primary">
                   {selectedIds.length} selected
                 </span>
-                <Button size="sm" variant="outline" onClick={() => setMoveOpen(true)}>
-                  <CheckSquare className="h-4 w-4" /> Change Class/Division
-                </Button>
                 <Button
                   size="sm"
-                  variant="destructive"
-                  onClick={() => setBulkDeleteOpen(true)}
-                  disabled={bulkDelete.isPending}
+                  variant="outline"
+                  onClick={() => setMoveOpen(true)}
+                  disabled={!canEdit}
                 >
-                  <Trash2 className="h-4 w-4" /> Delete Selected
+                  <CheckSquare className="h-4 w-4" /> Change Class/Division
                 </Button>
+                {canDelete && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => setBulkDeleteOpen(true)}
+                    disabled={bulkDelete.isPending}
+                  >
+                    <Trash2 className="h-4 w-4" /> Delete Selected
+                  </Button>
+                )}
               </div>
             )}
-            {filterClass !== "all" && filterDiv !== "all" && filtered.length > 0 && (
+            {canDelete && filterClass !== "all" && filterDiv !== "all" && filtered.length > 0 && (
               <Button
                 size="sm"
                 variant="ghost"
@@ -529,8 +543,8 @@ function SchoolDetail() {
                   key={s.id}
                   student={s}
                   onView={() => setViewStudent(s)}
-                  onEdit={() => setEditStudent(s)}
-                  onDelete={() => del.mutate(s.id)}
+                  onEdit={canEdit ? () => setEditStudent(s) : undefined}
+                  onDelete={canDelete ? () => del.mutate(s.id) : undefined}
                   selected={selectedIds.includes(s.id)}
                   onSelect={(checked) =>
                     setSelectedIds((current) =>

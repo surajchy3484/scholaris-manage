@@ -186,7 +186,7 @@ export async function requirePermission(
 ): Promise<AccessProfile> {
   const profile = await resolveAccess(token);
   if (!can(profile, module, action)) {
-    throw new Error("You do not have permission to do this.");
+    throw new Error(`Access Denied: ${action} permission is required for ${module}.`);
   }
   return profile;
 }
