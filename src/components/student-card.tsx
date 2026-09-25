@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { PhotoPicker } from "./photo-picker";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -36,11 +37,15 @@ export function StudentCard({
   onView,
   onEdit,
   onDelete,
+  selected = false,
+  onSelect,
 }: {
   student: Student;
   onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  selected?: boolean;
+  onSelect?: (checked: boolean) => void;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -77,7 +82,17 @@ export function StudentCard({
 
   return (
     <>
-      <Card className="group relative flex gap-3 p-3 transition-all hover:shadow-soft">
+      <Card
+        className={`group relative flex gap-3 p-3 transition-all hover:shadow-soft ${selected ? "border-primary bg-primary/5 ring-1 ring-primary/20" : ""}`}
+      >
+        {onSelect && (
+          <Checkbox
+            checked={selected}
+            onCheckedChange={(checked) => onSelect(checked === true)}
+            aria-label={`Select ${student.name}`}
+            className="mt-1"
+          />
+        )}
         <button
           type="button"
           onClick={() => (student.photo_url ? onView() : setPhotoOpen(true))}

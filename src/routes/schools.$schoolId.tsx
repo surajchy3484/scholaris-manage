@@ -14,6 +14,8 @@ import {
   FileSpreadsheet,
   FileArchive,
   Pencil,
+  Trash2,
+  CheckSquare,
   ImageOff,
   School as SchoolIcon,
 } from "lucide-react";
@@ -45,6 +47,24 @@ import { AttendancePanel } from "@/components/attendance-panel";
 import { AttendanceReports } from "@/components/attendance-reports";
 import { exportStudentsToExcel, exportStudentsAsZip } from "@/lib/excel";
 import { RequireModule } from "@/components/require-module";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/schools/$schoolId")({
   head: () => ({
@@ -71,6 +91,12 @@ function SchoolDetail() {
     "roll-asc",
   );
   const [editSchoolOpen, setEditSchoolOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [moveClass, setMoveClass] = useState("");
+  const [moveDivision, setMoveDivision] = useState("");
+  const [moveRoll, setMoveRoll] = useState("");
 
   const { data: school } = useQuery({
     queryKey: ["school", schoolId],
@@ -102,13 +128,62 @@ function SchoolDetail() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("students").delete().eq("id", id);
+      const { error } = await supabase
+        .from("students")
+        .delete()
+        .eq("school_id", schoolId)
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["students", schoolId] });
       qc.invalidateQueries({ queryKey: ["schools"] });
       toast.success("Student deleted");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bulkDelete = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from("students")
+        .delete()
+        .eq("school_id", schoolId)
+        .in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setSelectedIds([]);
+      setBulkDeleteOpen(false);
+      qc.invalidateQueries({ queryKey: ["students", schoolId] });
+      qc.invalidateQueries({ queryKey: ["schools"] });
+      toast.success("Selected students deleted");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bulkMove = useMutation({
+    mutationFn: async () => {
+      const payload: { class?: string; division?: string; roll_number?: string } = {};
+      if (moveClass.trim()) payload.class = moveClass.trim();
+      if (moveDivision.trim()) payload.division = moveDivision.trim();
+      if (moveRoll.trim()) payload.roll_number = moveRoll.trim();
+      if (!Object.keys(payload).length) throw new Error("Enter at least one change");
+      const { error } = await supabase
+        .from("students")
+        .update(payload)
+        .eq("school_id", schoolId)
+        .in("id", selectedIds);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setSelectedIds([]);
+      setMoveOpen(false);
+      setMoveClass("");
+      setMoveDivision("");
+      setMoveRoll("");
+      qc.invalidateQueries({ queryKey: ["students", schoolId] });
+      toast.success("Student details updated");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -187,6 +262,16 @@ function SchoolDetail() {
       }
     });
   }, [students, filterClass, filterDiv, q, sortBy]);
+
+  const filteredIds = filtered.map((student) => student.id);
+  const allFilteredSelected =
+    filteredIds.length > 0 && filteredIds.every((id) => selectedIds.includes(id));
+  const toggleAll = () =>
+    setSelectedIds((current) =>
+      allFilteredSelected
+        ? current.filter((id) => !filteredIds.includes(id))
+        : [...new Set([...current, ...filteredIds])],
+    );
 
   async function handleExport(zipFmt: boolean) {
     if (!school) return;
@@ -385,6 +470,44 @@ function SchoolDetail() {
             </Select>
           </div>
 
+          <Card className="flex flex-wrap items-center gap-3 border-border/60 bg-muted/20 p-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+              <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAll} />
+              <span>Select All ({filtered.length})</span>
+            </label>
+            {selectedIds.length > 0 && (
+              <div className="flex flex-1 flex-wrap items-center gap-2 sm:justify-end">
+                <span className="mr-1 text-sm font-semibold text-primary">
+                  {selectedIds.length} selected
+                </span>
+                <Button size="sm" variant="outline" onClick={() => setMoveOpen(true)}>
+                  <CheckSquare className="h-4 w-4" /> Change Class/Division
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setBulkDeleteOpen(true)}
+                  disabled={bulkDelete.isPending}
+                >
+                  <Trash2 className="h-4 w-4" /> Delete Selected
+                </Button>
+              </div>
+            )}
+            {filterClass !== "all" && filterDiv !== "all" && filtered.length > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                onClick={() => {
+                  setSelectedIds(filteredIds);
+                  setBulkDeleteOpen(true);
+                }}
+              >
+                Delete all in Class {filterClass} · Div {filterDiv}
+              </Button>
+            )}
+          </Card>
+
           {isLoading ? (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -408,6 +531,14 @@ function SchoolDetail() {
                   onView={() => setViewStudent(s)}
                   onEdit={() => setEditStudent(s)}
                   onDelete={() => del.mutate(s.id)}
+                  selected={selectedIds.includes(s.id)}
+                  onSelect={(checked) =>
+                    setSelectedIds((current) =>
+                      checked
+                        ? [...new Set([...current, s.id])]
+                        : current.filter((id) => id !== s.id),
+                    )
+                  }
                 />
               ))}
             </motion.div>
@@ -450,6 +581,70 @@ function SchoolDetail() {
         onOpenChange={(o) => !o && setViewStudent(null)}
       />
       <ImportStudentsDialog school={school} open={importOpen} onOpenChange={setImportOpen} />
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete selected students?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to delete {selectedIds.length} student
+              {selectedIds.length === 1 ? "" : "s"}
+              {filterClass !== "all" && filterDiv !== "all"
+                ? ` from Class ${filterClass} · Division ${filterDiv}`
+                : " from this school"}
+              . This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => bulkDelete.mutate(selectedIds)}
+            >
+              {bulkDelete.isPending ? "Deleting…" : "Delete Students"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={moveOpen} onOpenChange={setMoveOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Class / Division</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Move {selectedIds.length} selected students. Leave a field blank to keep it unchanged.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Input
+              placeholder="New class"
+              value={moveClass}
+              onChange={(e) => setMoveClass(e.target.value)}
+            />
+            <Input
+              placeholder="New division"
+              value={moveDivision}
+              onChange={(e) => setMoveDivision(e.target.value)}
+            />
+            <Input
+              placeholder="New roll (optional)"
+              value={moveRoll}
+              onChange={(e) => setMoveRoll(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMoveOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => bulkMove.mutate()}
+              disabled={bulkMove.isPending || selectedIds.length === 0}
+            >
+              {bulkMove.isPending ? "Saving…" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
