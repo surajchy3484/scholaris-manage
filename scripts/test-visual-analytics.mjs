@@ -10,6 +10,7 @@ const engineURL = url(await compile("src/lib/visual-analytics.ts"));
 const {
   prepareAnalytics,
   buildAnalyticsView,
+  buildSchoolComparison,
   areas,
   mean,
   distribution,
@@ -17,7 +18,7 @@ const {
   validThresholds,
   DEFAULT_THRESHOLDS,
 } = await import(engineURL);
-const { analyticsReport } = await import(
+const { analyticsReport, schoolPerformanceReport } = await import(
   url(
     (await compile("src/lib/visual-analytics-report.ts")).replace(
       '"./visual-analytics"',
@@ -213,3 +214,37 @@ if (process.env.ANALYTICS_PREVIEW)
     `<!doctype html><html><head><meta charset="utf-8"><style>@page{size:A4;margin:12mm}body{margin:0}</style></head><body>${report}</body></html>`,
   );
 console.log("Analytics regression checks passed.");
+
+const schoolRows = buildSchoolComparison(data, [
+  { id: "school1", name: "Shared name", code: "ONE" },
+  { id: "school2", name: "Shared name", code: "TWO" },
+  { id: "empty", name: "Empty <school>", code: "EMPTY" },
+]);
+assert.equal(schoolRows.length, 3);
+assert.equal(schoolRows[0].school.id, "school1");
+assert.equal(schoolRows[0].students, 4);
+assert.equal(schoolRows[0].assessed, 3);
+assert.equal(schoolRows[0].score, 50);
+assert.equal(schoolRows.find((r) => r.school.id === "school2").score, null);
+assert.equal(schoolRows.find((r) => r.school.id === "empty").students, 0);
+const schoolHtml = schoolPerformanceReport(
+  schoolRows,
+  DEFAULT_THRESHOLDS,
+  "<script>remarks</script>",
+);
+assert.ok(schoolHtml.includes("Average score by school"));
+assert.ok(schoolHtml.includes("Correct rate by school"));
+assert.ok(schoolHtml.includes("Schools grouped by performance"));
+assert.ok(schoolHtml.includes("Shared name (ONE)"));
+assert.ok(schoolHtml.includes("Shared name (TWO)"));
+assert.ok(schoolHtml.includes("Empty &lt;school&gt;"));
+assert.ok(!schoolHtml.includes("<script>"));
+assert.ok(schoolPerformanceReport([], DEFAULT_THRESHOLDS, "").includes("0 schools"));
+const manySchools = Array.from({ length: 40 }, (_, i) => ({
+  ...schoolRows[0],
+  school: { id: `s${i}`, name: `School ${i}`, code: `C${i}` },
+}));
+assert.ok(schoolPerformanceReport(manySchools, DEFAULT_THRESHOLDS, "").includes("School 39 (C39)"));
+console.log(
+  "School comparison checks passed: complete school coverage, isolated totals, missing results, and escaping.",
+);
