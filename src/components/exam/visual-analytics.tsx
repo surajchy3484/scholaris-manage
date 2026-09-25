@@ -4,16 +4,18 @@ import { fetchAssessments, fetchClickerRecords, fetchQuestions } from "@/lib/mas
 import { fetchDivisionSessions, UNITS } from "@/lib/sessions";
 import {
   buildAnalyticsView,
+  buildSchoolComparison,
   DEFAULT_THRESHOLDS,
   prepareAnalytics,
   validThresholds,
   type Thresholds,
 } from "@/lib/visual-analytics";
-import { analyticsReport } from "@/lib/visual-analytics-report";
+import { analyticsReport, schoolPerformanceReport } from "@/lib/visual-analytics-report";
 import type { StudentReport } from "@/lib/exam";
 
 type Props = {
   students: StudentReport[];
+  schools: { id: string; name: string; code: string }[];
   schoolId: string;
   schoolName: string;
   classKey: string;
@@ -24,7 +26,9 @@ export function useVisualAnalytics(props: Props) {
   const [thresholds, setThresholds] = useState<Thresholds>(DEFAULT_THRESHOLDS);
   const [remarks, setRemarks] = useState("");
   const [focusStudent, setFocusStudent] = useState("");
-  const active = ["class", "school", "student"].includes(props.mode) && props.schoolId !== "all";
+  const allSchools = props.mode === "school" && props.schoolId === "all";
+  const active =
+    allSchools || (["class", "school", "student"].includes(props.mode) && props.schoolId !== "all");
   const query = useQuery({
     queryKey: ["visual-analytics-source"],
     enabled: active,
@@ -81,6 +85,10 @@ export function useVisualAnalytics(props: Props) {
         : null,
     [props.students, query.data],
   );
+  const schoolComparison = useMemo(
+    () => (prepared && allSchools ? buildSchoolComparison(prepared, props.schools) : []),
+    [prepared, allSchools, props.schools],
+  );
   const exportView = useMemo(
     () =>
       prepared
@@ -127,7 +135,12 @@ export function useVisualAnalytics(props: Props) {
     excluded: prepared?.excluded ?? 0,
     duplicates: prepared?.duplicates ?? 0,
   };
-  const html = ready && exportView ? analyticsReport(exportView, options) : "";
+  const html =
+    ready && allSchools
+      ? schoolPerformanceReport(schoolComparison, thresholds, remarks)
+      : ready && exportView
+        ? analyticsReport(exportView, options)
+        : "";
   const screenHtml =
     screenView === exportView
       ? html
@@ -168,8 +181,8 @@ export function VisualAnalytics({
       ) : (
         <>
           <p className="text-sm text-muted-foreground">
-            Use the report buttons and school/class selectors above to drill down. Student search
-            does not remove students from class analytics or exports.
+            Choose All schools for performance comparison graphs, or select one school for detailed
+            analytics. Class and student-search filters do not narrow school-level graphs.
           </p>
           <div className="grid gap-3 sm:grid-cols-3">
             {(
@@ -228,7 +241,7 @@ export function VisualAnalytics({
           )}
           {a.query.isFetching && !a.query.isPending && <p role="status">Refreshing analytics…</p>}
           {a.sessions.isFetching && <p role="status">Loading session progress…</p>}
-          {a.mode !== "student" && a.exportView && (
+          {a.mode !== "student" && a.exportView && a.schoolId !== "all" && (
             <label className="block text-sm">
               Individual student progress (dashboard only; class PDF includes everyone)
               <select

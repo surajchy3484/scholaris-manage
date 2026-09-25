@@ -219,6 +219,7 @@ function OverallReport() {
 
   const analytics = useVisualAnalytics({
     students,
+    schools,
     schoolId,
     schoolName: selectedSchool?.name ?? "",
     classKey,
@@ -226,7 +227,7 @@ function OverallReport() {
     mode,
   });
   const analyticsRequired =
-    mode === "class" || ((mode === "school" || mode === "student") && schoolId !== "all");
+    mode === "class" || mode === "school" || (mode === "student" && schoolId !== "all");
   const exportDisabled = analyticsRequired && !analytics.ready;
 
   const buildReport = () => {
@@ -242,19 +243,22 @@ function OverallReport() {
         );
       if (mode === "class" || (mode === "school" && schoolId !== "all")) return analytics.html;
       if (mode === "school") {
-        return `<h2>SCHOOL-WISE REPORT</h2>${table(
-          ["School", "Students", "Attendance %", "ICA", "MCA", "FCA", "Overall %", "Grade"],
-          schoolRows.map((r) => [
-            r.school.name,
-            r.students,
-            r.attendance,
-            r.ica,
-            r.mca,
-            r.fca,
-            r.performance,
-            grade(r.performance),
-          ]),
-        )}`;
+        return (
+          analytics.html +
+          `<h2>ICA / MCA / FCA Summary</h2>${table(
+            ["School", "Students", "Attendance %", "ICA", "MCA", "FCA", "Overall %", "Grade"],
+            schoolRows.map((r) => [
+              r.school.name,
+              r.students,
+              r.attendance,
+              r.ica,
+              r.mca,
+              r.fca,
+              r.performance,
+              grade(r.performance),
+            ]),
+          )}`
+        );
       }
       if (mode === "assessment") {
         return `<h2>ASSESSMENT-WISE REPORT</h2>${table(
@@ -472,7 +476,7 @@ function OverallReport() {
 
       <VisualAnalytics analytics={analytics} />
 
-      {!analyticsRequired && (
+      {(!analyticsRequired || (mode === "school" && schoolId === "all")) && (
         <ReportPreview
           mode={mode}
           reports={reports}
@@ -502,7 +506,7 @@ function ReportPreview({
   if (mode === "school")
     return (
       <PreviewTable
-        title="School-wise Report"
+        title="ICA / MCA / FCA Summary"
         headers={["School", "Students", "Attendance", "ICA", "MCA", "FCA", "Overall", "Grade"]}
         rows={reports
           .filter((r) => !selectedSchool || r.school.name === selectedSchool)

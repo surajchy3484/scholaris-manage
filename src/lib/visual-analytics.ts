@@ -317,3 +317,34 @@ export function distribution(values: (number | null)[]) {
     count: values.filter((v) => v != null && v >= lo && v < hi).length,
   }));
 }
+
+/** Compare every school, including empty schools, without mixing schools that share a name. */
+export function buildSchoolComparison(
+  data: AnalyticsData,
+  schools: { id: string; name: string; code: string }[],
+) {
+  const studentsBySchool = new Map<string, StudentReport[]>();
+  const attemptsBySchool = new Map<string, Attempt[]>();
+  for (const student of data.students) {
+    const group = studentsBySchool.get(student.school_id) ?? [];
+    group.push(student);
+    studentsBySchool.set(student.school_id, group);
+  }
+  for (const attempt of data.attempts) {
+    const id = attempt.student.school_id;
+    const group = attemptsBySchool.get(id) ?? [];
+    group.push(attempt);
+    attemptsBySchool.set(id, group);
+  }
+  return schools
+    .map((school) => ({
+      school,
+      ...summarize(studentsBySchool.get(school.id) ?? [], attemptsBySchool.get(school.id) ?? []),
+    }))
+    .sort(
+      (a, b) =>
+        (b.score ?? -1) - (a.score ?? -1) ||
+        a.school.name.localeCompare(b.school.name) ||
+        a.school.id.localeCompare(b.school.id),
+    );
+}

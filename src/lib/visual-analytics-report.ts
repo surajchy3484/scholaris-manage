@@ -1,5 +1,6 @@
 import {
   classify,
+  buildSchoolComparison,
   distribution,
   mean,
   type AnalyticsView,
@@ -48,7 +49,7 @@ const stats = (s: AnalyticsView["summary"]) =>
     .join("")}</div>`;
 function bars(
   title: string,
-  rows: { name: string; value: number | null }[],
+  rows: { name: string; value: number | null; color?: string }[],
   color = "#7c3aed",
   percent = true,
 ) {
@@ -61,7 +62,7 @@ function bars(
       .slice(i, i + 18)
       .map(
         (r) =>
-          `<div class="va-bar"><span>${escape(r.name)}</span><div class="va-track"><div class="va-fill" style="width:${Math.max(0, Math.min(100, ((r.value ?? 0) / max) * 100))}%;background:${color}"></div></div><b>${r.value == null ? "No data" : percent ? pct(r.value) : r.value}</b></div>`,
+          `<div class="va-bar"><span>${escape(r.name)}</span><div class="va-track"><div class="va-fill" style="width:${Math.max(0, Math.min(100, ((r.value ?? 0) / max) * 100))}%;background:${r.color ?? color}"></div></div><b>${r.value == null ? "No data" : percent ? pct(r.value) : r.value}</b></div>`,
       )
       .join("")}</div>`;
   }
@@ -401,4 +402,67 @@ export function analyticsReport(view: AnalyticsView, options: ReportOptions) {
     body +=
       '<p class="va-note">No linked question responses are available. Import S1, S2, … answers and matching Question Master rows to calculate subject, parameter, topic, and chapter performance.</p>';
   return body + "</div>";
+}
+
+/** Same printable charts are used in the all-schools dashboard and PDF/Word exports. */
+export function schoolPerformanceReport(
+  rows: ReturnType<typeof buildSchoolComparison>,
+  thresholds: Thresholds,
+  remarks: string,
+) {
+  const label = (r: (typeof rows)[number]) => `${r.school.name} (${r.school.code || r.school.id})`;
+  const levels = ["Strong", "Good", "Needs Attention", "Weak", "No data"];
+  const colors = ["#059669", "#d97706", "#ea580c", "#dc2626", "#64748b"];
+  return `<style>${analyticsStyles}</style><div class="va"><h2>School-wise Performance Report</h2>
+    <p>All schools · ${rows.length} schools · highest to lowest average score</p>
+    <p class="va-note">Based on linked Clicker assessment results. Average score is the mean of recorded score percentages (correct-answer score / assessment question count × 100). Average correct rate uses recorded Clicker percentages. Missing results are excluded from averages; schools without results remain visible as No data. Class and student-search filters do not narrow this school comparison.</p>
+    <p class="va-muted">Performance colours: Strong ≥ ${thresholds.strong}%; Good ≥ ${thresholds.good}%; Needs Attention ≥ ${thresholds.attention}%; Weak below ${thresholds.attention}%. Categories use average score.</p>
+    ${section(
+      "Average score by school",
+      bars(
+        "Score percentage · 0–100%",
+        rows.map((r) => ({
+          name: label(r),
+          value: r.score,
+          color: classify(r.score, thresholds).color,
+        })),
+      ),
+    )}
+    ${section(
+      "Correct rate by school",
+      bars(
+        "Correct-rate percentage · 0–100%",
+        rows.map((r) => ({ name: label(r), value: r.rate })),
+        "#0891b2",
+      ),
+    )}
+    ${section(
+      "Schools grouped by performance",
+      bars(
+        "Number of schools in each performance range",
+        levels.map((name, i) => ({
+          name,
+          value: rows.filter((r) => classify(r.score, thresholds).status === name).length,
+          color: colors[i],
+        })),
+        "#7c3aed",
+        false,
+      ),
+    )}
+    ${section(
+      "Performance comparison",
+      table(
+        ["School", "Students", "Assessed", "Avg. score", "Correct rate", "Assessments", "Status"],
+        rows.map((r) => [
+          label(r),
+          r.students,
+          r.assessed,
+          pct(r.score),
+          pct(r.rate),
+          r.assessments,
+          classify(r.score, thresholds).status,
+        ]),
+      ),
+    )}
+    ${section("Teacher Remarks", `<div class="va-remarks">${escape(remarks || "Teacher / trainer remarks:")}</div>`)}</div>`;
 }
