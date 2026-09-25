@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import { readWorkbook } from "./read-workbook";
 import FileSaver from "file-saver";
 const { saveAs } = FileSaver;
 import JSZip from "jszip";
@@ -15,52 +15,39 @@ export type ImportRow = {
   _errors: string[];
 };
 
-export function parseImportFile(file: File): Promise<ImportRow[]> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(reader.error);
-    reader.onload = () => {
-      try {
-        const data = reader.result as ArrayBuffer;
-        const wb = XLSX.read(data, { type: "array" });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
-        const parsed: ImportRow[] = rows.map((r, i) => {
-          const get = (keys: string[]) => {
-            for (const k of keys) {
-              const found = Object.keys(r).find((rk) => rk.trim().toLowerCase() === k);
-              if (found) return String(r[found] ?? "").trim();
-            }
-            return "";
-          };
-          const name = get(["student name", "name"]);
-          const cls = get(["class"]);
-          const division = get(["division", "section"]);
-          const roll = get(["roll number", "roll no", "roll", "rollno"]);
-          const errors: string[] = [];
-          if (!name) errors.push("Missing student name");
-          if (!cls) errors.push("Missing class");
-          if (!division) errors.push("Missing division");
-          if (!roll) errors.push("Missing roll number");
-          return {
-            name,
-            class: cls,
-            division,
-            roll_number: roll,
-            _row: i + 2,
-            _errors: errors,
-          };
-        });
-        resolve(parsed);
-      } catch (e) {
-        reject(e);
+export async function parseImportFile(file: File): Promise<ImportRow[]> {
+  const rows = await readWorkbook(file);
+  const parsed: ImportRow[] = rows.map((r, i) => {
+    const get = (keys: string[]) => {
+      for (const k of keys) {
+        const found = Object.keys(r).find((rk) => rk.trim().toLowerCase() === k);
+        if (found) return String(r[found] ?? "").trim();
       }
+      return "";
     };
-    reader.readAsArrayBuffer(file);
+    const name = get(["student name", "name"]);
+    const cls = get(["class"]);
+    const division = get(["division", "section"]);
+    const roll = get(["roll number", "roll no", "roll", "rollno"]);
+    const errors: string[] = [];
+    if (!name) errors.push("Missing student name");
+    if (!cls) errors.push("Missing class");
+    if (!division) errors.push("Missing division");
+    if (!roll) errors.push("Missing roll number");
+    return {
+      name,
+      class: cls,
+      division,
+      roll_number: roll,
+      _row: i + 2,
+      _errors: errors,
+    };
   });
+  return parsed;
 }
 
-export function downloadSampleTemplate() {
+export async function downloadSampleTemplate() {
+  const XLSX = await import("xlsx");
   const rows = [
     { "Student Name": "Aisha Khan", Class: "5", Division: "A", "Roll Number": "1" },
     { "Student Name": "Rohan Patel", Class: "5", Division: "A", "Roll Number": "2" },
@@ -101,7 +88,8 @@ function shapeRows(rows: StudentExportRow[]) {
   }));
 }
 
-function makeWorkbookWithHyperlinks(shaped: ReturnType<typeof shapeRows>) {
+async function makeWorkbookWithHyperlinks(shaped: ReturnType<typeof shapeRows>) {
+  const XLSX = await import("xlsx");
   const ws = XLSX.utils.json_to_sheet(shaped);
   const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
   // Locate the "Photo URL" column
@@ -138,8 +126,9 @@ function makeWorkbookWithHyperlinks(shaped: ReturnType<typeof shapeRows>) {
   return wb;
 }
 
-export function exportStudentsToExcel(schoolName: string, rows: StudentExportRow[]) {
-  const wb = makeWorkbookWithHyperlinks(shapeRows(rows));
+export async function exportStudentsToExcel(schoolName: string, rows: StudentExportRow[]) {
+  const XLSX = await import("xlsx");
+  const wb = await makeWorkbookWithHyperlinks(shapeRows(rows));
   const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   saveAs(new Blob([buf], { type: "application/octet-stream" }), `${schoolName}-students.xlsx`);
 }
@@ -150,8 +139,9 @@ export async function exportStudentsAsZip(
   students: Student[],
 ) {
   const zip = new JSZip();
+  const studentByCode = new Map(students.map((student) => [student.student_code, student]));
   const patched = rows.map((r) => {
-    const s = students.find((s) => s.student_code === r.student_id);
+    const s = studentByCode.get(r.student_id);
     // For students whose photo is still a local data URL (pre-Drive), embed
     // in the zip and point Photo URL at the local relative path.
     if (s?.photo_url?.startsWith("data:")) {
@@ -161,7 +151,8 @@ export async function exportStudentsAsZip(
     }
     return r;
   });
-  const wb = makeWorkbookWithHyperlinks(shapeRows(patched));
+  const XLSX = await import("xlsx");
+  const wb = await makeWorkbookWithHyperlinks(shapeRows(patched));
   const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   zip.file("students.xlsx", buf);
   const blob = await zip.generateAsync({ type: "blob" });

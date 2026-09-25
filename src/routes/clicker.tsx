@@ -1,3 +1,7 @@
+import { listClickerQuestionKeys } from "@/lib/performance.functions";
+import { getAccessToken } from "@/lib/app-access";
+import type { Question } from "@/lib/master";
+import { useMasterPage } from "@/hooks/use-master-page";
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -242,30 +246,49 @@ function ClickerPage() {
   const [target, setTarget] = useState<ClickerRecord | null>(null);
 
   const assessments = useQuery({ queryKey: ["assessments"], queryFn: fetchAssessments });
+  const list = useMasterPage<ClickerRecord>("clicker_records", {
+    assessmentId: assessment,
+    minScore: minScore.trim() && Number.isFinite(Number(minScore)) ? Number(minScore) : undefined,
+  });
+  const rows = list.data?.rows ?? [];
+  const visibleAssessmentIds = [...new Set(rows.map((row) => row.assessment_id))].sort();
   const questionKeys = useQuery({
-    queryKey: ["clicker-question-keys", assessments.data?.map((a) => a.assessment_id).join(",")],
-    enabled: !!assessments.data,
+    queryKey: ["clicker-question-keys", visibleAssessmentIds],
+    enabled: visibleAssessmentIds.length > 0,
     queryFn: async () => {
-      const entries = await Promise.all(
-        (assessments.data ?? []).map(
-          async (a) => [a.assessment_id, await fetchQuestions(a.assessment_id)] as const,
-        ),
-      );
-      return new Map(entries);
+      const questions = await listClickerQuestionKeys({
+        data: { token: getAccessToken(), assessmentIds: visibleAssessmentIds },
+      });
+      const grouped = new Map<string, typeof questions>();
+      for (const question of questions) {
+        const group = grouped.get(question.assessment_id) ?? [];
+        group.push(question);
+        grouped.set(question.assessment_id, group);
+      }
+      return grouped;
     },
   });
-  const list = useQuery({
-    queryKey: ["clicker", assessment],
-    queryFn: () => fetchClickerRecords(assessment),
+  const [knownColumns, setKnownColumns] = useState<{ assessment: string; columns: string[] }>({
+    assessment: "",
+    columns: [],
   });
-
-  const rows = useMemo(() => {
-    const min = Number(minScore);
-    const all = list.data ?? [];
-    return Number.isFinite(min) && minScore.trim() !== "" ? all.filter((r) => r.score >= min) : all;
-  }, [list.data, minScore]);
-
-  const questionCols = useMemo(() => clickerQuestionColumns(list.data ?? []), [list.data]);
+  const columnsFromPage = list.data?.questionColumns;
+  if (
+    columnsFromPage?.length &&
+    (knownColumns.assessment !== assessment ||
+      JSON.stringify(knownColumns.columns) !== JSON.stringify(columnsFromPage))
+  )
+    setKnownColumns({ assessment, columns: columnsFromPage });
+  const questionCols = useMemo(
+    () =>
+      [
+        ...new Set([
+          ...(knownColumns.assessment === assessment ? knownColumns.columns : []),
+          ...clickerQuestionColumns(rows),
+        ]),
+      ].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1))),
+    [knownColumns, assessment, rows],
+  );
   const questionKeysByAssessment = useMemo(() => {
     const keys = new Map<string, string>();
     for (const [assessmentId, questions] of questionKeys.data ?? []) {
@@ -368,6 +391,11 @@ function ClickerPage() {
 
   return (
     <>
+      {list.isError && (
+        <p role="alert" className="p-4 text-destructive">
+          {list.error.message}
+        </p>
+      )}
       <main className="mx-auto max-w-7xl space-y-4 px-3 py-6 sm:px-6">
         <header className="min-w-0">
           <h1 className="font-display text-2xl font-bold sm:text-3xl">Clicker Data</h1>
@@ -380,7 +408,8 @@ function ClickerPage() {
 
         <DataGrid
           title="Clicker responses"
-          description={`${rows.length} record(s)`}
+          description={`${list.data?.total ?? 0} record(s)`}
+          remote={list.remote}
           rows={rows}
           columns={columns}
           getId={(r) => r.id}

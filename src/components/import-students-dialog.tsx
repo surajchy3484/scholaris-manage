@@ -5,7 +5,8 @@ import { Upload, Download, AlertCircle, CheckCircle2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { School } from "@/lib/types";
-import { formatStudentCode, nextStudentCode } from "@/lib/student-id";
+import { importStudentBatch } from "@/lib/performance.functions";
+import { getAccessToken } from "@/lib/app-access";
 import { parseImportFile, downloadSampleTemplate, type ImportRow } from "@/lib/excel";
 import {
   Dialog,
@@ -35,6 +36,8 @@ export function ImportStudentsDialog({
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {
+  const [progress, setProgress] = useState(0);
+  const [parsing, setParsing] = useState(false);
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [fileName, setFileName] = useState("");
   const qc = useQueryClient();
@@ -46,6 +49,7 @@ export function ImportStudentsDialog({
 
   async function handleFile(file: File) {
     setFileName(file.name);
+    setParsing(true);
     try {
       const parsed = await parseImportFile(file);
       // Detect duplicates within import
@@ -61,6 +65,8 @@ export function ImportStudentsDialog({
       setRows(parsed);
     } catch {
       toast.error("Could not parse file");
+    } finally {
+      setParsing(false);
     }
   }
 
@@ -68,22 +74,32 @@ export function ImportStudentsDialog({
     mutationFn: async () => {
       const valid = rows.filter((r) => r._errors.length === 0);
       if (!valid.length) throw new Error("No valid rows to import");
-      // Get current max sequence for this school, then assign sequentially.
-      const first = await nextStudentCode(school.id, school.code);
-      // parse starting seq from first
-      const startSeq = parseInt(first.split("-STU")[1], 10);
-      const payload = valid.map((r, i) => ({
-        school_id: school.id,
-        student_code: formatStudentCode(school.code, startSeq + i),
-        name: r.name,
-        class: r.class,
-        division: r.division,
-        roll_number: r.roll_number,
-        photo_url: null,
-      }));
-      const { error } = await supabase.from("students").insert(payload);
-      if (error) throw error;
-      return valid.length;
+      let added = 0;
+      setProgress(0);
+      for (let offset = 0; offset < valid.length; offset += 250) {
+        try {
+          added += await importStudentBatch({
+            data: {
+              token: getAccessToken(),
+              schoolId: school.id,
+              rows: valid
+                .slice(offset, offset + 250)
+                .map(({ name, class: klass, division, roll_number }) => ({
+                  name,
+                  class: klass,
+                  division,
+                  roll_number,
+                })),
+            },
+          });
+          setProgress(Math.min(offset + 250, valid.length));
+        } catch (error) {
+          throw new Error(
+            `${added} students added before import stopped. Retry skips existing rolls. ${error instanceof Error ? error.message : "Request failed"}`,
+          );
+        }
+      }
+      return added;
     },
     onSuccess: (n) => {
       qc.invalidateQueries({ queryKey: ["students"] });
@@ -93,6 +109,10 @@ export function ImportStudentsDialog({
       onOpenChange(false);
     },
     onError: (e: Error) => toast.error(e.message),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["students"] });
+      qc.invalidateQueries({ queryKey: ["schools"] });
+    },
   });
 
   const valid = rows.filter((r) => r._errors.length === 0).length;
@@ -115,6 +135,18 @@ export function ImportStudentsDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {rows.length > 100 && (
+          <p className="text-xs text-muted-foreground">
+            Preview shows the first 100 rows. All {rows.length} rows are validated and all valid
+            rows will be processed.
+          </p>
+        )}
+        {parsing && <p role="status">Reading spreadsheet…</p>}
+        {importMut.isPending && (
+          <p role="status">
+            Processed {progress} of {rows.length} rows…
+          </p>
+        )}
         {rows.length === 0 ? (
           <div className="space-y-4 py-4">
             <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-muted/40 p-10 transition-colors hover:border-primary hover:bg-accent/40">
@@ -124,6 +156,7 @@ export function ImportStudentsDialog({
                 <p className="text-xs text-muted-foreground">.xlsx, .xls, or .csv</p>
               </div>
               <input
+                disabled={parsing || importMut.isPending}
                 type="file"
                 accept=".xlsx,.xls,.csv"
                 className="hidden"
@@ -169,7 +202,7 @@ export function ImportStudentsDialog({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((r) => (
+                  {rows.slice(0, 100).map((r) => (
                     <TableRow key={r._row} className={r._errors.length ? "bg-destructive/5" : ""}>
                       <TableCell className="text-xs text-muted-foreground">{r._row}</TableCell>
                       <TableCell>

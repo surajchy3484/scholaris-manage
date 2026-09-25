@@ -1,10 +1,10 @@
-import * as XLSX from "xlsx";
 import FileSaver from "file-saver";
 const { saveAs } = FileSaver;
 
 export type Row = Record<string, string | number>;
 
-export function exportRowsToExcel(filename: string, rows: Row[], sheet = "Report") {
+export async function exportRowsToExcel(filename: string, rows: Row[], sheet = "Report") {
+  const XLSX = await import("xlsx");
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, sheet);
@@ -12,7 +12,8 @@ export function exportRowsToExcel(filename: string, rows: Row[], sheet = "Report
   saveAs(new Blob([buf], { type: "application/octet-stream" }), `${filename}.xlsx`);
 }
 
-export function exportRowsToCsv(filename: string, rows: Row[]) {
+export async function exportRowsToCsv(filename: string, rows: Row[]) {
+  const XLSX = await import("xlsx");
   const ws = XLSX.utils.json_to_sheet(rows);
   const csv = XLSX.utils.sheet_to_csv(ws);
   saveAs(new Blob([csv], { type: "text/csv;charset=utf-8" }), `${filename}.csv`);
@@ -42,8 +43,8 @@ function tableHtml(title: string, rows: Row[]) {
 }
 
 /** Opens the browser print dialog — users can choose "Save as PDF". */
-export function printRows(title: string, rows: Row[]) {
-  const w = window.open("", "_blank", "width=1100,height=800");
+export function printRows(title: string, rows: Row[], existingWindow?: Window) {
+  const w = existingWindow ?? window.open("", "_blank", "width=1100,height=800");
   if (!w) return false;
   w.document.write(tableHtml(title, rows));
   w.document.close();

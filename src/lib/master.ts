@@ -152,7 +152,9 @@ export function applyCompetitionRanking<
   const groups = new Map<string, T[]>();
   for (const row of rows) {
     const key = `${row.assessment_id ?? ""}|${row.class ?? ""}|${row.section ?? ""}`;
-    groups.set(key, [...(groups.get(key) ?? []), row]);
+    const group = groups.get(key);
+    if (group) group.push(row);
+    else groups.set(key, [row]);
   }
   for (const group of groups.values()) {
     const sorted = [...group].sort((a, b) => b.score - a.score);

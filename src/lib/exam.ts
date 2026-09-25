@@ -169,8 +169,14 @@ export async function fetchExamData(): Promise<ExamData> {
 }
 
 export function buildSchoolReports(data: ExamData): SchoolReport[] {
+  const bySchool = new Map<string, StudentReport[]>();
+  for (const student of data.students) {
+    const group = bySchool.get(student.school_id);
+    if (group) group.push(student);
+    else bySchool.set(student.school_id, [student]);
+  }
   return data.schools.map((school) => {
-    const list = data.students.filter((s) => s.school_id === school.id);
+    const list = bySchool.get(school.id) ?? [];
     const attendance = avg(list.map((s) => s.attendance_pct));
     const ica = avg(list.filter((s) => s.ica != null).map((s) => s.ica as number));
     const mca = avg(list.filter((s) => s.mca != null).map((s) => s.mca as number));
@@ -206,7 +212,9 @@ export function buildClassReports(students: StudentReport[]): ClassReport[] {
   const groups = new Map<string, StudentReport[]>();
   for (const s of students) {
     const key = `${s.class}|${s.division}`;
-    groups.set(key, [...(groups.get(key) ?? []), s]);
+    const group = groups.get(key);
+    if (group) group.push(s);
+    else groups.set(key, [s]);
   }
   return [...groups.entries()]
     .map(([key, list]) => {

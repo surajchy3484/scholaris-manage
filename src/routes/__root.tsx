@@ -1,3 +1,4 @@
+import { getAccessToken } from "@/lib/app-access";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -206,6 +207,22 @@ function AuthGate({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   useEffect(() => setupOffline(), []);
+  useEffect(() => {
+    let previousToken = getAccessToken();
+    const clearOnAccountChange = () => {
+      const token = getAccessToken();
+      if (token !== previousToken) {
+        previousToken = token;
+        queryClient.clear();
+      }
+    };
+    window.addEventListener("scholaris:auth", clearOnAccountChange);
+    window.addEventListener("storage", clearOnAccountChange);
+    return () => {
+      window.removeEventListener("scholaris:auth", clearOnAccountChange);
+      window.removeEventListener("storage", clearOnAccountChange);
+    };
+  }, [queryClient]);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const onLogin = pathname === "/login" || pathname.startsWith("/.lovable");
   return (

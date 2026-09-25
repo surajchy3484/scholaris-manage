@@ -100,6 +100,7 @@ export function StudentCard({
         >
           {student.photo_url ? (
             <img
+              decoding="async"
               src={toDisplayablePhotoUrl(student.photo_url) ?? ""}
               alt={student.name}
               className="h-full w-full object-cover"

@@ -61,22 +61,19 @@ function displayCluster(school: School) {
 }
 
 async function fetchSchools(): Promise<SchoolWithCount[]> {
-  const { data: schools, error } = await supabase
-    .from("schools")
-    .select("*")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-
-  // PostgREST returns at most 1000 rows per request — page through the table so
-  // the totals stay correct for large datasets.
-  const students = await fetchAllRows<{ school_id: string }>((from, to) =>
-    supabase.from("students").select("school_id").range(from, to),
+  // Embedded counts aggregate inside PostgreSQL; student rows never cross the network.
+  const schools = await fetchAllRows<School & { students: { count: number }[] }>((from, to) =>
+    supabase
+      .from("schools")
+      .select("*,students(count)")
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, to),
   );
-  const counts = new Map<string, number>();
-  students.forEach((s) => {
-    counts.set(s.school_id, (counts.get(s.school_id) ?? 0) + 1);
-  });
-  return (schools ?? []).map((s) => ({ ...s, student_count: counts.get(s.id) ?? 0 }));
+  return schools.map(({ students, ...school }) => ({
+    ...school,
+    student_count: students[0]?.count ?? 0,
+  }));
 }
 
 function Dashboard() {

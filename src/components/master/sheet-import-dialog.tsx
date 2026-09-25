@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import * as XLSX from "xlsx";
+import { readWorkbook } from "@/lib/read-workbook";
 import FileSaver from "file-saver";
 
 const { saveAs } = FileSaver;
@@ -25,11 +25,7 @@ export type ParsedBase = { _row: number; errors: string[]; duplicate?: boolean }
 
 /** Reads the first sheet of an .xls/.xlsx/.csv file into plain objects. */
 export async function readSheet(file: File): Promise<Record<string, unknown>[]> {
-  const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: "array", cellDates: true });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  if (!ws) throw new Error("That file has no readable sheet");
-  return XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
+  return readWorkbook(file);
 }
 
 /** Normalises a header so "Correct Ans (A,B,C,D)" matches "correct ans". */
@@ -101,7 +97,7 @@ export function SheetImportDialog<T extends ParsedBase>({
   onOpenChange: (o: boolean) => void;
   title: string;
   description: string;
-  parse: (rows: Record<string, unknown>[]) => T[];
+  parse: (rows: Record<string, unknown>[]) => T[] | Promise<T[]>;
   commit: (valid: T[], onProgress?: (done: number) => void) => Promise<string>;
   columns: { label: string; get: (r: T) => ReactNode }[];
   sample?: { fileName: string; sheetName: string; rows: Record<string, string | number>[] };
@@ -128,7 +124,8 @@ export function SheetImportDialog<T extends ParsedBase>({
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const downloadErrors = () => {
+  const downloadErrors = async () => {
+    const XLSX = await import("xlsx");
     const bad = rows.filter((r) => r.errors.length > 0);
     const data = bad.map((r) => {
       const out: Record<string, string> = { Row: String(r._row) };
@@ -185,7 +182,7 @@ export function SheetImportDialog<T extends ParsedBase>({
                 try {
                   const raw = await readSheet(f);
                   if (raw.length === 0) throw new Error("That file has no data rows");
-                  setRows(parse(raw));
+                  setRows(await parse(raw));
                 } catch (err) {
                   setRows([]);
                   toast.error(err instanceof Error ? err.message : "Could not read that file");
