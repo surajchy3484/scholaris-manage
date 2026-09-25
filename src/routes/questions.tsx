@@ -1,3 +1,4 @@
+import { useMasterPage } from "@/hooks/use-master-page";
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -97,16 +98,8 @@ function QuestionsPage() {
   const [destination, setDestination] = useState("");
 
   const assessments = useQuery({ queryKey: ["assessments"], queryFn: fetchAssessments });
-  const list = useQuery({
-    queryKey: ["questions", assessment],
-    queryFn: () => fetchQuestions(assessment),
-  });
-
-  const rows = useMemo(() => {
-    const needle = subject.trim().toLowerCase();
-    const all = list.data ?? [];
-    return needle ? all.filter((q) => (q.subject ?? "").toLowerCase().includes(needle)) : all;
-  }, [list.data, subject]);
+  const list = useMasterPage<Question>("questions", { assessmentId: assessment, subject });
+  const rows = list.data?.rows ?? [];
 
   const remove = useMutation({
     mutationFn: (ids: string[]) => deleteRowsByIds("questions", ids),
@@ -135,7 +128,7 @@ function QuestionsPage() {
     mutationFn: async () => {
       if (!destination || destination === assessment)
         throw new Error("Choose a different destination assessment.");
-      const selectedQuestions = (list.data ?? []).filter((q) => selected.includes(q.id));
+      const selectedQuestions = (await fetchQuestions()).filter((q) => selected.includes(q.id));
       const destinationRows = await fetchQuestions(destination);
       const existing = new Set(destinationRows.map((q) => q.question_no));
       const payload = selectedQuestions
@@ -268,6 +261,11 @@ function QuestionsPage() {
 
   return (
     <>
+      {list.isError && (
+        <p role="alert" className="p-4 text-destructive">
+          {list.error.message}
+        </p>
+      )}
       <main className="mx-auto max-w-7xl space-y-4 px-3 py-6 sm:px-6">
         <header className="min-w-0">
           <h1 className="font-display text-2xl font-bold sm:text-3xl">Question Master</h1>
@@ -278,7 +276,8 @@ function QuestionsPage() {
 
         <DataGrid
           title="Questions"
-          description={`${rows.length} question(s)`}
+          description={`${list.data?.total ?? 0} question(s)`}
+          remote={list.remote}
           rows={rows}
           columns={columns}
           getId={(r) => r.id}
@@ -378,10 +377,12 @@ function QuestionsPage() {
         title="Import questions"
         sample={QUESTION_SAMPLE}
         description="Columns: Assessment ID, Question No., Correct Ans (A,B,C,D), Parameter, Topic, Chapter. Column order does not matter."
-        parse={(raw) => {
+        parse={async (raw) => {
           const known = new Set((assessments.data ?? []).map((a) => a.assessment_id.toLowerCase()));
           const existing = new Set(
-            (list.data ?? []).map((q) => `${q.assessment_id.toLowerCase()}#${q.question_no}`),
+            (await fetchQuestions()).map(
+              (q) => `${q.assessment_id.toLowerCase()}#${q.question_no}`,
+            ),
           );
           const seen = new Set<string>();
           return raw.map((row, i) => {

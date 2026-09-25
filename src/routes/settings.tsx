@@ -121,7 +121,7 @@ function SettingsPage() {
           <div className="mb-3">
             <h2 className="font-display text-lg font-semibold">Backup &amp; Restore</h2>
             <p className="text-sm text-muted-foreground">
-              Export all schools, students, and attendance as a JSON file — or replace everything
+              Export all schools, students, and attendance as a JSON file — or add missing records
               from a previous backup.
             </p>
           </div>
@@ -142,14 +142,18 @@ function SettingsPage() {
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) {
-                  if (confirm("Restore will delete all current data. Continue?")) onRestore(f);
+                  if (
+                    confirm("Restore adds missing records and preserves existing data. Continue?")
+                  )
+                    onRestore(f);
                 }
               }}
             />
           </div>
           <div className="mt-3 flex items-start gap-2 rounded-lg bg-warm/40 p-3 text-xs text-warm-foreground">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            Restore replaces all data. Take a backup first if you're unsure.
+            Existing records are preserved. This export covers schools, students, and attendance;
+            use provider backups for full database recovery.
           </div>
         </Card>
 

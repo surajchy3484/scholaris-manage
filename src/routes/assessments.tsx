@@ -1,3 +1,4 @@
+import { useMasterPage } from "@/hooks/use-master-page";
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -90,7 +91,7 @@ function AssessmentsPage() {
   const [confirm, setConfirm] = useState<"single" | "bulk" | null>(null);
   const [target, setTarget] = useState<Assessment | null>(null);
 
-  const list = useQuery({ queryKey: ["assessments"], queryFn: fetchAssessments });
+  const list = useMasterPage<Assessment>("assessments");
   const schools = useQuery({
     queryKey: ["schools-lite"],
     queryFn: async (): Promise<School[]> => {
@@ -100,7 +101,7 @@ function AssessmentsPage() {
     },
   });
 
-  const rows = list.data ?? [];
+  const rows = list.data?.rows ?? [];
 
   const remove = useMutation({
     mutationFn: (ids: string[]) => deleteRowsByIds("assessments", ids),
@@ -148,7 +149,7 @@ function AssessmentsPage() {
               size="icon"
               variant="ghost"
               aria-label="Edit"
-              onClick={() => {
+              onClick={async () => {
                 setEditing(r);
                 setDupCode(undefined);
                 setDialog(true);
@@ -160,10 +161,17 @@ function AssessmentsPage() {
               size="icon"
               variant="ghost"
               aria-label="Duplicate"
-              onClick={() => {
-                setEditing(r);
-                setDupCode(nextAssessmentCode(rows));
-                setDialog(true);
+              onClick={async () => {
+                try {
+                  const code = nextAssessmentCode(await fetchAssessments());
+                  setEditing(r);
+                  setDupCode(code);
+                  setDialog(true);
+                } catch (error) {
+                  toast.error(
+                    error instanceof Error ? error.message : "Unable to load assessment codes",
+                  );
+                }
               }}
             >
               <Copy className="h-4 w-4" />
@@ -189,6 +197,11 @@ function AssessmentsPage() {
 
   return (
     <>
+      {list.isError && (
+        <p role="alert" className="p-4 text-destructive">
+          {list.error.message}
+        </p>
+      )}
       <main className="mx-auto max-w-7xl space-y-4 px-3 py-6 sm:px-6">
         <header className="min-w-0">
           <h1 className="font-display text-2xl font-bold sm:text-3xl">Assessment Master</h1>
@@ -199,7 +212,8 @@ function AssessmentsPage() {
 
         <DataGrid
           title="Assessments"
-          description={`${rows.length} record(s)`}
+          description={`${list.data?.total ?? 0} record(s)`}
+          remote={list.remote}
           rows={rows}
           columns={columns}
           getId={(r) => r.id}
@@ -225,10 +239,17 @@ function AssessmentsPage() {
               </Button>
               <Button
                 size="sm"
-                onClick={() => {
-                  setEditing(null);
-                  setDupCode(nextAssessmentCode(rows));
-                  setDialog(true);
+                onClick={async () => {
+                  try {
+                    const code = nextAssessmentCode(await fetchAssessments());
+                    setEditing(null);
+                    setDupCode(code);
+                    setDialog(true);
+                  } catch (error) {
+                    toast.error(
+                      error instanceof Error ? error.message : "Unable to load assessment codes",
+                    );
+                  }
                 }}
               >
                 <Plus className="h-4 w-4" /> Add Assessment
@@ -252,8 +273,10 @@ function AssessmentsPage() {
         title="Import assessments"
         sample={ASSESSMENT_SAMPLE}
         description="Columns: Assessment ID, Assessment Name, School Name, Class, Section, Exam Type, Exam Date, Total Question, Status. Column order does not matter."
-        parse={(raw) => {
-          const existing = new Set(rows.map((r) => r.assessment_id.toLowerCase()));
+        parse={async (raw) => {
+          const existing = new Set(
+            (await fetchAssessments()).map((r) => r.assessment_id.toLowerCase()),
+          );
           const seen = new Set<string>();
           const schoolList = schools.data ?? [];
           return raw.map((row, i) => {

@@ -23,7 +23,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { exportRowsToCsv, exportRowsToExcel, printRows, type Row } from "@/lib/exam-export";
+import type { Row } from "@/lib/exam-export";
+import type { GridRequest } from "@/lib/paging";
+import type { Dispatch, SetStateAction } from "react";
 
 export type GridColumn<T> = {
   key: string;
@@ -56,6 +58,7 @@ export function DataGrid<T>({
   onRowClick,
   filename,
   emptyMessage = "No records yet.",
+  remote,
 }: {
   title: string;
   description?: string;
@@ -70,17 +73,40 @@ export function DataGrid<T>({
   onRowClick?: (row: T) => void;
   filename: string;
   emptyMessage?: string;
+  remote?: {
+    request: GridRequest;
+    onChange: Dispatch<SetStateAction<GridRequest>>;
+    total: number;
+    exportAll: () => Promise<T[]>;
+  };
 }) {
-  const [q, setQ] = useState("");
-  const [sortKey, setSortKey] = useState<string | null>(null);
-  const [dir, setDir] = useState<"asc" | "desc">("asc");
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(25);
+  const [localQ, localSetQ] = useState("");
+  const [localSort, localSetSort] = useState<string | null>(null);
+  const [localDir, localSetDir] = useState<"asc" | "desc">("asc");
+  const [localPage, localSetPage] = useState(0);
+  const [localSize, localSetSize] = useState(25);
+  const [exporting, setExporting] = useState(false);
+  const q = remote?.request.search ?? localQ,
+    sortKey = remote?.request.sortKey ?? localSort,
+    dir = remote?.request.direction ?? localDir;
+  const page = remote?.request.page ?? localPage,
+    pageSize = remote?.request.pageSize ?? localSize;
+  const setQ = (v: string) =>
+    remote ? remote.onChange((r) => ({ ...r, search: v, page: 0 })) : localSetQ(v);
+  const setSortKey = (v: string) =>
+    remote ? remote.onChange((r) => ({ ...r, sortKey: v, page: 0 })) : localSetSort(v);
+  const setDir = (v: "asc" | "desc") =>
+    remote ? remote.onChange((r) => ({ ...r, direction: v, page: 0 })) : localSetDir(v);
+  const setPage = (v: number) =>
+    remote ? remote.onChange((r) => ({ ...r, page: v })) : localSetPage(v);
+  const setPageSize = (v: number) =>
+    remote ? remote.onChange((r) => ({ ...r, pageSize: v, page: 0 })) : localSetSize(v);
 
   const selectable = !!onSelectedChange;
   const selected = selectedIds ?? [];
 
   const filtered = useMemo(() => {
+    if (remote) return rows;
     const needle = q.trim().toLowerCase();
     const base = needle
       ? rows.filter((r) => columns.some((c) => String(c.value(r)).toLowerCase().includes(needle)))
@@ -96,19 +122,43 @@ export function DataGrid<T>({
           : String(av).localeCompare(String(bv), undefined, { numeric: true });
       return dir === "asc" ? cmp : -cmp;
     });
-  }, [rows, columns, q, sortKey, dir]);
+  }, [rows, columns, q, sortKey, dir, remote]);
 
-  const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const total = remote?.total ?? filtered.length;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
   const current = Math.min(page, pages - 1);
-  const slice = filtered.slice(current * pageSize, current * pageSize + pageSize);
-
-  const exportRows: Row[] = filtered.map((r) => {
-    const out: Row = {};
-    for (const c of columns) out[c.label] = c.value(r);
-    return out;
-  });
+  const slice = remote
+    ? filtered
+    : filtered.slice(current * pageSize, current * pageSize + pageSize);
+  async function runExport(format: "excel" | "csv" | "pdf") {
+    const popup = format === "pdf" ? window.open("", "_blank", "width=1100,height=800") : null;
+    if (format === "pdf" && !popup) {
+      toast.error("Allow pop-ups to print or save as PDF.");
+      return;
+    }
+    if (popup) popup.document.body.textContent = "Preparing the complete report…";
+    setExporting(true);
+    try {
+      const source = remote ? await remote.exportAll() : filtered;
+      const exportRows: Row[] = source.map((r) =>
+        Object.fromEntries(
+          columns.filter((c) => c.key !== "actions").map((c) => [c.label, c.value(r)]),
+        ),
+      );
+      const helpers = await import("@/lib/exam-export");
+      if (format === "excel") await helpers.exportRowsToExcel(filename, exportRows);
+      else if (format === "csv") await helpers.exportRowsToCsv(filename, exportRows);
+      else helpers.printRows(title, exportRows, popup ?? undefined);
+    } catch (e) {
+      popup?.close();
+      toast.error(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const toggleSort = (key: string) => {
+    if (key === "actions") return;
     if (sortKey === key) setDir(dir === "asc" ? "desc" : "asc");
     else {
       setSortKey(key);
@@ -148,24 +198,24 @@ export function DataGrid<T>({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => exportRowsToExcel(filename, exportRows)}
+              disabled={exporting || loading}
+              onClick={() => runExport("excel")}
             >
               <Download className="h-4 w-4" /> Excel
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => exportRowsToCsv(filename, exportRows)}
+              disabled={exporting || loading}
+              onClick={() => runExport("csv")}
             >
               <FileText className="h-4 w-4" /> CSV
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                if (!printRows(title, exportRows))
-                  toast.error("Allow pop-ups to print or save as PDF.");
-              }}
+              disabled={exporting || loading}
+              onClick={() => runExport("pdf")}
             >
               <Printer className="h-4 w-4" /> PDF
             </Button>
@@ -173,6 +223,11 @@ export function DataGrid<T>({
         </div>
       </div>
 
+      {exporting && (
+        <p role="status" className="px-4 py-2 text-sm">
+          Preparing all matching records for export…
+        </p>
+      )}
       {loading ? (
         <div className="space-y-2 p-4">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -286,9 +341,9 @@ export function DataGrid<T>({
 
       <div className="flex flex-col gap-2 border-t border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <span>
-          {filtered.length === 0
+          {total === 0
             ? "0 records"
-            : `${current * pageSize + 1}–${Math.min(filtered.length, (current + 1) * pageSize)} of ${filtered.length}`}
+            : `${current * pageSize + 1}–${Math.min(total, (current + 1) * pageSize)} of ${total}`}
           {selected.length > 0 ? ` · ${selected.length} selected` : ""}
         </span>
         <div className="flex items-center gap-2">
@@ -313,7 +368,7 @@ export function DataGrid<T>({
           <Button
             variant="outline"
             size="icon"
-            disabled={current === 0}
+            disabled={loading || current === 0}
             onClick={() => setPage(current - 1)}
             aria-label="Previous page"
           >
@@ -325,7 +380,7 @@ export function DataGrid<T>({
           <Button
             variant="outline"
             size="icon"
-            disabled={current >= pages - 1}
+            disabled={loading || current >= pages - 1}
             onClick={() => setPage(current + 1)}
             aria-label="Next page"
           >

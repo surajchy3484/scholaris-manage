@@ -1,4 +1,9 @@
-import { useMemo, useState } from "react";
+import { useDebounced } from "@/hooks/use-master-page";
+import { listStudentPage, studentFacets } from "@/lib/performance.functions";
+import { getAccessToken } from "@/lib/app-access";
+import { fetchAllRows } from "@/lib/fetch-all";
+import { attendanceTotals } from "@/lib/paging";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -45,7 +50,7 @@ import { StudentDialog, ViewStudentDialog } from "@/components/student-dialog";
 import { ImportStudentsDialog } from "@/components/import-students-dialog";
 import { AttendancePanel } from "@/components/attendance-panel";
 import { AttendanceReports } from "@/components/attendance-reports";
-import { exportStudentsToExcel, exportStudentsAsZip } from "@/lib/excel";
+
 import { RequireModule } from "@/components/require-module";
 import { useAuth } from "@/lib/auth";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -98,6 +103,11 @@ function SchoolDetail() {
     "roll-asc",
   );
   const [editSchoolOpen, setEditSchoolOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [tab, setTab] = useState("students");
+  const [exporting, setExporting] = useState(false);
+  const debouncedSearch = useDebounced(q);
+  useEffect(() => setPage(0), [debouncedSearch, filterClass, filterDiv, sortBy, schoolId]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
@@ -105,7 +115,7 @@ function SchoolDetail() {
   const [moveDivision, setMoveDivision] = useState("");
   const [moveRoll, setMoveRoll] = useState("");
 
-  const { data: school } = useQuery({
+  const { data: school, error: schoolError } = useQuery({
     queryKey: ["school", schoolId],
     queryFn: async (): Promise<School> => {
       const { data, error } = await supabase
@@ -120,17 +130,42 @@ function SchoolDetail() {
     },
   });
 
-  const { data: students = [], isLoading } = useQuery({
-    queryKey: ["students", schoolId],
-    queryFn: async (): Promise<Student[]> => {
-      const { data, error } = await supabase
-        .from("students")
-        .select("*")
-        .eq("school_id", schoolId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as Student[];
-    },
+  const facets = useQuery({
+    queryKey: ["students", schoolId, "facets"],
+    queryFn: () => studentFacets({ data: { token: getAccessToken(), schoolId } }),
+  });
+  const pageQuery = useQuery({
+    queryKey: ["students", schoolId, "page", page, debouncedSearch, filterClass, filterDiv, sortBy],
+    queryFn: () =>
+      listStudentPage({
+        data: {
+          token: getAccessToken(),
+          schoolId,
+          page,
+          pageSize: 50,
+          search: debouncedSearch,
+          sortKey: sortBy,
+          direction: "asc",
+          klass: filterClass,
+          division: filterDiv,
+        },
+      }),
+  });
+  const students = pageQuery.data?.rows ?? [];
+  const isLoading = pageQuery.isLoading;
+  const total = pageQuery.data?.total ?? 0;
+  useEffect(() => {
+    if (pageQuery.data && page > 0 && page * 50 >= total)
+      setPage(Math.max(0, Math.ceil(total / 50) - 1));
+  }, [pageQuery.data, page, total]);
+  const fetchAllStudents = () =>
+    fetchAllRows<Student>((from, to) =>
+      supabase.from("students").select("*").eq("school_id", schoolId).order("id").range(from, to),
+    );
+  const attendanceStudents = useQuery({
+    queryKey: ["students", schoolId, "attendance-roster"],
+    queryFn: fetchAllStudents,
+    enabled: tab !== "students",
   });
 
   const del = useMutation({
@@ -142,7 +177,7 @@ function SchoolDetail() {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       setSelectedIds((current) => current.filter((selectedId) => selectedId !== id));
       qc.invalidateQueries({ queryKey: ["students", schoolId] });
       qc.invalidateQueries({ queryKey: ["schools"] });
@@ -153,12 +188,17 @@ function SchoolDetail() {
 
   const bulkDelete = useMutation({
     mutationFn: async (ids: string[]) => {
-      const { error } = await supabase
-        .from("students")
-        .delete()
-        .eq("school_id", schoolId)
-        .in("id", ids);
-      if (error) throw error;
+      for (let offset = 0; offset < ids.length; offset += 250) {
+        const { error } = await supabase
+          .from("students")
+          .delete()
+          .eq("school_id", schoolId)
+          .in("id", ids.slice(offset, offset + 250));
+        if (error)
+          throw new Error(
+            `Bulk delete stopped at batch ${offset / 250 + 1}; earlier batches may have completed. ${error.message}`,
+          );
+      }
     },
     onSuccess: () => {
       setSelectedIds([]);
@@ -168,6 +208,10 @@ function SchoolDetail() {
       toast.success("Selected students deleted");
     },
     onError: (e: Error) => toast.error(e.message),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["students", schoolId] });
+      qc.invalidateQueries({ queryKey: ["schools"] });
+    },
   });
 
   const bulkMove = useMutation({
@@ -177,12 +221,18 @@ function SchoolDetail() {
       if (moveDivision.trim()) payload.division = moveDivision.trim();
       if (moveRoll.trim()) payload.roll_number = moveRoll.trim();
       if (!Object.keys(payload).length) throw new Error("Enter at least one change");
-      const { error } = await supabase
-        .from("students")
-        .update(payload)
-        .eq("school_id", schoolId)
-        .in("id", selectedIds);
-      if (error) throw error;
+      const ids = [...selectedIds];
+      for (let offset = 0; offset < ids.length; offset += 250) {
+        const { error } = await supabase
+          .from("students")
+          .update(payload)
+          .eq("school_id", schoolId)
+          .in("id", ids.slice(offset, offset + 250));
+        if (error)
+          throw new Error(
+            `Bulk update stopped at batch ${offset / 250 + 1}; earlier batches may have completed. ${error.message}`,
+          );
+      }
     },
     onSuccess: () => {
       setSelectedIds([]);
@@ -194,6 +244,10 @@ function SchoolDetail() {
       toast.success("Student details updated");
     },
     onError: (e: Error) => toast.error(e.message),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["students", schoolId] });
+      qc.invalidateQueries({ queryKey: ["schools"] });
+    },
   });
 
   const removeImage = useMutation({
@@ -213,104 +267,116 @@ function SchoolDetail() {
   });
 
   const classes = useMemo(
-    () => Array.from(new Set(students.map((s) => s.class))).sort(),
-    [students],
+    () => [...new Set((facets.data?.groups ?? []).map((s) => s.class))].sort(),
+    [facets.data],
   );
   const divisions = useMemo(
     () =>
-      Array.from(
-        new Set(
-          students
+      [
+        ...new Set(
+          (facets.data?.groups ?? [])
             .filter((s) => filterClass === "all" || s.class === filterClass)
             .map((s) => s.division),
         ),
-      ).sort(),
-    [students, filterClass],
+      ].sort(),
+    [facets.data, filterClass],
   );
+  const filtered = students;
 
-  const filtered = useMemo(() => {
-    const list = students.filter((s) => {
-      if (filterClass !== "all" && s.class !== filterClass) return false;
-      if (filterDiv !== "all" && s.division !== filterDiv) return false;
-      if (q) {
-        const t = q.toLowerCase();
-        if (
-          !s.name.toLowerCase().includes(t) &&
-          !s.student_code.toLowerCase().includes(t) &&
-          !s.roll_number.toLowerCase().includes(t)
-        )
-          return false;
+  const [selecting, setSelecting] = useState(false);
+  const selectionScope = `${schoolId}|${q}|${filterClass}|${filterDiv}`;
+  const scopeRef = useRef(selectionScope);
+  scopeRef.current = selectionScope;
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [selectionScope]);
+  const allFilteredSelected = total > 0 && selectedIds.length === total;
+  async function selectMatching(openDelete = false) {
+    const scope = scopeRef.current;
+    setSelecting(true);
+    try {
+      const ids: string[] = [];
+      for (let selectedPage = 0; ; selectedPage++) {
+        const result = await listStudentPage({
+          data: {
+            token: getAccessToken(),
+            schoolId,
+            page: selectedPage,
+            pageSize: 250,
+            search: q,
+            sortKey: sortBy,
+            direction: "asc",
+            klass: filterClass,
+            division: filterDiv,
+          },
+        });
+        ids.push(...result.rows.map((row) => row.id));
+        if (result.rows.length < 250 || ids.length >= result.total) break;
       }
-      return true;
-    });
-
-    const sortRoll = (a: string, b: string) => {
-      const an = parseInt(a, 10);
-      const bn = parseInt(b, 10);
-      const aIsNum = !Number.isNaN(an);
-      const bIsNum = !Number.isNaN(bn);
-      if (aIsNum && bIsNum) return an - bn;
-      if (aIsNum) return -1;
-      if (bIsNum) return 1;
-      return a.localeCompare(b);
-    };
-
-    return [...list].sort((a, b) => {
-      switch (sortBy) {
-        case "roll-asc":
-          return sortRoll(a.roll_number, b.roll_number);
-        case "roll-desc":
-          return sortRoll(b.roll_number, a.roll_number);
-        case "name-asc":
-          return a.name.localeCompare(b.name);
-        case "name-desc":
-          return b.name.localeCompare(a.name);
-        default:
-          return 0;
-      }
-    });
-  }, [students, filterClass, filterDiv, q, sortBy]);
-
-  const filteredIds = filtered.map((student) => student.id);
-  const allFilteredSelected =
-    filteredIds.length > 0 && filteredIds.every((id) => selectedIds.includes(id));
-  const toggleAll = () =>
-    setSelectedIds((current) =>
-      allFilteredSelected
-        ? current.filter((id) => !filteredIds.includes(id))
-        : [...new Set([...current, ...filteredIds])],
-    );
+      if (scopeRef.current !== scope) return;
+      setSelectedIds(ids);
+      if (openDelete && ids.length) setBulkDeleteOpen(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to select students");
+    } finally {
+      setSelecting(false);
+    }
+  }
+  const toggleAll = () => (allFilteredSelected ? setSelectedIds([]) : void selectMatching());
 
   async function handleExport(zipFmt: boolean) {
     if (!school) return;
-    const { data: recs } = await supabase.from("attendance").select("*").eq("school_id", schoolId);
-    const records = (recs ?? []) as AttendanceRecord[];
-    const rows = students.map((s) => {
-      const own = records.filter((r) => r.student_id === s.id);
-      const present = own.filter((r) => r.status === "present").length;
-      const pct = own.length ? Math.round((present / own.length) * 100) : 0;
-      return {
-        student_id: s.student_code,
-        name: s.name,
-        school_name: school.name,
-        class: s.class,
-        division: s.division,
-        roll_number: s.roll_number,
-        attendance_percentage: pct,
-        photo_url: s.photo_url && /^https?:\/\//.test(s.photo_url) ? s.photo_url : "",
-        created_at: s.created_at,
-        updated_at: s.updated_at,
-      };
-    });
-    if (zipFmt) {
-      await exportStudentsAsZip(school.name, rows, students);
-      toast.success("Exported ZIP");
-    } else {
-      exportStudentsToExcel(school.name, rows);
-      toast.success("Exported Excel");
+    setExporting(true);
+    try {
+      const [allStudents, records, helpers] = await Promise.all([
+        fetchAllStudents(),
+        fetchAllRows<{ student_id: string; status: string }>((from, to) =>
+          supabase
+            .from("attendance")
+            .select("student_id,status")
+            .eq("school_id", schoolId)
+            .order("id")
+            .range(from, to),
+        ),
+        import("@/lib/excel"),
+      ]);
+      const totals = attendanceTotals(records);
+      const rows = allStudents.map((s) => {
+        const t = totals.get(s.id);
+        const pct = t?.total ? Math.round((t.present / t.total) * 100) : 0;
+        return {
+          student_id: s.student_code,
+          name: s.name,
+          school_name: school.name,
+          class: s.class,
+          division: s.division,
+          roll_number: s.roll_number,
+          attendance_percentage: pct,
+          photo_url: s.photo_url && /^https?:\/\//.test(s.photo_url) ? s.photo_url : "",
+          created_at: s.created_at,
+          updated_at: s.updated_at,
+        };
+      });
+      if (zipFmt) {
+        await helpers.exportStudentsAsZip(school.name, rows, allStudents);
+        toast.success("Exported ZIP");
+      } else {
+        await helpers.exportStudentsToExcel(school.name, rows);
+        toast.success("Exported Excel");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setExporting(false);
     }
   }
 
+  if (schoolError)
+    return (
+      <p role="alert" className="p-6 text-destructive">
+        Unable to load school: {schoolError.message}
+      </p>
+    );
   if (!school) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-12">
@@ -362,7 +428,9 @@ function SchoolDetail() {
                 <div className="text-[10px] uppercase tracking-widest text-primary-foreground/75">
                   Total students
                 </div>
-                <div className="font-display text-xl font-bold leading-none">{students.length}</div>
+                <div className="font-display text-xl font-bold leading-none">
+                  {facets.data?.total ?? "…"}
+                </div>
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -393,7 +461,7 @@ function SchoolDetail() {
         onSaved={() => qc.invalidateQueries({ queryKey: ["school", schoolId] })}
       />
 
-      <Tabs defaultValue="students" className="space-y-4">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList className="flex w-full flex-wrap gap-1 bg-muted p-1 sm:w-auto">
           <TabsTrigger value="students">Students</TabsTrigger>
           <TabsTrigger value="attendance">Attendance</TabsTrigger>
@@ -413,7 +481,7 @@ function SchoolDetail() {
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" disabled={exporting}>
                   <Download className="h-4 w-4" />
                   Export
                 </Button>
@@ -493,8 +561,12 @@ function SchoolDetail() {
 
           <Card className="flex flex-wrap items-center gap-3 border-border/60 bg-muted/20 p-3">
             <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-              <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAll} />
-              <span>Select All ({filtered.length})</span>
+              <Checkbox
+                checked={allFilteredSelected}
+                onCheckedChange={toggleAll}
+                disabled={selecting || isLoading}
+              />
+              <span>{selecting ? "Selecting…" : `Select All (${total})`}</span>
             </label>
             {selectedIds.length > 0 && (
               <div className="flex flex-1 flex-wrap items-center gap-2 sm:justify-end">
@@ -526,17 +598,19 @@ function SchoolDetail() {
                 size="sm"
                 variant="ghost"
                 className="text-destructive hover:text-destructive"
-                onClick={() => {
-                  setSelectedIds(filteredIds);
-                  setBulkDeleteOpen(true);
-                }}
+                disabled={selecting || isLoading}
+                onClick={() => void selectMatching(true)}
               >
                 Delete all in Class {filterClass} · Div {filterDiv}
               </Button>
             )}
           </Card>
 
-          {isLoading ? (
+          {pageQuery.isError || facets.isError ? (
+            <p role="alert" className="text-destructive">
+              {pageQuery.error?.message ?? facets.error?.message}
+            </p>
+          ) : isLoading ? (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-20 animate-pulse rounded-lg bg-muted" />
@@ -571,16 +645,54 @@ function SchoolDetail() {
               ))}
             </motion.div>
           )}
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <Button
+              variant="outline"
+              disabled={page === 0 || isLoading}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              Previous
+            </Button>
+            <span>
+              {total
+                ? `${page * 50 + 1}–${Math.min((page + 1) * 50, total)} of ${total}`
+                : "0 students"}
+            </span>
+            <Button
+              variant="outline"
+              disabled={(page + 1) * 50 >= total || isLoading}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
+          </div>
+          {exporting && <p role="status">Preparing the complete school export…</p>}
         </TabsContent>
 
         {/* ATTENDANCE */}
         <TabsContent value="attendance">
-          <AttendancePanel schoolId={schoolId} students={students} />
+          {attendanceStudents.isPending ? (
+            <p role="status">Loading attendance roster…</p>
+          ) : attendanceStudents.isError ? (
+            <p role="alert">Unable to load attendance roster.</p>
+          ) : (
+            <AttendancePanel
+              key={schoolId}
+              schoolId={schoolId}
+              students={attendanceStudents.data ?? []}
+            />
+          )}
         </TabsContent>
 
         {/* REPORTS */}
         <TabsContent value="reports">
-          <AttendanceReports schoolId={schoolId} students={students} />
+          {attendanceStudents.isPending ? (
+            <p role="status">Loading report roster…</p>
+          ) : attendanceStudents.isError ? (
+            <p role="alert">Unable to load report roster.</p>
+          ) : (
+            <AttendanceReports schoolId={schoolId} students={attendanceStudents.data ?? []} />
+          )}
         </TabsContent>
       </Tabs>
 
