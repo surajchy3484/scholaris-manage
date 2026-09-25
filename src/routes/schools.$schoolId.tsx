@@ -143,6 +143,7 @@ function SchoolDetail() {
       if (error) throw error;
     },
     onSuccess: () => {
+      setSelectedIds((current) => current.filter((selectedId) => selectedId !== id));
       qc.invalidateQueries({ queryKey: ["students", schoolId] });
       qc.invalidateQueries({ queryKey: ["schools"] });
       toast.success("Student deleted");
@@ -438,7 +439,14 @@ function SchoolDetail() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Select value={filterClass} onValueChange={setFilterClass}>
+            <Select
+              value={filterClass}
+              onValueChange={(value) => {
+                setFilterClass(value);
+                setFilterDiv("all");
+                setSelectedIds([]);
+              }}
+            >
               <SelectTrigger className="w-36">
                 <SelectValue />
               </SelectTrigger>
@@ -451,7 +459,13 @@ function SchoolDetail() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={filterDiv} onValueChange={setFilterDiv}>
+            <Select
+              value={filterDiv}
+              onValueChange={(value) => {
+                setFilterDiv(value);
+                setSelectedIds([]);
+              }}
+            >
               <SelectTrigger className="w-36">
                 <SelectValue />
               </SelectTrigger>
