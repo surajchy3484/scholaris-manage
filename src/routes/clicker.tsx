@@ -238,6 +238,9 @@ function ClickerPage() {
   const qc = useQueryClient();
   const [assessment, setAssessment] = useState("all");
   const [minScore, setMinScore] = useState("");
+  const [className, setClassName] = useState("");
+  const [section, setSection] = useState("");
+  const [team, setTeam] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [editing, setEditing] = useState<ClickerRecord | null>(null);
   const [dialog, setDialog] = useState(false);
@@ -249,6 +252,9 @@ function ClickerPage() {
   const list = useMasterPage<ClickerRecord>("clicker_records", {
     assessmentId: assessment,
     minScore: minScore.trim() && Number.isFinite(Number(minScore)) ? Number(minScore) : undefined,
+    className,
+    section,
+    team,
   });
   const rows = list.data?.rows ?? [];
   const visibleAssessmentIds = [...new Set(rows.map((row) => row.assessment_id))].sort();
@@ -439,6 +445,24 @@ function ClickerPage() {
                 inputMode="numeric"
                 placeholder="Min score"
                 className="h-9 w-[120px]"
+              />
+              <Input
+                value={className}
+                onChange={(e) => setClassName(e.target.value)}
+                placeholder="Class"
+                className="h-9 w-[100px]"
+              />
+              <Input
+                value={section}
+                onChange={(e) => setSection(e.target.value)}
+                placeholder="Section"
+                className="h-9 w-[110px]"
+              />
+              <Input
+                value={team}
+                onChange={(e) => setTeam(e.target.value)}
+                placeholder="Team"
+                className="h-9 w-[100px]"
               />
             </>
           }

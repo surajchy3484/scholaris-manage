@@ -250,6 +250,12 @@ export async function readWithoutPagingRpc(db: Db, name: string, args: Args): Pr
       rows = rows.filter((r) => includes(r.subject, args.p_subject));
     if (args.p_min_score != null && table === "clicker_records")
       rows = rows.filter((r) => r.score != null && r.score >= Number(args.p_min_score));
+    if (args.p_class && table === "clicker_records")
+      rows = rows.filter((r) => includes(r.class, args.p_class));
+    if (args.p_section && table === "clicker_records")
+      rows = rows.filter((r) => includes(r.section, args.p_section));
+    if (args.p_team && table === "clicker_records")
+      rows = rows.filter((r) => includes(r.team, args.p_team));
     if (text(args.p_search).trim())
       rows = rows.filter((r) =>
         Object.entries(r)

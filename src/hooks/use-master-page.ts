@@ -13,12 +13,29 @@ export function useDebounced<T>(value: T, delay = 250) {
 }
 export function useMasterPage<T>(
   table: "assessments" | "questions" | "clicker_records",
-  filters: { assessmentId?: string; subject?: string; minScore?: number } = {},
+  filters: {
+    assessmentId?: string;
+    subject?: string;
+    minScore?: number;
+    className?: string;
+    section?: string;
+    team?: string;
+  } = {},
 ) {
   const [request, setRequest] = useState<GridRequest>(DEFAULT_GRID_REQUEST);
   const search = useDebounced(request.search),
     subject = useDebounced(filters.subject ?? "");
-  const filterKey = JSON.stringify([filters.assessmentId, subject, filters.minScore]);
+  const className = useDebounced(filters.className ?? "");
+  const section = useDebounced(filters.section ?? "");
+  const team = useDebounced(filters.team ?? "");
+  const filterKey = JSON.stringify([
+    filters.assessmentId,
+    subject,
+    filters.minScore,
+    className,
+    section,
+    team,
+  ]);
   const [previousFilter, setPreviousFilter] = useState(filterKey);
   if (previousFilter !== filterKey) {
     setPreviousFilter(filterKey);
@@ -31,8 +48,11 @@ export function useMasterPage<T>(
       assessmentId: filters.assessmentId,
       minScore: filters.minScore,
       subject,
+      className,
+      section,
+      team,
     }),
-    [request, search, filters.assessmentId, filters.minScore, subject],
+    [request, search, filters.assessmentId, filters.minScore, subject, className, section, team],
   );
   const query = useQuery({
     queryKey: [table === "clicker_records" ? "clicker" : table, "page", args],

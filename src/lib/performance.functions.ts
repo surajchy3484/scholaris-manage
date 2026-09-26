@@ -18,6 +18,9 @@ const schema = grid.extend({
   assessmentId: z.string().max(120).optional(),
   subject: z.string().max(200).optional(),
   minScore: z.number().finite().optional(),
+  className: z.string().max(100).optional(),
+  section: z.string().max(100).optional(),
+  team: z.string().max(100).optional(),
 });
 // RPCs are service-role-only and invoker-security. All callers pass through the existing module guard.
 async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
@@ -69,6 +72,9 @@ export const listMasterPage = createServerFn({ method: "POST" })
       p_assessment: data.assessmentId ?? "all",
       p_subject: data.subject ?? "",
       p_min_score: data.minScore ?? null,
+      p_class: data.className ?? "",
+      p_section: data.section ?? "",
+      p_team: data.team ?? "",
       p_schools: profile.role === "admin" || profile.allSchools ? null : profile.schoolIds,
     });
   });

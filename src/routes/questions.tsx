@@ -100,6 +100,13 @@ function QuestionsPage() {
   const assessments = useQuery({ queryKey: ["assessments"], queryFn: fetchAssessments });
   const list = useMasterPage<Question>("questions", { assessmentId: assessment, subject });
   const rows = list.data?.rows ?? [];
+  const sortedAssessments = useMemo(
+    () =>
+      [...(assessments.data ?? [])].sort((a, b) =>
+        a.assessment_id.localeCompare(b.assessment_id, undefined, { numeric: true }),
+      ),
+    [assessments.data],
+  );
 
   const remove = useMutation({
     mutationFn: (ids: string[]) => deleteRowsByIds("questions", ids),
@@ -299,7 +306,7 @@ function QuestionsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All assessments</SelectItem>
-                  {(assessments.data ?? []).map((a) => (
+                  {sortedAssessments.map((a) => (
                     <SelectItem key={a.id} value={a.assessment_id}>
                       {a.assessment_id} — {a.name}
                     </SelectItem>
@@ -448,7 +455,6 @@ function QuestionsPage() {
           for (let i = 0; i < valid.length; i += chunk) {
             const payload = valid
               .slice(i, i + chunk)
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               .map(({ _row, errors, duplicate, ...rest }) => rest);
             await insertRows("questions", payload);
             onProgress?.(Math.min(i + chunk, valid.length));
