@@ -1,3 +1,4 @@
+import { COMPAT_READS, readWithoutPagingRpc } from "./paging-compat.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { adminDb, requirePermission } from "./app-access.server";
@@ -22,8 +23,16 @@ const schema = grid.extend({
 async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
   const db = await adminDb();
   const { data, error } = await db.rpc(name as never, args as never);
-  if (error)
-    throw new Error("Unable to load paged data. Apply the performance migration and retry.");
+  if (error) {
+    const missing =
+      error.code === "PGRST202" || (error.code === "42883" && error.message.includes(name));
+    if (missing && COMPAT_READS.has(name)) return (await readWithoutPagingRpc(db, name, args)) as T;
+    if (missing)
+      throw new Error(
+        "This action requires a database update. Please contact your administrator; no records were changed.",
+      );
+    throw new Error("Unable to load data. Please retry or contact your administrator.");
+  }
   return data as T;
 }
 export const listMasterPage = createServerFn({ method: "POST" })
