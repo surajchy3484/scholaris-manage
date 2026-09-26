@@ -254,6 +254,13 @@ function ClickerPage() {
     queryFn: () => clickerFacets({ data: { token: getAccessToken() } }),
     staleTime: 60_000,
   });
+  const sortedAssessments = useMemo(
+    () =>
+      [...(assessments.data ?? [])].sort((a, b) =>
+        a.assessment_id.localeCompare(b.assessment_id, undefined, { numeric: true }),
+      ),
+    [assessments.data],
+  );
   const list = useMasterPage<ClickerRecord>("clicker_records", {
     assessmentId: assessment,
     minScore: minScore.trim() && Number.isFinite(Number(minScore)) ? Number(minScore) : undefined,
@@ -437,7 +444,7 @@ function ClickerPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All assessments</SelectItem>
-                  {(assessments.data ?? []).map((a) => (
+                  {sortedAssessments.map((a) => (
                     <SelectItem key={a.id} value={a.assessment_id}>
                       {a.assessment_id} — {a.name}
                     </SelectItem>
