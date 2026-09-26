@@ -1,3 +1,4 @@
+import { SchoolDriveSync } from "@/components/school-drive-sync";
 import { useRef } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { ArrowLeft, Moon, Sun, Download, Upload, Info, LogOut, Check } from "lucide-react";
@@ -66,6 +67,7 @@ function SettingsPage() {
       <h1 className="mb-6 font-display text-3xl font-bold">Settings</h1>
 
       <div className="space-y-4">
+        <SchoolDriveSync />
         <Card className="p-5">
           <div className="mb-3">
             <h2 className="font-display text-lg font-semibold">Appearance</h2>

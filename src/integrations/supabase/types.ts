@@ -65,6 +65,87 @@ export type Database = {
         };
         Relationships: [];
       };
+      assessment_results: {
+        Row: {
+          id: string;
+          assessment_id: string;
+          keypad_id: string | null;
+          student_id: string | null;
+          student_name: string;
+          school_id: string | null;
+          school_name: string | null;
+          class: string | null;
+          section: string | null;
+          score: number;
+          total_questions: number;
+          correct_answers: number;
+          wrong_answers: number;
+          correct_rate: number;
+          ranking: number | null;
+          answers: Json;
+          calculated_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          assessment_id: string;
+          keypad_id?: string | null;
+          student_id?: string | null;
+          student_name?: string;
+          school_id?: string | null;
+          school_name?: string | null;
+          class?: string | null;
+          section?: string | null;
+          score?: number;
+          total_questions?: number;
+          correct_answers?: number;
+          wrong_answers?: number;
+          correct_rate?: number;
+          ranking?: number | null;
+          answers?: Json;
+          calculated_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          assessment_id?: string;
+          keypad_id?: string | null;
+          student_id?: string | null;
+          student_name?: string;
+          school_id?: string | null;
+          school_name?: string | null;
+          class?: string | null;
+          section?: string | null;
+          score?: number;
+          total_questions?: number;
+          correct_answers?: number;
+          wrong_answers?: number;
+          correct_rate?: number;
+          ranking?: number | null;
+          answers?: Json;
+          calculated_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "assessment_results_school_id_fkey";
+            columns: ["school_id"];
+            isOneToOne: false;
+            referencedRelation: "schools";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "assessment_results_student_id_fkey";
+            columns: ["student_id"];
+            isOneToOne: false;
+            referencedRelation: "students";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       assessments: {
         Row: {
           academic_year: string;
