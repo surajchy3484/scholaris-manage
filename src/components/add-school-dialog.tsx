@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { getAccessToken } from "@/lib/app-access";
+import { updateSchool } from "@/lib/school.functions";
 import {
   Dialog,
   DialogContent,
@@ -185,6 +188,7 @@ export function EditSchoolDialog({
   const [imageUrl, setImageUrl] = useState<string | null>(school.image_url);
   const [divisions, setDivisions] = useState<DivisionDraft[]>([]);
   const qc = useQueryClient();
+  const saveSchool = useServerFn(updateSchool);
 
   const existing = useQuery({
     queryKey: ["school-divisions", school.id],
@@ -201,25 +205,17 @@ export function EditSchoolDialog({
   const update = useMutation({
     mutationFn: async () => {
       const clusterName = cluster === "__new__" ? newCluster.trim() : cluster.trim();
-      const { error } = await supabase
-        .from("schools")
-        .update({
+      await saveSchool({
+        data: {
+          token: getAccessToken(),
+          schoolId: school.id,
           name,
           location,
-          cluster_name: clusterName || null,
-          image_url: imageUrl,
-        })
-        .eq("id", school.id);
-      if (error && isMissingSchoolClusterColumn(error)) {
-        await supabase
-          .from("schools")
-          .update({ name, location, image_url: imageUrl })
-          .eq("id", school.id)
-          .throwOnError();
-        saveLocalSchoolCluster(school.id, clusterName);
-      } else if (error) {
-        throw error;
-      }
+          clusterName: clusterName || null,
+          imageUrl,
+          divisions,
+        },
+      });
       if (cluster === "__new__") {
         const { error: clusterError } = await supabase
           .from("school_clusters")
@@ -229,7 +225,6 @@ export function EditSchoolDialog({
           else throw clusterError;
         }
       }
-      await saveSchoolDivisions(school.id, divisions);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["schools"] });

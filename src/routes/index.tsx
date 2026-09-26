@@ -77,9 +77,9 @@ async function fetchSchools(): Promise<SchoolWithCount[]> {
 }
 
 function Dashboard() {
-  const { canSeeSchool, can, ready } = useAuth();
+  const { canSeeSchool, can, isAdmin, ready } = useAuth();
   const canAddSchool = can("schools", "add");
-  const canManageSchool = can("schools", "edit") || can("schools", "delete");
+  const canDeleteSchool = can("schools", "delete");
   const [addOpen, setAddOpen] = useState(false);
   const [clusterOpen, setClusterOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -305,7 +305,8 @@ function Dashboard() {
                       school={s}
                       onDelete={() => del.mutate(s.id)}
                       onUpdated={() => qc.invalidateQueries({ queryKey: ["schools"] })}
-                      canManage={canManageSchool}
+                      canEdit={isAdmin}
+                      canDelete={canDeleteSchool}
                       clusterOptions={clusterOptions}
                     />
                   </motion.div>

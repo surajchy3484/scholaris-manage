@@ -27,14 +27,15 @@ export function SchoolCard({
   school,
   onDelete,
   onUpdated,
-  canManage = true,
+  canEdit = false,
+  canDelete = false,
   clusterOptions = [],
 }: {
   school: School & { student_count: number };
   onDelete: () => void;
   onUpdated: () => void;
-  /** Trainers can open a school but cannot edit or delete it. */
-  canManage?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
   clusterOptions?: string[];
 }) {
   const [editOpen, setEditOpen] = useState(false);
@@ -43,7 +44,7 @@ export function SchoolCard({
   return (
     <>
       <Card className="group relative flex h-full min-w-0 flex-col overflow-hidden p-0 transition-all hover:-translate-y-0.5 hover:shadow-elegant">
-        {canManage && (
+        {(canEdit || canDelete) && (
           <div className="absolute right-3 top-3 z-10">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -56,17 +57,21 @@ export function SchoolCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setEditOpen(true)}>
-                  <Pencil className="h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setConfirmOpen(true)}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
+                {canEdit && (
+                  <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                    <Pencil className="h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                {canDelete && (
+                  <DropdownMenuItem
+                    onClick={() => setConfirmOpen(true)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

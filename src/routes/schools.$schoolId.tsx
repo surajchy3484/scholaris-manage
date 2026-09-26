@@ -91,7 +91,7 @@ export const Route = createFileRoute("/schools/$schoolId")({
 
 function SchoolDetail() {
   const { schoolId } = Route.useParams();
-  const { can } = useAuth();
+  const { can, isAdmin } = useAuth();
   const canAdd = can("students", "add");
   const canEdit = can("students", "edit");
   const canDelete = can("students", "delete");
@@ -462,11 +462,13 @@ function SchoolDetail() {
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button size="sm" variant="secondary" onClick={() => setEditSchoolOpen(true)}>
-                <Pencil className="h-4 w-4" />
-                {school.image_url ? "Change Image" : "Add Image"}
-              </Button>
-              {school.image_url && (
+              {isAdmin && (
+                <Button size="sm" variant="secondary" onClick={() => setEditSchoolOpen(true)}>
+                  <Pencil className="h-4 w-4" />
+                  {school.image_url ? "Change Image" : "Add Image"}
+                </Button>
+              )}
+              {isAdmin && school.image_url && (
                 <Button
                   size="sm"
                   variant="secondary"
