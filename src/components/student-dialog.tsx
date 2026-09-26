@@ -1,3 +1,5 @@
+import { saveStudentDetails } from "@/lib/performance.functions";
+import { getAccessToken } from "@/lib/app-access";
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -158,30 +160,24 @@ export function StudentDialog({
       }
 
       setStatus("Saving student...");
-      if (rest.mode === "add") {
-        const { error } = await supabase.from("students").insert({
-          school_id: schoolId,
-          student_code: code,
-          name: nameV,
-          class: clsV,
-          division: divV,
-          roll_number: rollV,
-          photo_url: photoUrl,
-        });
-        if (error) throw error;
-      } else {
-        const prevUrl = rest.student.photo_url;
-        const { error } = await supabase
-          .from("students")
-          .update({
+      await saveStudentDetails({
+        data: {
+          token: getAccessToken(),
+          module: "students",
+          schoolId,
+          id: rest.mode === "edit" ? rest.student.id : undefined,
+          values: {
             name: nameV,
             class: clsV,
             division: divV,
             roll_number: rollV,
             photo_url: photoUrl,
-          })
-          .eq("id", rest.student.id);
-        if (error) throw error;
+            ...(rest.mode === "add" ? { student_code: code } : {}),
+          },
+        },
+      });
+      if (rest.mode === "edit") {
+        const prevUrl = rest.student.photo_url;
         // Best-effort: delete old Drive file if photo changed.
         if (prevUrl && prevUrl !== photoUrl) {
           const oldId = extractDriveFileId(prevUrl);

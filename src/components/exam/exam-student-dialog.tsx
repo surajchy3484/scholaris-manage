@@ -1,3 +1,5 @@
+import { saveStudentDetails } from "@/lib/performance.functions";
+import { getAccessToken } from "@/lib/app-access";
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -166,23 +168,15 @@ export function ExamStudentDialog({
       }
 
       setStatus("Saving student...");
-      let studentId: string;
-      if (rest.mode === "add") {
-        const { data, error } = await supabase
-          .from("students")
-          .insert({ ...values, school_id: schoolId, photo_url: photoUrl })
-          .select("id")
-          .single();
-        if (error) throw error;
-        studentId = data.id;
-      } else {
-        const { error } = await supabase
-          .from("students")
-          .update({ ...values, photo_url: photoUrl })
-          .eq("id", rest.student.id);
-        if (error) throw error;
-        studentId = rest.student.id;
-      }
+      const { id: studentId } = await saveStudentDetails({
+        data: {
+          token: getAccessToken(),
+          module: "exam_report",
+          schoolId,
+          id: rest.mode === "edit" ? rest.student.id : undefined,
+          values: { ...values, photo_url: photoUrl },
+        },
+      });
 
       setStatus("Saving scores...");
       await saveScore({ schoolId, studentId, examType: "ICA", score: numOrNull(ica) });
