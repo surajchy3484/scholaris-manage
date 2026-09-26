@@ -41,11 +41,24 @@ export const Route = createFileRoute("/")({
 
 type SchoolWithCount = School & { student_count: number };
 
-const DEFAULT_CLUSTERS = ["Kalwa Cluster", "Kalwa Centers", "Chembur Cluster", "Shahapur Cluster"];
+const DEFAULT_CLUSTERS = [
+  "Kalwa Cluster",
+  "Kalwa Centers",
+  "Chembur Cluster",
+  "Shahapur Cluster",
+  "Palghar Cluster",
+  "Manmad Cluster",
+];
 
 function displayCluster(school: School) {
-  if (school.cluster_name?.trim()) return school.cluster_name.trim();
   const value = `${school.name} ${school.location}`.toLowerCase();
+  // These locations are part of the requested Palghar grouping. Apply the
+  // location rule before a stale/legacy cluster value so existing records are
+  // displayed consistently on every device.
+  if (["talasari", "uplat", "nagari", "ashagad"].some((name) => value.includes(name)))
+    return "Palghar Cluster";
+  if (value.includes("manmad")) return "Manmad Cluster";
+  if (school.cluster_name?.trim()) return school.cluster_name.trim();
   if (value.includes("center") && value.includes("kalwa")) return "Kalwa Centers";
   if (value.includes("kalwa")) return "Kalwa Cluster";
   if (value.includes("chembur") || value.includes("govandi") || value.includes("mankhurd"))
@@ -159,6 +172,8 @@ function Dashboard() {
     "Kalwa Centers",
     "Chembur Cluster",
     "Shahapur Cluster",
+    "Palghar Cluster",
+    "Manmad Cluster",
     "Other / Unassigned",
   ];
   const orderedClusters = [...grouped.keys()].sort((a, b) => {
