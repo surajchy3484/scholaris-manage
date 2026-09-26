@@ -7,7 +7,7 @@ const require=createRequire(import.meta.url),React=require('react'),{renderToSta
 async function load(path,mocks){const exports={};const js=ts.transpileModule(await fs.readFile(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;vm.runInNewContext(js,{exports,require:n=>mocks[n]??require(n),Map,Set});return exports;}
 const button=({children,...props})=>React.createElement('button',props,children);
 const checkbox=({'aria-label':label,checked})=>React.createElement('input',{type:'checkbox','aria-label':label,checked,readOnly:true});
-const {StudentListTable}=await load('src/components/student-list.tsx',{'@/components/ui/button':{Button:button},'@/components/ui/checkbox':{Checkbox:checkbox},'@/components/ui/input':{Input:props=>React.createElement('input',props)}});
+const {StudentListTable}=await load('src/components/student-list.tsx',{'@/lib/drive.functions':{toDisplayablePhotoUrl:value=>value},'@/components/ui/button':{Button:button},'@/components/ui/checkbox':{Checkbox:checkbox},'@/components/ui/input':{Input:props=>React.createElement('input',props)}});
 const row={id:'student',student_code:'SCH-STU1',name:'Test Student',class:'5',division:'Batch',roll_number:'1',ica:0,mca:80,fca:null,attendance_pct:0,attendance_recorded:false};
 const props={rows:[row],selectedIds:[],onSelect:()=>{},onView:()=>{}};
 let html=renderToStaticMarkup(React.createElement(StudentListTable,props));
