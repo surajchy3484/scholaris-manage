@@ -123,6 +123,7 @@ export function StudentDialog({
         const { data: codeDupes, error: codeErr } = await supabase
           .from("students")
           .select("id")
+          .eq("school_id", schoolId)
           .eq("student_code", code)
           .limit(1);
         if (codeErr) throw codeErr;

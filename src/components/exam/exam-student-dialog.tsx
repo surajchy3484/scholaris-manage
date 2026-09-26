@@ -132,7 +132,11 @@ export function ExamStudentDialog({
       };
 
       setStatus("Checking for duplicates...");
-      let dupQ = supabase.from("students").select("id").eq("student_code", values.student_code);
+      let dupQ = supabase
+        .from("students")
+        .select("id")
+        .eq("school_id", schoolId)
+        .eq("student_code", values.student_code);
       if (rest.mode === "edit") dupQ = dupQ.neq("id", rest.student.id);
       const { data: dupes, error: dupErr } = await dupQ.limit(1);
       if (dupErr) throw dupErr;

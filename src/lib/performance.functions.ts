@@ -24,6 +24,16 @@ async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
   const db = await adminDb();
   const { data, error } = await db.rpc(name as never, args as never);
   if (error) {
+    if (error.code === "23505") {
+      if (error.constraint === "students_school_id_student_code_key") {
+        throw new Error(
+          "This Student ID already exists in this school. Use a different Student ID.",
+        );
+      }
+      if (error.constraint === "students_school_id_class_division_roll_number_key") {
+        throw new Error("This roll number already exists in the selected class and division.");
+      }
+    }
     const missing =
       error.code === "PGRST202" || (error.code === "42883" && error.message.includes(name));
     if (missing && COMPAT_READS.has(name)) return (await readWithoutPagingRpc(db, name, args)) as T;
