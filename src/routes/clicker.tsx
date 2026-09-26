@@ -1,4 +1,4 @@
-import { listClickerQuestionKeys } from "@/lib/performance.functions";
+import { clickerFacets, listClickerQuestionKeys } from "@/lib/performance.functions";
 import { getAccessToken } from "@/lib/app-access";
 import type { Question } from "@/lib/master";
 import { useMasterPage } from "@/hooks/use-master-page";
@@ -249,12 +249,17 @@ function ClickerPage() {
   const [target, setTarget] = useState<ClickerRecord | null>(null);
 
   const assessments = useQuery({ queryKey: ["assessments"], queryFn: fetchAssessments });
+  const facets = useQuery({
+    queryKey: ["clicker-filter-options"],
+    queryFn: () => clickerFacets({ data: { token: getAccessToken() } }),
+    staleTime: 60_000,
+  });
   const list = useMasterPage<ClickerRecord>("clicker_records", {
     assessmentId: assessment,
     minScore: minScore.trim() && Number.isFinite(Number(minScore)) ? Number(minScore) : undefined,
-    className,
-    section,
-    team,
+    className: className === "all" ? "" : className,
+    section: section === "all" ? "" : section,
+    team: team === "all" ? "" : team,
   });
   const rows = list.data?.rows ?? [];
   const visibleAssessmentIds = [...new Set(rows.map((row) => row.assessment_id))].sort();
@@ -446,24 +451,27 @@ function ClickerPage() {
                 placeholder="Min score"
                 className="h-9 w-[120px]"
               />
-              <Input
-                value={className}
-                onChange={(e) => setClassName(e.target.value)}
-                placeholder="Class"
-                className="h-9 w-[100px]"
-              />
-              <Input
-                value={section}
-                onChange={(e) => setSection(e.target.value)}
-                placeholder="Section"
-                className="h-9 w-[110px]"
-              />
-              <Input
-                value={team}
-                onChange={(e) => setTeam(e.target.value)}
-                placeholder="Team"
-                className="h-9 w-[100px]"
-              />
+              <Select value={className || "all"} onValueChange={setClassName}>
+                <SelectTrigger className="h-9 w-[110px]"><SelectValue placeholder="Class" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All classes</SelectItem>
+                  {(facets.data?.classes ?? []).map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={section || "all"} onValueChange={setSection}>
+                <SelectTrigger className="h-9 w-[120px]"><SelectValue placeholder="Section" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All sections</SelectItem>
+                  {(facets.data?.sections ?? []).map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={team || "all"} onValueChange={setTeam}>
+                <SelectTrigger className="h-9 w-[110px]"><SelectValue placeholder="Team" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All teams</SelectItem>
+                  {(facets.data?.teams ?? []).map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </>
           }
           toolbar={

@@ -148,6 +148,39 @@ export const importStudentBatch = createServerFn({ method: "POST" })
       p_rows: data.rows,
     });
   });
+
+export const clickerFacets = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => z.object({ token: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    const profile = await requirePermission(data.token, "clicker", "view");
+    const db = await adminDb();
+    const classes = new Set<string>();
+    const sections = new Set<string>();
+    const teams = new Set<string>();
+    for (let from = 0; ; from += 1000) {
+      let query = db
+        .from("clicker_records")
+        .select("class, section, team")
+        .range(from, from + 999);
+      if (profile.role !== "admin" && !profile.allSchools)
+        query = query.in("school_id", profile.schoolIds);
+      const { data: rows, error } = await query;
+      if (error) throw new Error("Unable to load Clicker filter options");
+      for (const row of rows ?? []) {
+        if (row.class) classes.add(row.class);
+        if (row.section) sections.add(row.section);
+        if (row.team) teams.add(row.team);
+      }
+      if (!rows || rows.length < 1000) break;
+    }
+    const sort = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
+    return {
+      classes: [...classes].sort(sort),
+      sections: [...sections].sort(sort),
+      teams: [...teams].sort(sort),
+    };
+  });
+
 export const listClickerQuestionKeys = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z
