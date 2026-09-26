@@ -1,31 +1,219 @@
-import assert from 'node:assert/strict';
-import fs from 'node:fs/promises';
-import vm from 'node:vm';
-import ts from 'typescript';
-import {createRequire} from 'node:module';
-const require=createRequire(import.meta.url);
-async function load(path,mocks={}){const exports={};vm.runInNewContext(ts.transpileModule(await fs.readFile(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:n=>mocks[n]??require(n),Map,Set});return exports;}
-const paging=await load('src/lib/fetch-all.ts');
-const compat=await load('src/lib/paging-compat.server.ts',{'./fetch-all':paging});
-const school='11111111-1111-1111-1111-111111111111';
-const students=Array.from({length:1250},(_,i)=>({id:String(i),school_id:school,name:`Student ${i}`,student_code:`STU${i}`,class:'5',division:'A',roll_number:String(i+1)}));
-const tables={students:[...students,{id:'other',school_id:'other',name:'Secret',class:'5',division:'A'}],schools:[{id:school,name:'School',code:'SCH'}],exam_scores:[{id:'1',school_id:school,student_id:'0',exam_type:'ICA',score:0,updated_at:'2026-01-01'},{id:'2',school_id:school,student_id:'0',exam_type:'IMF',score:60,updated_at:'2026-01-01'},{id:'3',school_id:school,student_id:'0',exam_type:'MCA',score:80,updated_at:'2026-02-01'}],attendance:[{id:'1',school_id:school,student_id:'0',status:'present'},{id:'2',school_id:school,student_id:'0',status:'absent'}],assessments:[{id:'1',school_id:school,assessment_id:'ASM1'},{id:'2',school_id:'other',assessment_id:'ASM2'}],questions:[{id:'1',assessment_id:'ASM1',question_no:1,correct_answer:'A'},{id:'2',assessment_id:'ASM2',question_no:1,correct_answer:'B'}],clicker_records:[{id:'1',assessment_id:'ASM1',school_id:school,student_name:'A',score:80,answers:{S1:'A'}},{id:'2',assessment_id:'ASM2',school_id:'other',student_name:'Private',answers:{S99:'B'}}]};
-let rpcError={code:'PGRST202',message:'function missing'},databaseReads=0;
-const db={rpc:async()=>({data:{rows:[],total:999},error:rpcError}),from(table){databaseReads++;let rows=[...tables[table]],start=0,end=999;const q={select:()=>q,order:()=>{rows.sort((a,b)=>a.id.localeCompare(b.id));return q;},eq:(key,value)=>{rows=rows.filter(r=>r[key]===value);return q;},in:(key,values)=>{rows=rows.filter(r=>values.includes(r[key]));return q;},range:(a,b)=>{start=a;end=b;return q;},then:(ok,fail)=>Promise.resolve({data:rows.slice(start,end+1),error:null}).then(ok,fail)};return q;}};
-const args={p_school:school,p_class:'all',p_division:'all',p_search:'',p_page:0,p_size:50,p_sort:'roll-asc',p_attendance:'all',p_exam:'ICA',p_status:'all',p_min:null,p_max:null};
-let result=await compat.readWithoutPagingRpc(db,'student_details_page',args);
-assert.equal(result.total,1250);assert.equal(result.rows.length,50);assert.equal(result.rows[0].ica,0);assert.equal(result.rows[0].mca,80);assert.equal(result.rows[0].attendance_pct,50);
-assert.equal((await compat.readWithoutPagingRpc(db,'student_details_page',{...args,p_page:24})).rows.length,50);
-assert.equal((await compat.readWithoutPagingRpc(db,'student_details_page',{...args,p_status:'missing'})).total,1249);
-assert.equal((await compat.readWithoutPagingRpc(db,'student_details_page',{...args,p_search:'Secret'})).total,0);
-assert.equal((await compat.readWithoutPagingRpc(db,'student_details_page',{...args,p_min:0,p_max:0})).total,1);
-assert.equal((await compat.readWithoutPagingRpc(db,'performance_student_facets',args)).total,1250);
-result=await compat.readWithoutPagingRpc(db,'performance_master_page',{p_table:'clicker_records',p_schools:[school],p_page:0,p_size:25});assert.equal(result.total,1);assert.equal(result.questionColumns.join(','),'S1');
-result=await compat.readWithoutPagingRpc(db,'performance_question_keys',{p_schools:[school],p_assessments:['ASM1','ASM2']});assert.equal(result.length,1);assert.equal(result[0].correct_answer,'A');
-const createServerFn=()=>({inputValidator(validate){return {handler(fn){return ({data})=>fn({data:validate(data)});}};}});
-const api=await load('src/lib/performance.functions.ts',{'./paging-compat.server':compat,'@tanstack/react-start':{createServerFn},'./app-access.server':{adminDb:async()=>db,requirePermission:async()=>({role:'admin'})},'./access-control':{canSeeSchool:()=>true}});
-const data={token:'test',schoolId:school};assert.equal((await api.studentFacets({data})).total,1250);
-rpcError={code:'42501',message:'denied'};const before=databaseReads;await assert.rejects(()=>api.studentFacets({data}));assert.equal(databaseReads,before,'Permission errors must not activate the fallback');
-rpcError=null;assert.equal((await api.studentFacets({data})).total,999);assert.equal(databaseReads,before,'Installed RPCs must remain the fast path');
-rpcError={code:'PGRST202',message:'missing'};await assert.rejects(()=>api.deleteStudentDetails({data:{...data,module:'students',ids:['22222222-2222-2222-2222-222222222222']}}));assert.equal(databaseReads,before,'No non-transactional mutation fallback');
-console.log('PASS: missing RPC recovery, complete >1,000-row reads, exact totals, scores/filters, school isolation, question keys, unchanged installed RPC fast path, no fallback for permission errors or mutations');
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import vm from "node:vm";
+import ts from "typescript";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+async function load(path, mocks = {}) {
+  const exports = {};
+  vm.runInNewContext(
+    ts.transpileModule(await fs.readFile(path, "utf8"), {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    }).outputText,
+    { exports, require: (n) => mocks[n] ?? require(n), Map, Set },
+  );
+  return exports;
+}
+const paging = await load("src/lib/fetch-all.ts");
+const compat = await load("src/lib/paging-compat.server.ts", { "./fetch-all": paging });
+const school = "11111111-1111-1111-1111-111111111111";
+const students = Array.from({ length: 1250 }, (_, i) => ({
+  id: String(i),
+  school_id: school,
+  name: `Student ${i}`,
+  student_code: `STU${i}`,
+  class: "5",
+  division: "A",
+  roll_number: String(i + 1),
+}));
+const tables = {
+  students: [
+    ...students,
+    { id: "other", school_id: "other", name: "Secret", class: "5", division: "A" },
+  ],
+  schools: [{ id: school, name: "School", code: "SCH" }],
+  exam_scores: [
+    {
+      id: "1",
+      school_id: school,
+      student_id: "0",
+      exam_type: "ICA",
+      score: 0,
+      updated_at: "2026-01-01",
+    },
+    {
+      id: "2",
+      school_id: school,
+      student_id: "0",
+      exam_type: "IMF",
+      score: 60,
+      updated_at: "2026-01-01",
+    },
+    {
+      id: "3",
+      school_id: school,
+      student_id: "0",
+      exam_type: "MCA",
+      score: 80,
+      updated_at: "2026-02-01",
+    },
+  ],
+  attendance: [
+    { id: "1", school_id: school, student_id: "0", status: "present" },
+    { id: "2", school_id: school, student_id: "0", status: "absent" },
+  ],
+  assessments: [
+    { id: "1", school_id: school, assessment_id: "ASM1" },
+    { id: "2", school_id: "other", assessment_id: "ASM2" },
+  ],
+  questions: [
+    { id: "1", assessment_id: "ASM1", question_no: 1, correct_answer: "A" },
+    { id: "2", assessment_id: "ASM2", question_no: 1, correct_answer: "B" },
+  ],
+  clicker_records: [
+    {
+      id: "1",
+      assessment_id: "ASM1",
+      school_id: school,
+      student_name: "A",
+      score: 80,
+      answers: { S1: "A" },
+    },
+    {
+      id: "2",
+      assessment_id: "ASM2",
+      school_id: "other",
+      student_name: "Private",
+      answers: { S99: "B" },
+    },
+  ],
+};
+let rpcError = { code: "PGRST202", message: "function missing" },
+  databaseReads = 0;
+const db = {
+  rpc: async () => ({ data: { rows: [], total: 999 }, error: rpcError }),
+  from(table) {
+    databaseReads++;
+    let rows = [...tables[table]],
+      start = 0,
+      end = 999;
+    const q = {
+      select: () => q,
+      order: () => {
+        rows.sort((a, b) => a.id.localeCompare(b.id));
+        return q;
+      },
+      eq: (key, value) => {
+        rows = rows.filter((r) => r[key] === value);
+        return q;
+      },
+      in: (key, values) => {
+        rows = rows.filter((r) => values.includes(r[key]));
+        return q;
+      },
+      range: (a, b) => {
+        start = a;
+        end = b;
+        return q;
+      },
+      then: (ok, fail) =>
+        Promise.resolve({ data: rows.slice(start, end + 1), error: null }).then(ok, fail),
+    };
+    return q;
+  },
+};
+const args = {
+  p_school: school,
+  p_class: "all",
+  p_division: "all",
+  p_search: "",
+  p_page: 0,
+  p_size: 50,
+  p_sort: "roll-asc",
+  p_attendance: "all",
+  p_exam: "ICA",
+  p_status: "all",
+  p_min: null,
+  p_max: null,
+};
+let result = await compat.readWithoutPagingRpc(db, "student_details_page", args);
+assert.equal(result.total, 1250);
+assert.equal(result.rows.length, 50);
+assert.equal(result.rows[0].ica, 0);
+assert.equal(result.rows[0].mca, 80);
+assert.equal(result.rows[0].attendance_pct, 50);
+assert.equal(
+  (await compat.readWithoutPagingRpc(db, "student_details_page", { ...args, p_page: 24 })).rows
+    .length,
+  50,
+);
+assert.equal(
+  (await compat.readWithoutPagingRpc(db, "student_details_page", { ...args, p_status: "missing" }))
+    .total,
+  1249,
+);
+assert.equal(
+  (await compat.readWithoutPagingRpc(db, "student_details_page", { ...args, p_search: "Secret" }))
+    .total,
+  0,
+);
+assert.equal(
+  (await compat.readWithoutPagingRpc(db, "student_details_page", { ...args, p_min: 0, p_max: 0 }))
+    .total,
+  1,
+);
+assert.equal(
+  (await compat.readWithoutPagingRpc(db, "performance_student_facets", args)).total,
+  1250,
+);
+result = await compat.readWithoutPagingRpc(db, "performance_master_page", {
+  p_table: "clicker_records",
+  p_schools: [school],
+  p_page: 0,
+  p_size: 25,
+});
+assert.equal(result.total, 1);
+assert.equal(result.questionColumns.join(","), "S1");
+result = await compat.readWithoutPagingRpc(db, "performance_question_keys", {
+  p_schools: [school],
+  p_assessments: ["ASM1", "ASM2"],
+});
+assert.equal(result.length, 1);
+assert.equal(result[0].correct_answer, "A");
+const createServerFn = () => ({
+  inputValidator(validate) {
+    return {
+      handler(fn) {
+        return ({ data }) => fn({ data: validate(data) });
+      },
+    };
+  },
+});
+const api = await load("src/lib/performance.functions.ts", {
+  "./paging-compat.server": compat,
+  "@tanstack/react-start": { createServerFn },
+  "./app-access.server": {
+    adminDb: async () => db,
+    requirePermission: async () => ({ role: "admin" }),
+  },
+  "./access-control": { canSeeSchool: () => true },
+});
+const data = { token: "test", schoolId: school };
+assert.equal((await api.studentFacets({ data })).total, 1250);
+rpcError = { code: "42501", message: "denied" };
+const before = databaseReads;
+await assert.rejects(() => api.studentFacets({ data }));
+assert.equal(databaseReads, before, "Permission errors must not activate the fallback");
+rpcError = null;
+assert.equal((await api.studentFacets({ data })).total, 999);
+assert.equal(databaseReads, before, "Installed RPCs must remain the fast path");
+rpcError = { code: "PGRST202", message: "missing" };
+await assert.rejects(() =>
+  api.deleteStudentDetails({
+    data: { ...data, module: "students", ids: ["22222222-2222-2222-2222-222222222222"] },
+  }),
+);
+assert.equal(databaseReads, before, "No non-transactional mutation fallback");
+console.log(
+  "PASS: missing RPC recovery, complete >1,000-row reads, exact totals, scores/filters, school isolation, question keys, unchanged installed RPC fast path, no fallback for permission errors or mutations",
+);

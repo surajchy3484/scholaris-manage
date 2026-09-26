@@ -28,12 +28,12 @@ async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await db.rpc(name as never, args as never);
   if (error) {
     if (error.code === "23505") {
-      if (error.constraint === "students_school_id_student_code_key") {
+      if (error.message.includes("students_school_id_student_code_key")) {
         throw new Error(
           "This Student ID already exists in this school. Use a different Student ID.",
         );
       }
-      if (error.constraint === "students_school_id_class_division_roll_number_key") {
+      if (error.message.includes("students_school_id_class_division_roll_number_key")) {
         throw new Error("This roll number already exists in the selected class and division.");
       }
     }

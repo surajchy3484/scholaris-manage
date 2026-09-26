@@ -1,38 +1,94 @@
-import assert from 'node:assert/strict';
-import fs from 'node:fs/promises';
-import ts from 'typescript';
-import vm from 'node:vm';
-import {createRequire} from 'node:module';
-const require=createRequire(import.meta.url);
-const compile=async path=>ts.transpileModule(await fs.readFile(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-const evaluate=async(path,mocks,extra={})=>{const exports={};vm.runInNewContext(await compile(path),{exports,require:name=>mocks[name]??require(name),Blob,Date,JSON,Map,...extra});return exports;};
-const {fetchAllRows}=await evaluate('src/lib/fetch-all.ts',{});
-const fixture=Array.from({length:10001},(_,id)=>({id}));
-const read=await fetchAllRows((from,to)=>Promise.resolve({data:fixture.slice(from,to+1),error:null}));
-assert.deepEqual(Array.from(read,r=>r.id),fixture.map(r=>r.id));
-await assert.rejects(()=>fetchAllRows(()=>Promise.resolve({data:null,error:new Error('read failed')})));
-const saved={schools:new Map(),students:new Map(),attendance:new Map()};
-saved.students.set('existing',{id:'existing',name:'Original'});
-const batches=[];
-const db={from:table=>({upsert:async(rows,options)=>{
- assert.equal(options.ignoreDuplicates,true);assert.equal(options.onConflict,'id');assert.ok(rows.length<=250);
- batches.push(table);
- for(const row of rows)if(!saved[table].has(row.id))saved[table].set(row.id,row);
- return {error:null};
-}})};
-const {restoreDatabase}=await evaluate('src/lib/backup.ts',{'@/integrations/supabase/client':{supabase:db},'./fetch-all':{fetchAllRows},'file-saver':{default:{saveAs:()=>{}}}});
-const payload={schools:[{id:'school'}],students:[{id:'existing',name:'Overwrite'},...Array.from({length:1001},(_,i)=>({id:`new-${i}`}))],attendance:[{id:'attendance'}]};
-const file={text:async()=>JSON.stringify(payload)};
-await restoreDatabase(file);await restoreDatabase(file);
-assert.equal(saved.students.size,1002);assert.equal(saved.students.get('existing').name,'Original');
-assert.equal(batches[0],'schools');
-const before=batches.length;
-await assert.rejects(()=>restoreDatabase({text:async()=>JSON.stringify({...payload,attendance:[{}]})}));
-assert.equal(batches.length,before,'Validate every table before inserting');
-const XLSX=require('xlsx');let message;
-const self={postMessage:value=>{message=value;}};
-await evaluate('src/workers/workbook.worker.ts',{}, {self});
-const workbook=XLSX.utils.book_new();XLSX.utils.book_append_sheet(workbook,XLSX.utils.json_to_sheet([{Name:'Student A',Score:85}]),'Students');
-self.onmessage({data:XLSX.write(workbook,{type:'array',bookType:'xlsx'})});
-assert.equal(message.rows[0].Name,'Student A');assert.equal(message.rows[0].Score,85);
-console.log('PASS: complete 10,001-row reads, read failures, restore batching, preserved existing rows, retry safety, validation before writes, worker spreadsheet parsing');
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import ts from "typescript";
+import vm from "node:vm";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const compile = async (path) =>
+  ts.transpileModule(await fs.readFile(path, "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+const evaluate = async (path, mocks, extra = {}) => {
+  const exports = {};
+  vm.runInNewContext(await compile(path), {
+    exports,
+    require: (name) => mocks[name] ?? require(name),
+    Blob,
+    Date,
+    JSON,
+    Map,
+    ...extra,
+  });
+  return exports;
+};
+const { fetchAllRows } = await evaluate("src/lib/fetch-all.ts", {});
+const fixture = Array.from({ length: 10001 }, (_, id) => ({ id }));
+const read = await fetchAllRows((from, to) =>
+  Promise.resolve({ data: fixture.slice(from, to + 1), error: null }),
+);
+assert.deepEqual(
+  Array.from(read, (r) => r.id),
+  fixture.map((r) => r.id),
+);
+await assert.rejects(() =>
+  fetchAllRows(() => Promise.resolve({ data: null, error: new Error("read failed") })),
+);
+const saved = { schools: new Map(), students: new Map(), attendance: new Map() };
+saved.students.set("existing", { id: "existing", name: "Original" });
+const batches = [];
+const db = {
+  from: (table) => ({
+    upsert: async (rows, options) => {
+      assert.equal(options.ignoreDuplicates, true);
+      assert.equal(options.onConflict, "id");
+      assert.ok(rows.length <= 250);
+      batches.push(table);
+      for (const row of rows) if (!saved[table].has(row.id)) saved[table].set(row.id, row);
+      return { error: null };
+    },
+  }),
+};
+const { restoreDatabase } = await evaluate("src/lib/backup.ts", {
+  "@/integrations/supabase/client": { supabase: db },
+  "./fetch-all": { fetchAllRows },
+  "file-saver": { default: { saveAs: () => {} } },
+});
+const payload = {
+  schools: [{ id: "school" }],
+  students: [
+    { id: "existing", name: "Overwrite" },
+    ...Array.from({ length: 1001 }, (_, i) => ({ id: `new-${i}` })),
+  ],
+  attendance: [{ id: "attendance" }],
+};
+const file = { text: async () => JSON.stringify(payload) };
+await restoreDatabase(file);
+await restoreDatabase(file);
+assert.equal(saved.students.size, 1002);
+assert.equal(saved.students.get("existing").name, "Original");
+assert.equal(batches[0], "schools");
+const before = batches.length;
+await assert.rejects(() =>
+  restoreDatabase({ text: async () => JSON.stringify({ ...payload, attendance: [{}] }) }),
+);
+assert.equal(batches.length, before, "Validate every table before inserting");
+const XLSX = require("xlsx");
+let message;
+const self = {
+  postMessage: (value) => {
+    message = value;
+  },
+};
+await evaluate("src/workers/workbook.worker.ts", {}, { self });
+const workbook = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(
+  workbook,
+  XLSX.utils.json_to_sheet([{ Name: "Student A", Score: 85 }]),
+  "Students",
+);
+self.onmessage({ data: XLSX.write(workbook, { type: "array", bookType: "xlsx" }) });
+assert.equal(message.rows[0].Name, "Student A");
+assert.equal(message.rows[0].Score, 85);
+console.log(
+  "PASS: complete 10,001-row reads, read failures, restore batching, preserved existing rows, retry safety, validation before writes, worker spreadsheet parsing",
+);

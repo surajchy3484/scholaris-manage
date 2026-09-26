@@ -4,7 +4,7 @@ import { fetchAllRows } from "./fetch-all";
 // Invoked only AFTER the caller's module permission and school assignment checks.
 type Db = Awaited<ReturnType<typeof adminDb>>;
 type Args = Record<string, unknown>;
-type Row = Record<string, any>;
+type Row = Record<string, unknown> & { answers?: Record<string, unknown> | null };
 const text = (v: unknown) => String(v ?? "");
 const includes = (value: unknown, search: unknown) =>
   text(value).toLowerCase().includes(text(search).trim().toLowerCase());
@@ -126,10 +126,10 @@ export async function readWithoutPagingRpc(db: Db, name: string, args: Args): Pr
     }
     const totals = new Map<string, { n: number; present: number }>();
     for (const row of attendance) {
-      const t = totals.get(row.student_id) ?? { n: 0, present: 0 };
+      const t = totals.get(text(row.student_id)) ?? { n: 0, present: 0 };
       t.n++;
       if (row.status === "present") t.present++;
-      totals.set(row.student_id, t);
+      totals.set(text(row.student_id), t);
     }
     const round = (n: number) => Math.round(n * 10) / 10;
     const rows = base
@@ -139,7 +139,7 @@ export async function readWithoutPagingRpc(db: Db, name: string, args: Args): Pr
           mca = score("MCA")?.score ?? score("IMF")?.score ?? null,
           fca = score("FCA")?.score ?? null;
         const override = score("ATTENDANCE")?.score ?? null,
-          t = totals.get(student.id);
+          t = totals.get(text(student.id));
         const performance = round((Number(ica ?? 0) + Number(mca ?? 0) + Number(fca ?? 0)) / 3);
         return {
           ...student,
@@ -170,8 +170,8 @@ export async function readWithoutPagingRpc(db: Db, name: string, args: Args): Pr
         if (
           (att === "recorded" && !row.attendance_recorded) ||
           (att === "missing" && row.attendance_recorded) ||
-          (att === "below75" && (!row.attendance_recorded || row.attendance_pct >= 75)) ||
-          (att === "atleast75" && (!row.attendance_recorded || row.attendance_pct < 75))
+          (att === "below75" && (!row.attendance_recorded || Number(row.attendance_pct) >= 75)) ||
+          (att === "atleast75" && (!row.attendance_recorded || Number(row.attendance_pct) < 75))
         )
           return false;
         const value = args.p_exam === "IMF" ? row.mca : args.p_exam === "FCA" ? row.fca : row.ica;
@@ -181,8 +181,8 @@ export async function readWithoutPagingRpc(db: Db, name: string, args: Args): Pr
         )
           return false;
         return (
-          (args.p_min == null || (value !== null && value >= Number(args.p_min))) &&
-          (args.p_max == null || (value !== null && value <= Number(args.p_max)))
+          (args.p_min == null || (value !== null && Number(value) >= Number(args.p_min))) &&
+          (args.p_max == null || (value !== null && Number(value) <= Number(args.p_max)))
         );
       });
     return page(sortStudents(rows, args.p_sort), args);
@@ -226,7 +226,7 @@ export async function readWithoutPagingRpc(db: Db, name: string, args: Args): Pr
     );
     if (name === "performance_question_keys")
       return rows
-        .filter((r) => (args.p_assessments as string[]).includes(r.assessment_id))
+        .filter((r) => (args.p_assessments as string[]).includes(text(r.assessment_id)))
         .map(({ assessment_id, question_no, correct_answer }) => ({
           assessment_id,
           question_no,
@@ -249,7 +249,7 @@ export async function readWithoutPagingRpc(db: Db, name: string, args: Args): Pr
     if (args.p_subject && table === "questions")
       rows = rows.filter((r) => includes(r.subject, args.p_subject));
     if (args.p_min_score != null && table === "clicker_records")
-      rows = rows.filter((r) => r.score != null && r.score >= Number(args.p_min_score));
+      rows = rows.filter((r) => r.score != null && Number(r.score) >= Number(args.p_min_score));
     if (args.p_class && table === "clicker_records")
       rows = rows.filter((r) => includes(r.class, args.p_class));
     if (args.p_section && table === "clicker_records")
