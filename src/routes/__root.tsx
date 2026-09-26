@@ -209,9 +209,10 @@ function RootComponent() {
   useEffect(() => setupOffline(), []);
   useEffect(() => {
     let previousToken = getAccessToken();
-    const clearOnAccountChange = () => {
+    const clearOnAccountChange = (event: Event) => {
       const token = getAccessToken();
-      if (token !== previousToken) {
+      const reason = (event as CustomEvent<{ reason?: string }>).detail?.reason;
+      if (reason === "login" || reason === "logout" || token !== previousToken) {
         previousToken = token;
         queryClient.clear();
       }

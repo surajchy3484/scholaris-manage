@@ -30,14 +30,14 @@ export function loginWithProfile(profile: AccessProfile, token: string, remember
   const store = remember ? localStorage : sessionStorage;
   store.setItem(KEY, JSON.stringify(session));
   storeAccessToken(token, remember);
-  window.dispatchEvent(new Event("scholaris:auth"));
+  window.dispatchEvent(new CustomEvent("scholaris:auth", { detail: { reason: "login" } }));
 }
 
 export function logoutLocal() {
   localStorage.removeItem(KEY);
   sessionStorage.removeItem(KEY);
   clearAccessToken();
-  window.dispatchEvent(new Event("scholaris:auth"));
+  window.dispatchEvent(new CustomEvent("scholaris:auth", { detail: { reason: "logout" } }));
 }
 
 /** Replace the cached profile with fresh server-side permissions. */
@@ -46,7 +46,7 @@ export function updateStoredProfile(profile: AccessProfile) {
   if (!current) return;
   const store = current.remember ? localStorage : sessionStorage;
   store.setItem(KEY, JSON.stringify({ ...current, profile, user: profile.username }));
-  window.dispatchEvent(new Event("scholaris:auth"));
+  window.dispatchEvent(new CustomEvent("scholaris:auth", { detail: { reason: "profile" } }));
 }
 
 /**
