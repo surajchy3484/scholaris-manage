@@ -149,9 +149,9 @@ export function extractDriveFileId(url: string | null | undefined): string | nul
 // Convert any Google Drive URL variant to a URL that reliably embeds in
 // <img> tags and opens the raw image in a new browser tab. Non-Drive URLs
 // pass through untouched.
-export function toDisplayablePhotoUrl(url: string | null | undefined): string | null {
+export function toDisplayablePhotoUrl(url: string | null | undefined, size = 800): string | null {
   if (!url) return null;
   const id = extractDriveFileId(url);
-  if (id) return `https://lh3.googleusercontent.com/d/${id}=w800`;
+  if (id) return `https://lh3.googleusercontent.com/d/${id}=w${size}`;
   return url;
 }

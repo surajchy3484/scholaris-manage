@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { toDisplayablePhotoUrl } from "@/lib/drive.functions";
 import type { StudentListRow, ScoreFilters } from "@/lib/student-list";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -80,6 +82,39 @@ export function StudentScoreFilters({
   );
 }
 
+function StudentThumbnail({ student }: { student: StudentListRow }) {
+  const [failed, setFailed] = useState(false);
+  const src = toDisplayablePhotoUrl(student.photo_url, 80);
+  const initials =
+    student.name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase() || "?";
+  return (
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+      {src && !failed ? (
+        <img
+          src={src}
+          alt={student.name}
+          width={40}
+          height={40}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span aria-label={`No photo for ${student.name}`}>{initials}</span>
+      )}
+    </span>
+  );
+}
+
 export function StudentListTable({
   rows,
   selectedIds,
@@ -113,6 +148,7 @@ export function StudentListTable({
         <thead className="sticky top-0 z-10 bg-muted">
           <tr>
             {[
+              "Photo",
               "Select",
               "Student ID",
               "Student Name",
@@ -134,13 +170,13 @@ export function StudentListTable({
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={11} className="p-8 text-center" role="status">
+              <td colSpan={12} className="p-8 text-center" role="status">
                 Loading students…
               </td>
             </tr>
           ) : !rows.length ? (
             <tr>
-              <td colSpan={11} className="p-8 text-center text-muted-foreground">
+              <td colSpan={12} className="p-8 text-center text-muted-foreground">
                 No students match these filters.
               </td>
             </tr>
@@ -148,9 +184,24 @@ export function StudentListTable({
             rows.map((row) => (
               <tr
                 key={row.id}
-                className="border-t hover:bg-muted/40"
+                className="cursor-pointer border-t hover:bg-muted/40 focus-within:bg-muted/40"
+                onClick={(event) => {
+                  if ((event.target as HTMLElement).closest('button,input,a,[role="checkbox"]'))
+                    return;
+                  onView(row);
+                }}
                 data-state={selected.has(row.id) ? "selected" : undefined}
               >
+                <td className="w-16 px-3 py-2">
+                  <button
+                    type="button"
+                    className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={`Open profile for ${row.name}`}
+                    onClick={() => onView(row)}
+                  >
+                    <StudentThumbnail key={row.photo_url ?? "no-photo"} student={row} />
+                  </button>
+                </td>
                 <td className="px-3 py-2">
                   <Checkbox
                     aria-label={`Select ${row.name}`}
@@ -159,7 +210,16 @@ export function StudentListTable({
                   />
                 </td>
                 <td className="px-3 py-2 font-mono text-xs">{row.student_code}</td>
-                <td className="px-3 py-2 font-medium">{row.name}</td>
+                <td className="px-3 py-2 font-medium">
+                  <button
+                    type="button"
+                    className="rounded text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => onView(row)}
+                    aria-label={`View profile for ${row.name}`}
+                  >
+                    {row.name}
+                  </button>
+                </td>
                 <td className="px-3 py-2">{row.class}</td>
                 <td className="px-3 py-2">{row.division}</td>
                 <td className="px-3 py-2">{row.roll_number}</td>
