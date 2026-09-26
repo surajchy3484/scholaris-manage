@@ -10,15 +10,24 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { GraduationCap, ArrowLeft } from "lucide-react";
+import { GraduationCap, ArrowLeft, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { refreshProfileFromServer, useAuth } from "@/lib/auth";
+import { logoutLocal, refreshProfileFromServer, useAuth } from "@/lib/auth";
 import { setupOffline } from "@/lib/pwa";
 import { BrandName } from "@/components/brand";
 
@@ -145,6 +154,15 @@ function Header() {
   const router = useRouter();
   const canGoBack = router.history.canGoBack?.() ?? false;
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { session, profile } = useAuth();
+  const displayName = profile?.fullName?.trim() || profile?.username || session?.user || "User";
+  const username = profile?.username || session?.user || "";
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border/60 bg-background/80 px-3 backdrop-blur-xl sm:px-4">
@@ -161,12 +179,63 @@ function Header() {
           Back
         </Button>
       )}
-      <Link to="/" className="ml-auto flex items-center gap-2 md:hidden">
+      <Link to="/" className="mr-auto flex items-center gap-2 md:hidden">
         <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-primary to-primary-glow text-primary-foreground">
           <GraduationCap className="h-4 w-4" />
         </div>
         <BrandName className="font-display font-bold" />
       </Link>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Open profile for ${displayName}`}
+            className="ml-auto flex items-center gap-2 rounded-full p-1.5 pr-2 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          >
+            <Avatar className="h-8 w-8 border border-primary/20">
+              <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
+                {initials || <UserRound className="h-4 w-4" />}
+              </AvatarFallback>
+            </Avatar>
+            <span className="hidden max-w-32 text-left sm:block">
+              <span className="block truncate text-sm font-semibold">{displayName}</span>
+              <span className="block truncate text-[11px] text-muted-foreground">
+                {profile?.role === "admin" ? "Administrator" : username}
+              </span>
+            </span>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10 border border-primary/20">
+                <AvatarFallback className="bg-primary/10 font-bold text-primary">
+                  {initials || <UserRound className="h-5 w-5" />}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{displayName}</p>
+                <p className="truncate text-xs text-muted-foreground">@{username}</p>
+                <p className="mt-1 flex items-center gap-1 text-xs capitalize text-primary">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  {profile?.role || "user"}
+                </p>
+              </div>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => {
+              logoutLocal();
+              void router.navigate({ to: "/login", replace: true });
+            }}
+            className="text-destructive focus:text-destructive"
+          >
+            <LogOut className="h-4 w-4" />
+            Log out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </header>
   );
 }
