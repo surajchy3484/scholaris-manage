@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { School } from "@/lib/types";
 import { importStudentBatch } from "@/lib/performance.functions";
 import { getAccessToken } from "@/lib/app-access";
+import { explainStudentUniqueConflict, formatStudentCode, nextStudentCode } from "@/lib/student-id";
 import { parseImportFile, downloadSampleTemplate, type ImportRow } from "@/lib/excel";
 import {
   Dialog,
@@ -26,6 +27,46 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+
+function isMissingImportRpcError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("requires a database update") ||
+    message.includes("performance_import_students")
+  );
+}
+
+async function importBatchDirectly(school: School, rows: ImportRow[]): Promise<number> {
+  const { data: existing, error: existingError } = await supabase
+    .from("students")
+    .select("class, division, roll_number")
+    .eq("school_id", school.id);
+  if (existingError) throw existingError;
+
+  const existingRolls = new Set(
+    (existing ?? []).map((row) => `${row.class}|${row.division}|${row.roll_number}`.toLowerCase()),
+  );
+  const newRows = rows.filter((row) => {
+    const key = `${row.class}|${row.division}|${row.roll_number}`.toLowerCase();
+    return !existingRolls.has(key);
+  });
+  if (!newRows.length) return 0;
+
+  const firstCode = await nextStudentCode(school.id, school.code);
+  const startSequence = Number(firstCode.split("-STU")[1]);
+  const payload = newRows.map((row, index) => ({
+    school_id: school.id,
+    student_code: formatStudentCode(school.code, startSequence + index),
+    name: row.name,
+    class: row.class,
+    division: row.division,
+    roll_number: row.roll_number,
+    photo_url: null,
+  }));
+  const { error } = await supabase.from("students").insert(payload);
+  if (error) throw explainStudentUniqueConflict(error);
+  return newRows.length;
+}
 
 export function ImportStudentsDialog({
   school,
@@ -76,22 +117,32 @@ export function ImportStudentsDialog({
       if (!valid.length) throw new Error("No valid rows to import");
       let added = 0;
       setProgress(0);
+      let useDirectFallback = false;
       for (let offset = 0; offset < valid.length; offset += 250) {
         try {
-          added += await importStudentBatch({
-            data: {
-              token: getAccessToken(),
-              schoolId: school.id,
-              rows: valid
-                .slice(offset, offset + 250)
-                .map(({ name, class: klass, division, roll_number }) => ({
-                  name,
-                  class: klass,
-                  division,
-                  roll_number,
-                })),
-            },
-          });
+          const batch = valid.slice(offset, offset + 250);
+          if (useDirectFallback) {
+            added += await importBatchDirectly(school, batch);
+          } else {
+            try {
+              added += await importStudentBatch({
+                data: {
+                  token: getAccessToken(),
+                  schoolId: school.id,
+                  rows: batch.map(({ name, class: klass, division, roll_number }) => ({
+                    name,
+                    class: klass,
+                    division,
+                    roll_number,
+                  })),
+                },
+              });
+            } catch (error) {
+              if (!isMissingImportRpcError(error)) throw error;
+              useDirectFallback = true;
+              added += await importBatchDirectly(school, batch);
+            }
+          }
           setProgress(Math.min(offset + 250, valid.length));
         } catch (error) {
           throw new Error(
