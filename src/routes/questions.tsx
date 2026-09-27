@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -46,8 +46,20 @@ function QuestionsPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const types = useQuery({ queryKey: ["exam-types"], queryFn: fetchExamTypes });
+  const availableQuestions = useQuery({
+    queryKey: ["question-class-options"],
+    queryFn: () => fetchBankQuestions(),
+    staleTime: 60_000,
+  });
   const issues = useQuery({ queryKey: ["question-migration-issues"], queryFn: fetchLegacyIssues });
   const list = useMasterPage<BankQuestion>("questions", { examType: exam, className: cls });
+  const classOptions = useMemo(
+    () =>
+      [...new Set((availableQuestions.data ?? []).map((question) => normalizeClass(question.class)))]
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+    [availableQuestions.data],
+  );
   async function action(work: () => Promise<unknown>) {
     if (busy) return;
     setBusy(true);
@@ -243,16 +255,22 @@ function QuestionsPage() {
                 <option key={t.name}>{t.name}</option>
               ))}
             </select>
-            <Input
-              className="w-32"
-              placeholder="Class"
+            <select
               aria-label="Class filter"
+              className="w-32 rounded border bg-background p-2"
               value={cls}
               onChange={(e) => {
                 setCls(e.target.value);
                 setSelected([]);
               }}
-            />
+            >
+              <option value="">All Classes</option>
+              {classOptions.map((option) => (
+                <option key={option} value={option}>
+                  Class {option}
+                </option>
+              ))}
+            </select>
           </>
         }
         toolbar={
