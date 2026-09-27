@@ -18,7 +18,8 @@ function readSession(): Session | null {
   const raw = localStorage.getItem(KEY) ?? sessionStorage.getItem(KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as Session;
+    const session = JSON.parse(raw) as Session;
+    return session.profile?.userId ? session : null;
   } catch {
     return null;
   }
@@ -26,6 +27,8 @@ function readSession(): Session | null {
 
 /** Persist a signed-in account (token comes from the appLogin server function). */
 export function loginWithProfile(profile: AccessProfile, token: string, remember: boolean) {
+  localStorage.removeItem(KEY);
+  sessionStorage.removeItem(KEY);
   const session: Session = { user: profile.username, remember, profile };
   const store = remember ? localStorage : sessionStorage;
   store.setItem(KEY, JSON.stringify(session));
@@ -63,7 +66,7 @@ export async function refreshProfileFromServer() {
     const profile = await currentProfile({ data: { token: getAccessToken() } });
     updateStoredProfile(profile);
   } catch {
-    // Offline or expired token: keep whatever we have; server calls will fail loudly.
+    logoutLocal();
   }
 }
 
@@ -91,11 +94,10 @@ export function useAuth() {
     session,
     profile,
     isAuthed: !!session,
-    isAdmin: profile ? profile.role === "admin" : !!session && !profile,
+    isAdmin: profile?.role === "admin",
     ready,
-    /** Older sessions predate profiles, so treat them as full admins. */
-    can: (module: AppModule, action: AppAction = "view") =>
-      profile ? canDo(profile, module, action) : !!session,
-    canSeeSchool: (schoolId: string) => (profile ? canSeeSchoolFor(profile, schoolId) : !!session),
+    /** Cached profiles control presentation only; the server checks every request. */
+    can: (module: AppModule, action: AppAction = "view") => canDo(profile, module, action),
+    canSeeSchool: (schoolId: string) => canSeeSchoolFor(profile, schoolId),
   };
 }

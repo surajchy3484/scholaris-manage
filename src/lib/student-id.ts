@@ -1,5 +1,5 @@
 import { fetchAllRows } from "./fetch-all";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/private-data";
 
 // Format: <schoolCode>-STU<6-digit sequence>, e.g. SCH001-STU000001
 export function formatStudentCode(schoolCode: string, seq: number): string {

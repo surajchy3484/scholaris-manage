@@ -1,3 +1,5 @@
+import { adminDb, requireAdmin, resolveAccess } from "./app-access.server";
+import { can, canSeeSchool } from "./access-control";
 import { createServerFn } from "@tanstack/react-start";
 
 const GDRIVE_FOLDER_ID = "1XXKtXiKsvBxveUJo8ANHc1JKUPpW26oc";
@@ -56,12 +58,20 @@ async function tryUpload(
 }
 
 export const uploadPhotoToDrive = createServerFn({ method: "POST" })
-  .validator((d: { dataUrl: string; filename: string }) => {
+  .validator((d: { token: string; dataUrl: string; filename: string }) => {
     if (!d?.dataUrl || !d?.filename) throw new Error("Missing photo data");
     if (!/^data:image\//.test(d.dataUrl)) throw new Error("Not a valid image data URL");
     return d;
   })
   .handler(async ({ data }): Promise<UploadResult> => {
+    const profile = await resolveAccess(data.token);
+    if (
+      !can(profile, "students", "add") &&
+      !can(profile, "students", "edit") &&
+      !can(profile, "exam_report", "edit")
+    )
+      throw new Error("Photo edit permission required");
+    if (data.dataUrl.length > 8_000_000) throw new Error("Photo too large");
     const lovableKey = process.env.LOVABLE_API_KEY;
     const connKey = process.env.GOOGLE_DRIVE_API_KEY;
     if (!lovableKey || !connKey) {
@@ -82,45 +92,23 @@ export const uploadPhotoToDrive = createServerFn({ method: "POST" })
       "X-Connection-Api-Key": connKey,
     };
 
-    // Try the configured shared folder first; fall back to My Drive root if
-    // the connected account lacks access under the drive.file scope.
-    let fileId: string;
-    try {
-      const r = await tryUpload(headers, safeName, mime, bytes, [GDRIVE_FOLDER_ID]);
-      fileId = r.id;
-    } catch (err) {
-      console.warn("Drive upload with target folder failed, retrying to root:", err);
-      const r = await tryUpload(headers, safeName, mime, bytes, null);
-      fileId = r.id;
-    }
-
-    // Make the file readable by anyone with the link.
-    const permRes = await fetch(
-      `${GATEWAY}/drive/v3/files/${fileId}/permissions?supportsAllDrives=true`,
-      {
-        method: "POST",
-        headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ role: "reader", type: "anyone" }),
-      },
-    );
-    if (!permRes.ok) {
-      const text = await permRes.text();
-      // Non-fatal: file exists in Drive; owner can still access it.
-      console.warn(`Setting anyone-reader permission failed [${permRes.status}]: ${text}`);
-    }
+    // Preserve the folder's permissions; never grant public sharing or use Drive root.
+    const uploaded = await tryUpload(headers, safeName, mime, bytes, [GDRIVE_FOLDER_ID]);
+    const fileId = uploaded.id;
 
     return {
       fileId,
-      // lh3 serves the raw image reliably — works as <img src> in the app
-      // and opens the exact image in a new browser tab when clicked.
+      // Store a stable file reference; the app reads its bytes through an authorized endpoint.
       url: `https://lh3.googleusercontent.com/d/${fileId}=w1200`,
       viewUrl: `https://drive.google.com/file/d/${fileId}/view`,
     };
   });
 
 export const deletePhotoFromDrive = createServerFn({ method: "POST" })
-  .validator((d: { fileId: string }) => d)
+  .validator((d: { token: string; fileId: string }) => d)
   .handler(async ({ data }) => {
+    await requireAdmin(data.token);
+    if (!/^[A-Za-z0-9_-]+$/.test(data.fileId)) throw new Error("Invalid file ID");
     const lovableKey = process.env.LOVABLE_API_KEY;
     const connKey = process.env.GOOGLE_DRIVE_API_KEY;
     if (!lovableKey || !connKey) return { ok: false };
@@ -155,3 +143,64 @@ export function toDisplayablePhotoUrl(url: string | null | undefined, size = 800
   if (id) return `https://lh3.googleusercontent.com/d/${id}=w${size}`;
   return url;
 }
+
+export const readPrivatePhoto = createServerFn({ method: "POST" })
+  .inputValidator((d: { token: string; fileId: string }) => {
+    if (!d?.token || !/^[A-Za-z0-9_-]{5,200}$/.test(d.fileId))
+      throw new Error("Invalid photo request");
+    return d;
+  })
+  .handler(async ({ data }) => {
+    const profile = await resolveAccess(data.token);
+    if (
+      !can(profile, "students", "view") &&
+      !can(profile, "exam_report", "view") &&
+      !can(profile, "attendance", "view")
+    )
+      throw new Error("Photo access denied");
+    const db = await adminDb();
+    let query = db
+      .from("students")
+      .select("school_id,photo_url")
+      .ilike("photo_url", `%${data.fileId}%`);
+    if (profile.role !== "admin" && !profile.allSchools)
+      query = query.in("school_id", profile.schoolIds);
+    const { data: rows, error } = await query.limit(100);
+    if (
+      error ||
+      !rows?.some(
+        (row) =>
+          extractDriveFileId(row.photo_url) === data.fileId && canSeeSchool(profile, row.school_id),
+      )
+    )
+      throw new Error("Photo access denied");
+    const key = process.env.LOVABLE_API_KEY,
+      connection = process.env.GOOGLE_DRIVE_API_KEY;
+    if (!key || !connection) throw new Error("Google Drive is not connected");
+    const response = await fetch(
+      `${GATEWAY}/drive/v3/files/${data.fileId}?alt=media&supportsAllDrives=true`,
+      {
+        headers: { Authorization: `Bearer ${key}`, "X-Connection-Api-Key": connection },
+        signal: AbortSignal.timeout(30000),
+      },
+    );
+    if (!response.ok) throw new Error("Unable to load photo");
+    const type = response.headers.get("content-type")?.split(";")[0] ?? "";
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(type))
+      throw new Error("Unsupported photo format");
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("Empty photo");
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    for (;;) {
+      const next = await reader.read();
+      if (next.done) break;
+      size += next.value.length;
+      if (size > 6_000_000) {
+        await reader.cancel();
+        throw new Error("Photo too large");
+      }
+      chunks.push(next.value);
+    }
+    return `data:${type};base64,${Buffer.concat(chunks).toString("base64")}`;
+  });

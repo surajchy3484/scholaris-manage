@@ -30,7 +30,6 @@ import { Button } from "@/components/ui/button";
 import { logoutLocal, refreshProfileFromServer, useAuth } from "@/lib/auth";
 import { setupOffline } from "@/lib/pwa";
 import { BrandName } from "@/components/brand";
-import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -271,10 +270,8 @@ function AuthGate({ children }: { children: ReactNode }) {
     }
   }, [ready, isAuthed, onLogin, pathname, router]);
 
-  // Once we've hydrated and know the user is not signed in on a protected
-  // route, hide the content instantly (redirect is running). Before hydration
-  // we render children so the initial paint matches SSR.
-  if (ready && !isAuthed && !onLogin) return null;
+  // Protected content stays hidden during SSR and until a local session is available.
+  if (!onLogin && (!ready || !isAuthed)) return null;
   return <>{children}</>;
 }
 
@@ -285,40 +282,19 @@ function RootComponent() {
   useEffect(() => {
     if (!ready || !isAuthed) return;
 
-    const tables = [
-      "app_users",
-      "assessments",
-      "attendance",
-      "clicker_records",
-      "exam_scores",
-      "questions",
-      "school_clusters",
-      "school_divisions",
-      "schools",
-      "session_division_status",
-      "sessions",
-      "students",
-    ] as const;
-    const channel = tables.reduce(
-      (current, table) =>
-        current.on(
-          "postgres_changes",
-          { event: "*", schema: "public", table },
-          () => void queryClient.invalidateQueries(),
-        ),
-      supabase.channel("scholaris-shared-data"),
-    );
-    void channel.subscribe();
-
-    // Realtime may be unavailable on older deployments, so keep a quiet
-    // fallback that refreshes active queries for other users' changes.
-    const fallback = window.setInterval(
-      () => void queryClient.invalidateQueries(),
-      60_000,
-    );
+    // Custom app accounts do not have Supabase Auth sessions. Refresh through
+    // authorized server functions instead of subscribing as an anonymous user.
+    const refresh = () => {
+      if (document.visibilityState === "visible") {
+        void refreshProfileFromServer();
+        void queryClient.invalidateQueries();
+      }
+    };
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener("focus", refresh);
     return () => {
-      window.clearInterval(fallback);
-      void supabase.removeChannel(channel);
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
     };
   }, [isAuthed, ready, queryClient]);
   useEffect(() => {

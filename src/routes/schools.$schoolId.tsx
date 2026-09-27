@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { EditSchoolDialog } from "@/components/add-school-dialog";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/private-data";
 import type { School, Student, AttendanceRecord } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/private-data";
 import {
   Dialog,
   DialogContent,
@@ -163,7 +163,9 @@ export function ExamStudentDialog({
         setStatus("Uploading photo...");
         const filename = `${values.student_code}-${values.name.replace(/\s+/g, "_")}.jpg`;
         try {
-          photoUrl = (await uploadPhoto({ data: { dataUrl: photo, filename } })).url;
+          photoUrl = (
+            await uploadPhoto({ data: { token: getAccessToken(), dataUrl: photo, filename } })
+          ).url;
         } catch (err) {
           throw new Error(
             `Photo upload failed: ${err instanceof Error ? err.message : String(err)}`,

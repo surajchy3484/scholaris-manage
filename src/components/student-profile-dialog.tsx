@@ -1,3 +1,4 @@
+import { PrivatePhoto } from "@/components/private-photo";
 import {
   Bar,
   BarChart,
@@ -49,7 +50,7 @@ export function StudentProfileDialog({
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
             <div className="h-28 w-28 shrink-0 overflow-hidden rounded-2xl bg-muted ring-4 ring-accent">
               {student.photo_url ? (
-                <img
+                <PrivatePhoto
                   src={toDisplayablePhotoUrl(student.photo_url) ?? ""}
                   alt={student.name}
                   loading="lazy"

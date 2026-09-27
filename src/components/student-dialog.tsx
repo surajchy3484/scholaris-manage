@@ -1,10 +1,11 @@
+import { PrivatePhoto } from "@/components/private-photo";
 import { saveStudentDetails } from "@/lib/performance.functions";
 import { getAccessToken } from "@/lib/app-access";
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/private-data";
 import {
   Dialog,
   DialogContent,
@@ -143,7 +144,9 @@ export function StudentDialog({
         for (let attempt = 1; attempt <= 3; attempt++) {
           try {
             const filename = `${code || rollV}-${nameV.replace(/\s+/g, "_")}.jpg`;
-            const result = await uploadPhoto({ data: { dataUrl: photo, filename } });
+            const result = await uploadPhoto({
+              data: { token: getAccessToken(), dataUrl: photo, filename },
+            });
             photoUrl = result.url;
             lastErr = null;
             break;
@@ -183,7 +186,9 @@ export function StudentDialog({
         if (prevUrl && prevUrl !== photoUrl) {
           const oldId = extractDriveFileId(prevUrl);
           if (oldId) {
-            deletePhotoFromDrive({ data: { fileId: oldId } }).catch(() => {});
+            deletePhotoFromDrive({ data: { token: getAccessToken(), fileId: oldId } }).catch(
+              () => {},
+            );
           }
         }
       }
@@ -327,7 +332,7 @@ export function ViewStudentDialog({
         <div className="flex flex-col items-center gap-4 py-2">
           <div className="h-32 w-32 overflow-hidden rounded-full bg-muted ring-4 ring-accent">
             {student.photo_url ? (
-              <img
+              <PrivatePhoto
                 src={toDisplayablePhotoUrl(student.photo_url) ?? ""}
                 alt={student.name}
                 className="h-full w-full object-cover"

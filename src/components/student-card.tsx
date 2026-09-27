@@ -1,3 +1,5 @@
+import { PrivatePhoto } from "@/components/private-photo";
+import { getAccessToken } from "@/lib/app-access";
 import { useState } from "react";
 import { Eye, Pencil, Trash2, MoreVertical, User } from "lucide-react";
 import type { Student } from "@/lib/types";
@@ -21,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PhotoPicker } from "./photo-picker";
 import { Checkbox } from "@/components/ui/checkbox";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/private-data";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -58,7 +60,9 @@ export function StudentCard({
       let photoUrl = dataUrl;
       if (photoUrl && photoUrl.startsWith("data:")) {
         const filename = `${student.student_code}-${student.name.replace(/\s+/g, "_")}.jpg`;
-        const res = await uploadPhoto({ data: { dataUrl: photoUrl, filename } });
+        const res = await uploadPhoto({
+          data: { token: getAccessToken(), dataUrl: photoUrl, filename },
+        });
         photoUrl = res.url;
       }
       const { error } = await supabase
@@ -69,7 +73,10 @@ export function StudentCard({
       // Best-effort: delete previous Drive file if it changed.
       if (prevUrl && prevUrl !== photoUrl) {
         const oldId = extractDriveFileId(prevUrl);
-        if (oldId) deletePhotoFromDrive({ data: { fileId: oldId } }).catch(() => {});
+        if (oldId)
+          deletePhotoFromDrive({ data: { token: getAccessToken(), fileId: oldId } }).catch(
+            () => {},
+          );
       }
     },
     onSuccess: () => {
@@ -99,7 +106,7 @@ export function StudentCard({
           className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted"
         >
           {student.photo_url ? (
-            <img
+            <PrivatePhoto
               decoding="async"
               src={toDisplayablePhotoUrl(student.photo_url) ?? ""}
               alt={student.name}
