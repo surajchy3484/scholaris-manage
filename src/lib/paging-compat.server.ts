@@ -195,7 +195,7 @@ export async function readWithoutPagingRpc(db: Db, name: string, args: Args): Pr
     ]);
     const context = new Map(assessments.map((row) => [text(row.assessment_id), row]));
     let rows = legacy
-      .map((row) => {
+      .map((row): Row | null => {
         const assessment = context.get(text(row.assessment_id));
         if (!assessment) return null;
         return {

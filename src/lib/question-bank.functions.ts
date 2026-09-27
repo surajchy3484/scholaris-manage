@@ -145,7 +145,7 @@ export const listUniversalQuestions = createServerFn({ method: "POST" })
             return null;
           }
         })
-        .filter((row): row is Record<string, unknown> => {
+        .filter((row): row is NonNullable<typeof row> => {
           if (!row) return false;
           return (
             (!data.examType || row.exam_type === exam.parse(data.examType)) &&
