@@ -13,6 +13,8 @@ const grid = z.object({
   sortKey: z.string().max(80).nullable(),
   direction: z.enum(["asc", "desc"]),
 });
+const isMissingDbObject = (error: { code?: string }) =>
+  ["PGRST202", "PGRST205", "42P01", "42883"].includes(error.code ?? "");
 const schema = grid.extend({
   token: z.string().min(1),
   table: z.enum(["assessments", "questions", "clicker_records"]),
@@ -212,8 +214,13 @@ export const listClickerQuestionKeys = createServerFn({ method: "POST" })
       .from("exam_types")
       .select("name")
       .eq("visible", true);
-    if (typeError) throw new Error("Universal Question Master migration required");
-    const visible = new Set((types ?? []).map((t) => t.name));
+    if (typeError && !isMissingDbObject(typeError))
+      throw new Error("Unable to load Question Master exam types");
+    const visible = new Set(
+      typeError
+        ? (assessments ?? []).map((a) => a.exam_type.trim().toUpperCase())
+        : (types ?? []).map((t) => t.name.trim().toUpperCase()),
+    );
     const result: {
       assessment_id: string;
       exam_type: string;
@@ -232,16 +239,41 @@ export const listClickerQuestionKeys = createServerFn({ method: "POST" })
         .trim()
         .replace(/^class\s*/i, "")
         .trim();
-      const questions = await fetchAllRows((from, to) =>
-        db
-          .from("question_bank")
-          .select("exam_type,class,question_no,correct_answer")
-          .eq("exam_type", a.exam_type.trim().toUpperCase())
-          .eq("class", /^\d+$/.test(cls) ? String(Number(cls)) : cls.toUpperCase())
-          .order("question_no")
-          .order("id")
-          .range(from, to),
-      );
+      let questions: {
+        exam_type: string;
+        class: string;
+        question_no: number;
+        correct_answer: string;
+      }[];
+      try {
+        questions = await fetchAllRows((from, to) =>
+          db
+            .from("question_bank")
+            .select("exam_type,class,question_no,correct_answer")
+            .eq("exam_type", a.exam_type.trim().toUpperCase())
+            .eq("class", /^\d+$/.test(cls) ? String(Number(cls)) : cls.toUpperCase())
+            .order("question_no")
+            .order("id")
+            .range(from, to),
+        );
+      } catch (error) {
+        if (!isMissingDbObject(error as { code?: string })) throw error;
+        const legacy = await fetchAllRows((from, to) =>
+          db
+            .from("questions")
+            .select("question_no,correct_answer")
+            .eq("assessment_id", a.assessment_id)
+            .order("question_no")
+            .order("id")
+            .range(from, to),
+        );
+        questions = legacy.map((q) => ({
+          exam_type: a.exam_type.trim().toUpperCase(),
+          class: cls,
+          question_no: q.question_no,
+          correct_answer: q.correct_answer,
+        }));
+      }
       for (const q of questions ?? []) result.push({ ...q, assessment_id: a.assessment_id });
     }
     return result;
