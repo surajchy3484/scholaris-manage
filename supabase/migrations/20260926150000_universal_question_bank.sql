@@ -1,16 +1,16 @@
 -- Additive migration: legacy school-assessment questions and results remain intact.
-CREATE FUNCTION public.question_class(value text) RETURNS text LANGUAGE sql IMMUTABLE AS $$
+CREATE OR REPLACE FUNCTION public.question_class(value text) RETURNS text LANGUAGE sql IMMUTABLE AS $$
  SELECT CASE WHEN v ~ '^0*[0-9]+$' THEN (v::integer)::text ELSE upper(v) END
  FROM (SELECT btrim(regexp_replace(coalesce(value,''),'^\s*class\s*','','i')) v) s;
 $$;
-CREATE TABLE public.exam_types (
+CREATE TABLE IF NOT EXISTS public.exam_types (
  name text PRIMARY KEY CHECK(name=upper(btrim(name)) AND length(name) BETWEEN 1 AND 80),
  visible boolean NOT NULL DEFAULT false,
  created_at timestamptz NOT NULL DEFAULT now()
 );
 INSERT INTO exam_types(name,visible) VALUES('ICA',true),('MCA',false),('FCA',false);
 INSERT INTO exam_types(name) SELECT DISTINCT upper(btrim(exam_type)) FROM assessments WHERE length(btrim(exam_type)) BETWEEN 1 AND 80 ON CONFLICT DO NOTHING;
-CREATE TABLE public.question_bank (
+CREATE TABLE IF NOT EXISTS public.question_bank (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  exam_type text NOT NULL REFERENCES exam_types(name),
  class text NOT NULL CHECK(class=question_class(class) AND class<>''),
@@ -23,8 +23,9 @@ CREATE TABLE public.question_bank (
  created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE(exam_type,class,question_no)
 );
+DROP TRIGGER IF EXISTS question_bank_updated ON public.question_bank;
 CREATE TRIGGER question_bank_updated BEFORE UPDATE ON question_bank FOR EACH ROW EXECUTE FUNCTION tg_set_updated_at();
-CREATE TABLE public.question_bank_migration_issues (
+CREATE TABLE IF NOT EXISTS public.question_bank_migration_issues (
  assessment_id text PRIMARY KEY,exam_type text,class text,reason text NOT NULL,
  questions jsonb NOT NULL, resolved boolean NOT NULL DEFAULT false
 );
@@ -49,17 +50,24 @@ INSERT INTO question_bank_migration_issues(assessment_id,reason,questions)
  SELECT q.assessment_id,'No linked assessment. Assign an exam type and class by importing a reviewed universal set.',jsonb_agg(to_jsonb(q) ORDER BY q.question_no)
  FROM questions q WHERE NOT EXISTS(SELECT 1 FROM assessments a WHERE a.assessment_id=q.assessment_id) GROUP BY q.assessment_id;
 
-ALTER TABLE clicker_records ADD COLUMN exam_type text;
+ALTER TABLE clicker_records ADD COLUMN IF NOT EXISTS exam_type text;
 UPDATE clicker_records c SET exam_type=upper(btrim(a.exam_type)) FROM assessments a WHERE c.assessment_id=a.assessment_id;
-ALTER TABLE clicker_records ADD COLUMN total_questions integer, ADD COLUMN attempted_questions integer,
- ADD COLUMN correct_answers integer, ADD COLUMN wrong_answers integer,ADD COLUMN unattempted_questions integer,
- ADD COLUMN question_snapshot jsonb,ADD COLUMN evaluated_at timestamptz;
-CREATE INDEX clicker_exam_class_idx ON clicker_records(exam_type,class);
-ALTER TABLE assessment_results ADD COLUMN exam_type text,ADD COLUMN attempted_questions integer,
- ADD COLUMN unattempted_questions integer,ADD COLUMN question_snapshot jsonb,ADD COLUMN clicker_id uuid UNIQUE REFERENCES clicker_records(id) ON DELETE CASCADE;
+ALTER TABLE clicker_records ADD COLUMN IF NOT EXISTS total_questions integer, ADD COLUMN IF NOT EXISTS attempted_questions integer,
+ ADD COLUMN IF NOT EXISTS correct_answers integer, ADD COLUMN IF NOT EXISTS wrong_answers integer,ADD COLUMN IF NOT EXISTS unattempted_questions integer,
+ ADD COLUMN IF NOT EXISTS question_snapshot jsonb,ADD COLUMN IF NOT EXISTS evaluated_at timestamptz;
+CREATE INDEX IF NOT EXISTS clicker_exam_class_idx ON clicker_records(exam_type,class);
+ALTER TABLE assessment_results ADD COLUMN IF NOT EXISTS exam_type text,ADD COLUMN IF NOT EXISTS attempted_questions integer,
+ ADD COLUMN IF NOT EXISTS unattempted_questions integer,ADD COLUMN IF NOT EXISTS question_snapshot jsonb,ADD COLUMN IF NOT EXISTS clicker_id uuid;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'assessment_results_clicker_id_key'
+  ) THEN
+    ALTER TABLE assessment_results ADD CONSTRAINT assessment_results_clicker_id_key UNIQUE (clicker_id);
+  END IF;
+END $$;
 UPDATE assessment_results r SET exam_type=upper(btrim(a.exam_type)) FROM assessments a WHERE r.assessment_id=a.assessment_id;
 
-CREATE FUNCTION public.evaluate_universal_clicker() RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$
+CREATE OR REPLACE FUNCTION public.evaluate_universal_clicker() RETURNS trigger LANGUAGE plpgsql SET search_path=public AS $$
 DECLARE a assessments%ROWTYPE;s students%ROWTYPE;enabled boolean;q record;k text;v text;n integer;keys jsonb:='{}';answer text;
 BEGIN
  NEW.exam_type:=upper(btrim(coalesce(NEW.exam_type,'')));NEW.class:=question_class(NEW.class);
@@ -106,11 +114,12 @@ BEGIN
  NEW.score:=NEW.correct_answers;NEW.correct_rate:=round(NEW.correct_answers::numeric/NEW.total_questions*100,1);
  NEW.ranking:=NULL;NEW.evaluated_at:=now();RETURN NEW;
 END $$;
+DROP TRIGGER IF EXISTS universal_clicker_evaluate ON public.clicker_records;
 CREATE TRIGGER universal_clicker_evaluate BEFORE INSERT OR UPDATE OF answers,exam_type,class,assessment_id,school_id,student_id,section,score,correct_rate ON clicker_records FOR EACH ROW EXECUTE FUNCTION evaluate_universal_clicker();
 
 -- All app writes use one transaction: evaluation, competition ranks, immutable key snapshots,
 -- and linked report scores succeed together. Serialize batches to prevent ranking races.
-CREATE FUNCTION public.universal_clicker_write(p_mode text,p_rows jsonb DEFAULT '[]',p_ids uuid[] DEFAULT '{}',p_patch jsonb DEFAULT '{}',p_schools uuid[] DEFAULT NULL) RETURNS integer
+CREATE OR REPLACE FUNCTION public.universal_clicker_write(p_mode text,p_rows jsonb DEFAULT '[]',p_ids uuid[] DEFAULT '{}',p_patch jsonb DEFAULT '{}',p_schools uuid[] DEFAULT NULL) RETURNS integer
 LANGUAGE plpgsql SET search_path=public AS $$
 DECLARE ids uuid[]:='{}';sids uuid[]:='{}';before_sids uuid[];aids text[]:='{}';before_aids text[];item jsonb;newid uuid;n integer:=0;col text;assignments text;
 BEGIN
@@ -172,7 +181,7 @@ DO $$ DECLARE tab text; BEGIN
 END $$;
 REVOKE ALL ON FUNCTION universal_clicker_write(text,jsonb,uuid[],jsonb,uuid[]) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION universal_clicker_write(text,jsonb,uuid[],jsonb,uuid[]) TO service_role;
-CREATE FUNCTION public.universal_questions_page(p_exam text,p_class text,p_search text,p_page integer,p_size integer,p_sort text,p_desc boolean) RETURNS jsonb
+CREATE OR REPLACE FUNCTION public.universal_questions_page(p_exam text,p_class text,p_search text,p_page integer,p_size integer,p_sort text,p_desc boolean) RETURNS jsonb
 LANGUAGE plpgsql STABLE SET search_path=public AS $$
 DECLARE result jsonb;sort text;
 BEGIN
