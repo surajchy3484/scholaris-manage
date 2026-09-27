@@ -103,3 +103,18 @@ one bank, ICA/MCA/class isolation, visibility, future types, 1,100 questions,
 blank responses, invalid columns, duplicate rejection, competition ties, snapshots,
 transaction rollback and denied anonymous access. Staging must additionally verify
 real spreadsheet imports and authenticated user permissions against the deployed DB.
+
+## Clicker deletion repair
+
+Administrators can delete legacy Clicker rows without a school assignment.
+Other users still need Clicker delete permission and an authorized school on
+every selected row; view-only accounts cannot delete records.
+
+Apply `20260927123000_clicker_delete_results.sql` after the universal question
+bank migration. It repairs future explicit deletions so the matching
+`assessment_results` rows are removed in the same transaction and remaining
+rankings are recalculated. Installing it does not delete existing records or
+clean up previously orphaned results. Manually maintained summary scores remain
+preserved. The application permission fix does not require this new migration,
+but complete linked-result cleanup does. No production migration was applied
+from this code workspace.

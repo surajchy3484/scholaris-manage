@@ -4,7 +4,11 @@ import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { useAuth } from "@/lib/auth";
 import { getAccessToken } from "@/lib/app-access";
-import { listDriveSchools, syncSchoolWorkbook } from "@/lib/school-drive.functions";
+import {
+  getSchoolDriveStatus,
+  listDriveSchools,
+  syncSchoolWorkbook,
+} from "@/lib/school-drive.functions";
 
 type Result = { message: string; fileId?: string; conflicts?: string[]; error?: boolean };
 export function SchoolDriveSync() {
@@ -17,6 +21,13 @@ function DriveControls() {
   const [auto, setAuto] = useState(false);
   const [results, setResults] = useState<Record<string, Result>>({});
   const running = useRef(false);
+  const status = useQuery({
+    queryKey: ["drive-sync-status"],
+    queryFn: () => getSchoolDriveStatus({ data: { token: getAccessToken() } }),
+    staleTime: 60000,
+    retry: false,
+  });
+  const available = status.data?.available === true && !status.isError;
   const schools = useQuery({
     queryKey: ["drive-sync-schools"],
     queryFn: () => listDriveSchools({ data: { token: getAccessToken() } }),
@@ -70,12 +81,12 @@ function DriveControls() {
     [queryClient],
   );
   useEffect(() => {
-    if (!auto || !schools.data?.length) return;
+    if (!auto || !available || !schools.data?.length) return;
     const timer = setInterval(() => {
       if (document.visibilityState === "visible") void sync(schools.data.map((s) => s.id));
     }, 120000);
     return () => clearInterval(timer);
-  }, [auto, schools.data, sync]);
+  }, [auto, available, schools.data, sync]);
   return (
     <Card className="p-5">
       <h2 className="font-display text-lg font-semibold">School Excel files in Google Drive</h2>
@@ -99,15 +110,38 @@ function DriveControls() {
       </p>
       <div className="my-4 flex flex-wrap items-center gap-3">
         <Button
-          disabled={!!busy || !schools.data?.length}
+          variant="outline"
+          disabled={status.isFetching || !!busy}
+          onClick={() => void status.refetch()}
+        >
+          {status.isFetching ? "Checking connection…" : "Check connection"}
+        </Button>
+        <Button
+          disabled={!!busy || !available || !schools.data?.length}
           onClick={() => void sync(schools.data!.map((s) => s.id))}
         >
           {busy ? "Syncing…" : "Sync all schools"}
         </Button>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
+          <input
+            type="checkbox"
+            disabled={!available}
+            checked={auto}
+            onChange={(e) => setAuto(e.target.checked)}
+          />
           Sync every 2 minutes while this page is open
         </label>
+      </div>
+      <div className="mb-4 space-y-2 text-sm" aria-live="polite">
+        {status.error && <p role="alert">Unable to check sync setup: {status.error.message}</p>}
+        {status.data?.checks.map((check) => (
+          <p key={check.name}>
+            <strong>
+              {check.name}: {check.ok ? "Ready" : "Setup needed"}.
+            </strong>{" "}
+            {check.message}
+          </p>
+        ))}
       </div>
       <p className="mb-3 text-xs text-muted-foreground">
         Keep this page open until sync finishes. Conflicts or errors pause automatic sync. More
@@ -131,7 +165,7 @@ function DriveControls() {
               <Button
                 size="sm"
                 variant="outline"
-                disabled={!!busy}
+                disabled={!!busy || !available}
                 onClick={() => void sync([school.id])}
               >
                 {busy === school.id ? "Syncing…" : "Sync"}

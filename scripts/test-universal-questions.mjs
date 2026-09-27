@@ -106,8 +106,16 @@ for (const [aid, answer] of [
     "INSERT INTO questions(assessment_id,question_no,correct_answer,parameter,marks) VALUES($1,1,$2,'Conceptual',1)",
     [aid, answer],
   );
+const orphanId = "44444444-4444-4444-8444-444444444444";
+await db.query(
+  "INSERT INTO clicker_records(id,keypad_id,student_name) VALUES($1,'ORPHAN','Legacy')",
+  [orphanId],
+);
 await db.exec(
   await fs.readFile("supabase/migrations/20260926150000_universal_question_bank.sql", "utf8"),
+);
+await db.exec(
+  await fs.readFile("supabase/migrations/20260927123000_clicker_delete_results.sql", "utf8"),
 );
 assert.equal(
   (await db.query("SELECT count(*)::int n FROM questions")).rows[0].n,
@@ -136,6 +144,26 @@ const write = async (mode, rows = [], ids = [], patch = {}) =>
       JSON.stringify(patch),
     ])
   ).rows[0].n;
+await assert.rejects(
+  () =>
+    db.query("SELECT universal_clicker_write($1,$2,$3,$4,$5)", [
+      "delete",
+      "[]",
+      [orphanId],
+      "{}",
+      [school],
+    ]),
+  /School access denied/,
+);
+assert.equal(
+  (await db.query("SELECT id FROM clicker_records WHERE id=$1", [orphanId])).rows.length,
+  1,
+);
+await write("delete", [], [orphanId]);
+assert.equal(
+  (await db.query("SELECT id FROM clicker_records WHERE id=$1", [orphanId])).rows.length,
+  0,
+);
 const input = {
   assessment_id: "A",
   exam_type: "ICA",
@@ -352,6 +380,11 @@ await assert.rejects(
   /School access denied/,
 );
 await assert.rejects(() => write("update", [], [row.id], { score: 999 }), /read-only/);
+await write("delete", [], [blank.id]);
+assert.equal(
+  (await db.query("SELECT id FROM assessment_results WHERE clicker_id=$1", [blank.id])).rows.length,
+  0,
+);
 await db.exec("SET ROLE anon");
 await assert.rejects(() => write("insert", []));
 await assert.rejects(() => db.query("SELECT * FROM question_bank"));
