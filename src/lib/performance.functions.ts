@@ -1,3 +1,4 @@
+import { fetchAllRows } from "./fetch-all";
 import { COMPAT_READS, readWithoutPagingRpc } from "./paging-compat.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -17,6 +18,7 @@ const schema = grid.extend({
   table: z.enum(["assessments", "questions", "clicker_records"]),
   assessmentId: z.string().max(120).optional(),
   subject: z.string().max(200).optional(),
+  examType: z.string().max(80).optional(),
   minScore: z.number().finite().optional(),
   className: z.string().max(100).optional(),
   section: z.string().max(100).optional(),
@@ -56,6 +58,16 @@ export const listMasterPage = createServerFn({ method: "POST" })
       data.table === "clicker_records" ? "clicker" : data.table,
       "view",
     );
+    if (data.table === "questions")
+      return rpc<PageResult<import("./question-bank").BankQuestion>>("universal_questions_page", {
+        p_exam: data.examType ?? "",
+        p_class: data.className ?? "",
+        p_search: data.search,
+        p_page: data.page,
+        p_size: data.pageSize,
+        p_sort: data.sortKey ?? "question_no",
+        p_desc: data.direction === "desc",
+      });
     return rpc<
       PageResult<
         | import("./master").Assessment
@@ -189,13 +201,49 @@ export const listClickerQuestionKeys = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "clicker", "view");
-    return rpc<{ assessment_id: string; question_no: number; correct_answer: string }[]>(
-      "performance_question_keys",
-      {
-        p_assessments: data.assessmentIds,
-        p_schools: profile.role === "admin" || profile.allSchools ? null : profile.schoolIds,
-      },
-    );
+    const db = await adminDb();
+    const { data: assessments, error } = await db
+      .from("assessments")
+      .select("assessment_id,school_id,exam_type,class")
+      .in("assessment_id", data.assessmentIds);
+    if (error) throw new Error(error.message);
+    const { data: types, error: typeError } = await db
+      .from("exam_types")
+      .select("name")
+      .eq("visible", true);
+    if (typeError) throw new Error("Universal Question Master migration required");
+    const visible = new Set((types ?? []).map((t) => t.name));
+    const result: {
+      assessment_id: string;
+      exam_type: string;
+      class: string;
+      question_no: number;
+      correct_answer: string;
+    }[] = [];
+    for (const a of assessments ?? []) {
+      if (
+        !a.school_id ||
+        !canSeeSchool(profile, a.school_id) ||
+        !visible.has(a.exam_type.trim().toUpperCase())
+      )
+        continue;
+      const cls = String(a.class ?? "")
+        .trim()
+        .replace(/^class\s*/i, "")
+        .trim();
+      const questions = await fetchAllRows((from, to) =>
+        db
+          .from("question_bank")
+          .select("exam_type,class,question_no,correct_answer")
+          .eq("exam_type", a.exam_type.trim().toUpperCase())
+          .eq("class", /^\d+$/.test(cls) ? String(Number(cls)) : cls.toUpperCase())
+          .order("question_no")
+          .order("id")
+          .range(from, to),
+      );
+      for (const q of questions ?? []) result.push({ ...q, assessment_id: a.assessment_id });
+    }
+    return result;
   });
 
 export const listStudentDetails = createServerFn({ method: "POST" })

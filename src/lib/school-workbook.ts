@@ -40,6 +40,8 @@ const NUMBERS = new Set([
   "total_questions",
   "question_no",
   "correct_answers",
+  "attempted_questions",
+  "unattempted_questions",
   "wrong_answers",
   "sort_order",
 ]);
@@ -173,7 +175,7 @@ export function decodeWorkbook(bytes: Uint8Array, schoolId: string, current: Sna
               if (!Number.isFinite(number)) throw new Error(`${name}: ${key} must be numeric`);
               row[key] = number;
             }
-          } else if (key === "answers") {
+          } else if (key === "answers" || key === "question_snapshot") {
             try {
               row[key] = value === "" ? null : JSON.parse(String(value));
             } catch {

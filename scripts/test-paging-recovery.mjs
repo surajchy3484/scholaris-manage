@@ -190,6 +190,7 @@ const createServerFn = () => ({
   },
 });
 const api = await load("src/lib/performance.functions.ts", {
+  "./fetch-all": paging,
   "./paging-compat.server": compat,
   "@tanstack/react-start": { createServerFn },
   "./app-access.server": {

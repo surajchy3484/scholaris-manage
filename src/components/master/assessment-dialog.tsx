@@ -1,5 +1,6 @@
+import { fetchExamTypes } from "@/lib/question-bank";
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import {
@@ -23,7 +24,6 @@ import {
 import type { School } from "@/lib/types";
 import {
   ASSESSMENT_STATUS_OPTIONS,
-  EXAM_TYPE_OPTIONS,
   insertRows,
   updateRowsByIds,
   type Assessment,
@@ -49,6 +49,7 @@ export function AssessmentDialog({
   schools: School[];
 }) {
   const qc = useQueryClient();
+  const examTypes = useQuery({ queryKey: ["exam-types"], queryFn: fetchExamTypes });
   const isEdit = !!assessment?.id && !defaultCode;
 
   const [code, setCode] = useState("");
@@ -170,7 +171,7 @@ export function AssessmentDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {EXAM_TYPE_OPTIONS.map((t) => (
+                {(examTypes.data ?? []).map(({ name: t }) => (
                   <SelectItem key={t} value={t}>
                     {t}
                   </SelectItem>

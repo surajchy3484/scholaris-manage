@@ -1,3 +1,11 @@
+import {
+  fetchExamTypes,
+  normalizeClass,
+  normalizeExam,
+  bankKey,
+  answerColumn,
+} from "@/lib/question-bank";
+import { useAuth } from "@/lib/auth";
 import { clickerFacets, listClickerQuestionKeys } from "@/lib/performance.functions";
 import { getAccessToken } from "@/lib/app-access";
 import type { Question } from "@/lib/master";
@@ -33,8 +41,6 @@ import { ClickerDialog } from "@/components/master/clicker-dialog";
 import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
 import {
   clickerQuestionColumns,
-  applyCompetitionRanking,
-  calculateClickerMetrics,
   deleteRowsByIds,
   fetchAssessments,
   fetchClickerRecords,
@@ -73,6 +79,7 @@ export const Route = createFileRoute("/clicker")({
 });
 
 type ParsedClicker = ParsedBase & {
+  exam_type: string;
   assessment_id: string | null;
   keypad_id: string;
   student_id: string | null;
@@ -101,21 +108,14 @@ function resolveAssessmentId(
   row: ParsedClicker,
   available: Awaited<ReturnType<typeof fetchAssessments>>,
 ) {
-  if (row.assessment_id && available.some((a) => a.assessment_id === row.assessment_id)) {
-    return row.assessment_id;
-  }
   const matches = available.filter(
     (a) =>
-      sameValue(a.class, row.class) &&
+      (!row.assessment_id || a.assessment_id === row.assessment_id) &&
+      normalizeExam(a.exam_type) === normalizeExam(row.exam_type) &&
+      normalizeClass(a.class) === normalizeClass(row.class) &&
       (!row.section || !a.section || sameValue(a.section, row.section)),
   );
-  if (matches.length === 0) return null;
-  // Prefer an exact section match, then the most recently created assessment.
-  return [...matches].sort((a, b) => {
-    const sectionScore = (x: typeof a) =>
-      row.section && sameValue(x.section, row.section) ? 1 : 0;
-    return sectionScore(b) - sectionScore(a) || b.created_at.localeCompare(a.created_at);
-  })[0].assessment_id;
+  return matches.length === 1 ? matches[0].assessment_id : null;
 }
 
 type StudentLookup = {
@@ -173,9 +173,11 @@ function AnswerCell({
   value,
   correctAnswer,
   onSave,
+  editable = true,
 }: {
   value: string;
   correctAnswer?: string;
+  editable?: boolean;
   onSave: (next: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -197,6 +199,7 @@ function AnswerCell({
         className={`min-w-8 rounded-full border px-2 py-0.5 text-center font-semibold transition-colors hover:opacity-80 focus-visible:outline-none ${answerClass}`}
         onClick={(e) => {
           e.stopPropagation();
+          if (!editable) return;
           setDraft(value);
           setEditing(true);
         }}
@@ -235,6 +238,8 @@ function AnswerCell({
 }
 
 function ClickerPage() {
+  const { can } = useAuth();
+  const types = useQuery({ queryKey: ["exam-types"], queryFn: fetchExamTypes });
   const qc = useQueryClient();
   const [assessment, setAssessment] = useState("all");
   const [minScore, setMinScore] = useState("");
@@ -269,9 +274,11 @@ function ClickerPage() {
     team: team === "all" ? "" : team,
   });
   const rows = list.data?.rows ?? [];
-  const visibleAssessmentIds = [...new Set(rows.map((row) => row.assessment_id))].sort();
+  const visibleAssessmentIds = [
+    ...new Set(rows.map((row) => row.assessment_id).filter((id): id is string => !!id)),
+  ].sort();
   const questionKeys = useQuery({
-    queryKey: ["clicker-question-keys", visibleAssessmentIds],
+    queryKey: ["clicker-question-keys", visibleAssessmentIds, types.data],
     enabled: visibleAssessmentIds.length > 0,
     queryFn: async () => {
       const questions = await listClickerQuestionKeys({
@@ -311,7 +318,10 @@ function ClickerPage() {
     const keys = new Map<string, string>();
     for (const [assessmentId, questions] of questionKeys.data ?? []) {
       for (const question of questions)
-        keys.set(`${assessmentId}|S${question.question_no}`, question.correct_answer);
+        keys.set(
+          bankKey(question.exam_type, question.class, question.question_no),
+          question.correct_answer,
+        );
     }
     return keys;
   }, [questionKeys.data]);
@@ -325,7 +335,9 @@ function ClickerPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["clicker"] });
-      toast.success("Answer saved");
+      qc.invalidateQueries({ queryKey: ["visual-analytics-source"] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
+      toast.success("Answer saved and results recalculated");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -342,6 +354,7 @@ function ClickerPage() {
 
   const columns = useMemo<GridColumn<ClickerRecord>[]>(() => {
     const base: GridColumn<ClickerRecord>[] = [
+      { key: "exam_type", label: "Exam Type", value: (r) => r.exam_type ?? "Unassigned" },
       { key: "keypad_id", label: "Keypad ID", value: (r) => r.keypad_id },
       { key: "student_name", label: "Student Name", value: (r) => r.student_name },
       { key: "roll_number", label: "Roll", value: (r) => r.roll_number ?? "—" },
@@ -359,12 +372,23 @@ function ClickerPage() {
     ];
     const dyn: GridColumn<ClickerRecord>[] = questionCols.map((c) => ({
       key: c,
-      label: c,
+      label: `${c.slice(1)}-${c}`,
       value: (r) => r.answers[c] ?? "",
       render: (r) => (
         <AnswerCell
           value={r.answers[c] ?? ""}
-          correctAnswer={questionKeysByAssessment.get(`${r.assessment_id}|${c}`)}
+          correctAnswer={
+            types.data?.some((t) => t.name === r.exam_type && t.visible)
+              ? (r.question_snapshot?.find(
+                  (q) =>
+                    q.exam_type === r.exam_type &&
+                    normalizeClass(q.class) === normalizeClass(r.class) &&
+                    q.question_no === Number(c.slice(1)),
+                )?.correct_answer ??
+                questionKeysByAssessment.get(bankKey(r.exam_type, r.class, c.slice(1))))
+              : undefined
+          }
+          editable={can("clicker", "edit")}
           onSave={(next) => saveAnswer.mutate({ row: r, col: c, value: next })}
         />
       ),
@@ -378,37 +402,46 @@ function ClickerPage() {
         value: () => "",
         render: (r) => (
           <span className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label="Edit"
-              onClick={() => {
-                setEditing(r);
-                setDialog(true);
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="text-destructive"
-              aria-label="Delete"
-              onClick={() => {
-                setTarget(r);
-                setConfirm("single");
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {can("clicker", "edit") && (
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label="Edit"
+                onClick={() => {
+                  setEditing(r);
+                  setDialog(true);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+            {can("clicker", "delete") && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="text-destructive"
+                aria-label="Delete"
+                onClick={() => {
+                  setTarget(r);
+                  setConfirm("single");
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </span>
         ),
       },
     ];
-  }, [questionCols, questionKeysByAssessment, saveAnswer]);
+  }, [questionCols, questionKeysByAssessment, saveAnswer, can, types.data]);
 
   return (
     <>
+      {(types.error || questionKeys.error) && (
+        <p role="alert" className="p-4 text-destructive">
+          {types.error?.message ?? questionKeys.error?.message}
+        </p>
+      )}
       {list.isError && (
         <p role="alert" className="p-4 text-destructive">
           {list.error.message}
@@ -459,41 +492,66 @@ function ClickerPage() {
                 className="h-9 w-[120px]"
               />
               <Select value={className || "all"} onValueChange={setClassName}>
-                <SelectTrigger className="h-9 w-[110px]"><SelectValue placeholder="Class" /></SelectTrigger>
+                <SelectTrigger className="h-9 w-[110px]">
+                  <SelectValue placeholder="Class" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All classes</SelectItem>
-                  {(facets.data?.classes ?? []).map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                  {(facets.data?.classes ?? []).map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {value}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Select value={section || "all"} onValueChange={setSection}>
-                <SelectTrigger className="h-9 w-[120px]"><SelectValue placeholder="Section" /></SelectTrigger>
+                <SelectTrigger className="h-9 w-[120px]">
+                  <SelectValue placeholder="Section" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All sections</SelectItem>
-                  {(facets.data?.sections ?? []).map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                  {(facets.data?.sections ?? []).map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {value}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Select value={team || "all"} onValueChange={setTeam}>
-                <SelectTrigger className="h-9 w-[110px]"><SelectValue placeholder="Team" /></SelectTrigger>
+                <SelectTrigger className="h-9 w-[110px]">
+                  <SelectValue placeholder="Team" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All teams</SelectItem>
-                  {(facets.data?.teams ?? []).map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                  {(facets.data?.teams ?? []).map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {value}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </>
           }
           toolbar={
             <>
-              {selected.length > 0 && (
+              {selected.length > 0 && can("clicker", "delete") && (
                 <Button variant="destructive" size="sm" onClick={() => setConfirm("bulk")}>
                   <Trash2 className="h-4 w-4" /> Delete {selected.length}
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!can("clicker", "add")}
+                onClick={() => setImportOpen(true)}
+              >
                 <Upload className="h-4 w-4" /> Import
               </Button>
               <Button
                 size="sm"
+                disabled={!can("clicker", "add")}
                 onClick={() => {
+                  if (!can("clicker", "add")) return;
                   setEditing(null);
                   setDialog(true);
                 }}
@@ -512,6 +570,7 @@ function ClickerPage() {
         assessments={assessments.data ?? []}
         questionColumns={questionCols}
         defaultAssessmentId={assessment !== "all" ? assessment : undefined}
+        examTypes={types.data ?? []}
       />
 
       <SheetImportDialog<ParsedClicker>
@@ -519,10 +578,11 @@ function ClickerPage() {
         onOpenChange={setImportOpen}
         title="Import clicker data"
         sample={clickerSample(questionCols)}
-        description="Include Assessment ID and Student ID when possible. Otherwise use exact Student Name + Roll + Class + Section. Scores, percentages, and ranks update the linked student report."
+        description="Include Exam Type and Class. Include Assessment ID to identify the school/session; ambiguous matches are rejected. Use S1 or 1-S1 answer columns. Scores and rankings are calculated on the server; uploaded totals are ignored."
         parse={(raw) => {
           const known = new Set([
             "assessment id",
+            "exam type",
             "keypad id",
             "keypad",
             "student id",
@@ -549,24 +609,40 @@ function ClickerPage() {
             for (const key of Object.keys(row)) {
               const k = key.trim().toUpperCase();
               if (known.has(k.toLowerCase())) continue;
-              if (!/^S\d+$/.test(k)) continue;
+              const column = answerColumn(k);
+              if (!column) {
+                if (/S\d+/i.test(k)) errors.push(`Invalid question column: ${key}`);
+                continue;
+              }
+              if (Object.prototype.hasOwnProperty.call(answers, column)) {
+                errors.push(`Duplicate question column: ${key}`);
+                continue;
+              }
               const v = String(row[key] ?? "")
                 .trim()
                 .toUpperCase();
-              if (v) answers[k] = v;
+              if (v && !/^[ABCD]$/.test(v)) errors.push(`Invalid answer in ${key}`);
+              answers[column] = v;
             }
             const aid =
               pick(row, "Assessment ID", "assessment_id") ||
               (assessment !== "all" ? assessment : "");
+            const exam_type = normalizeExam(
+              pick(row, "Exam Type", "exam_type") ||
+                (assessments.data ?? []).find((a) => a.assessment_id === aid)?.exam_type,
+            );
+            if (!exam_type) errors.push("Exam Type required");
+            if (!normalizeClass(pick(row, "Class"))) errors.push("Class required");
             return {
+              exam_type,
               _row: i + 2,
               errors,
               assessment_id: aid || null,
               keypad_id: keypad,
               student_id: pick(row, "Student ID", "student_id") || null,
               student_name: name,
-              roll_number: pick(row, "Roll", "Roll Number", "roll_number") || null,
-              class: pick(row, "Class", "class") || null,
+              roll_number: pick(row, "Roll", "Roll No", "Roll Number", "roll_number") || null,
+              class: normalizeClass(pick(row, "Class", "class")) || null,
               section: pick(row, "Section", "section") || null,
               team: pick(row, "Team", "team") || null,
               score: Number(pick(row, "Score", "score")) || 0,
@@ -577,6 +653,7 @@ function ClickerPage() {
           });
         }}
         columns={[
+          { label: "Exam Type", get: (r) => r.exam_type },
           { label: "Keypad", get: (r) => r.keypad_id },
           { label: "Student", get: (r) => r.student_name },
           { label: "Class", get: (r) => r.class ?? "—" },
@@ -590,7 +667,7 @@ function ClickerPage() {
           const unresolved = resolved.find((r) => !r.assessment_id);
           if (unresolved) {
             throw new Error(
-              `No Assessment Master match for class ${unresolved.class ?? "—"}, section ${unresolved.section ?? "—"}. Add Assessment ID or create a matching assessment.`,
+              `No unique assessment for ${unresolved.exam_type}, Class ${unresolved.class ?? "—"}, Section ${unresolved.section ?? "—"}. Select the exact Assessment ID; other exam types are never used.`,
             );
           }
           const assessmentIds = [
@@ -628,65 +705,27 @@ function ClickerPage() {
               `Could not match student "${unresolvedStudent.student_name}". Include Student ID or an exact Student Name + Roll + Class + Section.`,
             );
           }
-          const questionSets = new Map(
-            await Promise.all(
-              assessmentIds.map(async (id) => [id, await fetchQuestions(id)] as const),
-            ),
-          );
-          const calculated = linked.map(({ _row, errors, ...rest }) => {
-            const metrics = calculateClickerMetrics(
-              rest.answers,
-              questionSets.get(rest.assessment_id ?? "") ?? [],
-              {
-                score: rest.score,
-                correct_rate: rest.correct_rate,
-              },
-            );
-            const assessmentInfo = (assessments.data ?? []).find(
-              (a) => a.assessment_id === rest.assessment_id,
-            );
-            return {
-              ...rest,
-              school_id: assessmentInfo?.school_id ?? null,
-              school_name: assessmentInfo?.school_name ?? null,
-              ...metrics,
-              ranking: null,
-            };
-          });
-          applyCompetitionRanking(calculated);
-          const clickerRows = calculated.map(({ correct_answers, wrong_answers, ...row }) => row);
-          const resultRows = calculated.map((row) => ({
-            assessment_id: row.assessment_id,
-            keypad_id: row.keypad_id,
-            student_id: row.student_id,
-            student_name: row.student_name,
-            school_id:
-              (assessments.data ?? []).find((a) => a.assessment_id === row.assessment_id)
-                ?.school_id ?? null,
-            school_name:
-              (assessments.data ?? []).find((a) => a.assessment_id === row.assessment_id)
-                ?.school_name ?? null,
-            class: row.class,
-            section: row.section,
-            score: row.score,
-            total_questions: (questionSets.get(row.assessment_id ?? "") ?? []).length,
-            correct_answers: row.correct_answers,
-            wrong_answers: row.wrong_answers,
-            correct_rate: row.correct_rate,
-            ranking: row.ranking,
-            answers: row.answers,
-          }));
-          await insertRows("clicker_records", clickerRows, 300);
-          // Keep raw Clicker imports available even before the optional centralized
-          // results migration has been applied to an older Supabase project.
-          try {
-            await insertRows("assessment_results", resultRows, 300);
-          } catch (error) {
-            console.warn(
-              "Centralized assessment results are not available yet; raw Clicker data was saved.",
-              error,
-            );
+          const availableTypes = await fetchExamTypes();
+          for (const row of linked) {
+            if (!availableTypes.some((t) => t.name === row.exam_type && t.visible))
+              throw new Error(
+                "Question Set Inactive: This Exam Type is currently hidden in Question Master and cannot be used for Clicker evaluation.",
+              );
           }
+          const clickerRows = linked.map(
+            ({ _row, errors, score, correct_rate, ranking, ...row }) => {
+              const a = (assessments.data ?? []).find((a) => a.assessment_id === row.assessment_id);
+              return {
+                ...row,
+                class: normalizeClass(row.class),
+                school_id: a?.school_id ?? null,
+                school_name: a?.school_name ?? null,
+              };
+            },
+          );
+          await insertRows("clicker_records", clickerRows, 300);
+          await qc.invalidateQueries({ queryKey: ["visual-analytics-source"] });
+          await qc.invalidateQueries({ queryKey: ["exam-data"] });
           qc.invalidateQueries({ queryKey: ["clicker"] });
           const detected = new Set<string>();
           for (const v of valid) for (const k of Object.keys(v.answers)) detected.add(k);

@@ -15,6 +15,7 @@ export function useMasterPage<T>(
   table: "assessments" | "questions" | "clicker_records",
   filters: {
     assessmentId?: string;
+    examType?: string;
     subject?: string;
     minScore?: number;
     className?: string;
@@ -30,6 +31,7 @@ export function useMasterPage<T>(
   const team = useDebounced(filters.team ?? "");
   const filterKey = JSON.stringify([
     filters.assessmentId,
+    filters.examType,
     subject,
     filters.minScore,
     className,
@@ -46,13 +48,24 @@ export function useMasterPage<T>(
       ...request,
       search,
       assessmentId: filters.assessmentId,
+      examType: filters.examType,
       minScore: filters.minScore,
       subject,
       className,
       section,
       team,
     }),
-    [request, search, filters.assessmentId, filters.minScore, subject, className, section, team],
+    [
+      request,
+      search,
+      filters.examType,
+      filters.assessmentId,
+      filters.minScore,
+      subject,
+      className,
+      section,
+      team,
+    ],
   );
   const query = useQuery({
     queryKey: [table === "clicker_records" ? "clicker" : table, "page", args],

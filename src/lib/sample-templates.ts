@@ -50,17 +50,21 @@ export const QUESTION_SAMPLE = {
   sheetName: "Questions",
   rows: [
     {
-      "Assessment ID": "AS-001",
+      "Exam Type": "ICA",
+      Class: "5",
+      Question: "Example question",
       "Question No.": 1,
-      "Correct Ans (A,B,C,D)": "A",
+      "Correct Answer Key": "A",
       Parameter: "Knowledge",
       Topic: "Fractions",
       Chapter: "Chapter 2",
     },
     {
-      "Assessment ID": "AS-001",
+      "Exam Type": "ICA",
+      Class: "5",
+      Question: "Example question",
       "Question No.": 2,
-      "Correct Ans (A,B,C,D)": "C",
+      "Correct Answer Key": "C",
       Parameter: "Application",
       Topic: "Decimals",
       Chapter: "Chapter 3",
@@ -76,6 +80,7 @@ export function clickerSample(questionColumns: string[]) {
   const make = (name: string, keypad: string, roll: string, offset: number) => {
     const row: Record<string, string | number> = {
       "Assessment ID": "AS-001",
+      "Exam Type": "ICA",
       "Keypad ID": keypad,
       "Student Name": name,
       Roll: roll,
@@ -83,7 +88,7 @@ export function clickerSample(questionColumns: string[]) {
       Section: "A",
       Team: "Team 1",
     };
-    cols.forEach((c, i) => (row[c] = answers[(i + offset) % 4]));
+    cols.forEach((c, i) => (row[`${c.slice(1)}-${c}`] = answers[(i + offset) % 4]));
     return row;
   };
   return {
