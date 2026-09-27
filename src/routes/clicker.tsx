@@ -657,7 +657,6 @@ function ClickerPage() {
           { label: "Keypad", get: (r) => r.keypad_id },
           { label: "Student", get: (r) => r.student_name },
           { label: "Class", get: (r) => r.class ?? "—" },
-          { label: "Questions", get: (r) => Object.keys(r.answers).length },
         ]}
         commit={async (valid) => {
           const resolved = valid.map((row) => ({

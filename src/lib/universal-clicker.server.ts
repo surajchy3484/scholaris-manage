@@ -19,7 +19,12 @@ export async function writeClicker(
           .range(from, to),
       )
     : [];
-  if (existing.some((r) => !r.school_id || !canSeeSchool(profile, r.school_id)))
+  // Administrators can clean up legacy rows that have no school assignment.
+  // Restricted users must still have an explicit, authorized school on every row.
+  if (
+    profile.role !== "admin" &&
+    existing.some((r) => !r.school_id || !canSeeSchool(profile, r.school_id))
+  )
     throw new Error("School access denied");
   const assessmentIds = [
     ...new Set(

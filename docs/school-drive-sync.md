@@ -6,6 +6,16 @@ It does not increase Supabase capacity, move original photos, export accounts,
 or delete existing records. Unassigned records (no school_id) are not assigned
 by guessing a school name. Use provider backups for full recovery.
 
+## Check setup in the app
+
+Settings → School Excel files in Google Drive → **Check connection** checks
+the snapshot RPC with a null school ID (no student data), the configured folder
+and its `canAddChildren` permission, and the server activation flag. Checks are
+admin-only and do not create files, change permissions or modify records. Sync
+controls stay disabled when a check fails. This diagnoses missing setup; it does
+not install migrations, configure secrets or verify conditional writes. Complete
+the staging checks below before activating production sync.
+
 ## Activate after deployment
 
 1. Apply `supabase/migrations/20260926120000_school_drive_sync.sql` after existing
