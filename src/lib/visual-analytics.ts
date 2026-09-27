@@ -112,9 +112,11 @@ export function prepareAnalytics(
     const answers = new Map(
       Object.entries(record.answers ?? {}).map(([k, v]) => [norm(k), norm(v)]),
     );
-    const qs = [...(questionMap.get(assessment.assessment_id)?.values() ?? [])];
+    const qs = record.question_snapshot ?? [
+      ...(questionMap.get(assessment.assessment_id)?.values() ?? []),
+    ];
     // Summary-only imports cannot support question-level analysis. Blank answers in a response sheet are incorrect.
-    const hasResponses = qs.some((q) => answers.has(`S${q.question_no}`));
+    const hasResponses = !!record.evaluated_at || qs.some((q) => answers.has(`S${q.question_no}`));
     const responses = hasResponses
       ? qs.map((question) => ({
           question,
@@ -123,7 +125,9 @@ export function prepareAnalytics(
         }))
       : [];
     // Existing Clicker scoring stores a count of correct answers, not weighted marks.
-    const total = assessment.total_questions > 0 ? assessment.total_questions : qs.length;
+    const total =
+      record.total_questions ??
+      (assessment.total_questions > 0 ? assessment.total_questions : qs.length);
     const score =
       total > 0 && typeof record.score === "number"
         ? percentage((record.score / total) * 100)

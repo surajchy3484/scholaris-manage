@@ -9,17 +9,14 @@ import {
 /**
  * Data layer for the Assessment / Question / Clicker modules.
  *
- * Relationship chain: School → Assessment → Questions → Clicker responses.
+ * School → Assessment supplies session context. Universal Exam Type + Class + Question Number supplies the answer key.
  * Assessments are keyed by a human-readable `assessment_id` (e.g. "ASM-0001");
  * questions and clicker rows reference that business key so imported sheets can
  * be matched without a UUID lookup.
  */
 
-export const EXAM_TYPE_OPTIONS = ["ICA", "MCA", "FCA"] as const;
 export const ASSESSMENT_STATUS_OPTIONS = ["Draft", "Scheduled", "Active", "Completed"] as const;
 export const ANSWER_OPTIONS = ["A", "B", "C", "D"] as const;
-export const DIFFICULTY_OPTIONS = ["Easy", "Medium", "Hard"] as const;
-export const QUESTION_STATUS_OPTIONS = ["Active", "Inactive"] as const;
 
 export type Assessment = {
   id: string;
@@ -42,6 +39,8 @@ export type Assessment = {
 };
 
 export type Question = {
+  exam_type?: string;
+  class?: string;
   id: string;
   assessment_id: string;
   question_no: number;
@@ -59,6 +58,14 @@ export type Question = {
 };
 
 export type ClickerRecord = {
+  exam_type?: string | null;
+  total_questions?: number | null;
+  attempted_questions?: number | null;
+  correct_answers?: number | null;
+  wrong_answers?: number | null;
+  unattempted_questions?: number | null;
+  question_snapshot?: Question[] | null;
+  evaluated_at?: string | null;
   id: string;
   assessment_id: string | null;
   keypad_id: string;
@@ -107,66 +114,6 @@ export async function fetchClickerRecords(assessmentId?: string): Promise<Clicke
       ? (r.answers as Record<string, string>)
       : {}) as Record<string, string>,
   }));
-}
-
-/** Calculate a result from the Assessment/Question Master answer key. */
-export function calculateClickerMetrics(
-  answers: Record<string, string>,
-  questions: Question[],
-  fallback?: { score?: number; correct_rate?: number },
-): ClickerMetrics {
-  const key = new Map(questions.map((q) => [`S${q.question_no}`, q.correct_answer.toUpperCase()]));
-  const questionKeys = [...key.keys()];
-  if (questionKeys.length === 0) {
-    const score = Number(fallback?.score ?? 0);
-    const correctRate = Number(fallback?.correct_rate ?? 0);
-    return {
-      score,
-      correct_rate: correctRate,
-      correct_answers: Math.round((correctRate / 100) * questionKeys.length),
-      wrong_answers: 0,
-    };
-  }
-  let correct = 0;
-  for (const question of questionKeys) {
-    if ((answers[question] ?? "").toUpperCase() === key.get(question)) correct += 1;
-  }
-  return {
-    score: correct,
-    correct_rate: Math.round((correct / questionKeys.length) * 1000) / 10,
-    correct_answers: correct,
-    wrong_answers: questionKeys.length - correct,
-  };
-}
-
-/** Competition ranking: 1, 2, 2, 4, grouped by assessment/class/section. */
-export function applyCompetitionRanking<
-  T extends {
-    assessment_id: string | null;
-    class: string | null;
-    section: string | null;
-    score: number;
-    ranking: number | null;
-  },
->(rows: T[]): T[] {
-  const groups = new Map<string, T[]>();
-  for (const row of rows) {
-    const key = `${row.assessment_id ?? ""}|${row.class ?? ""}|${row.section ?? ""}`;
-    const group = groups.get(key);
-    if (group) group.push(row);
-    else groups.set(key, [row]);
-  }
-  for (const group of groups.values()) {
-    const sorted = [...group].sort((a, b) => b.score - a.score);
-    let previousScore: number | null = null;
-    let rank = 0;
-    sorted.forEach((row, index) => {
-      if (row.score !== previousScore) rank = index + 1;
-      row.ranking = rank;
-      previousScore = row.score;
-    });
-  }
-  return rows;
 }
 
 /** Inserts rows in chunks through the privileged server function. */
@@ -232,27 +179,4 @@ export function clickerQuestionColumns(rows: ClickerRecord[]): string[] {
   return [...keys].sort((a, b) => {
     return Number(a.slice(1)) - Number(b.slice(1));
   });
-}
-
-/** Score / correct-rate / ranking recomputed from the answer key of an assessment. */
-export function scoreClickerRows(rows: ClickerRecord[], key: Map<number, string>): ClickerRecord[] {
-  if (key.size === 0) return rows;
-  const scored = rows.map((r) => {
-    let correct = 0;
-    let answered = 0;
-    for (const [col, val] of Object.entries(r.answers)) {
-      const no = Number(col.replace(/\D/g, ""));
-      const expected = key.get(no);
-      if (!expected) continue;
-      answered += 1;
-      if (String(val).trim().toUpperCase() === expected.toUpperCase()) correct += 1;
-    }
-    const rate = answered > 0 ? Math.round((correct / answered) * 1000) / 10 : 0;
-    return { ...r, score: correct, correct_rate: rate };
-  });
-  const ranked = [...scored].sort((a, b) => b.score - a.score);
-  ranked.forEach((r, i) => {
-    r.ranking = i + 1;
-  });
-  return scored;
 }

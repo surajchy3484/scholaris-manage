@@ -67,6 +67,12 @@ export type Database = {
       };
       assessment_results: {
         Row: {
+          exam_type: string | null;
+          attempted_questions: number | null;
+          unattempted_questions: number | null;
+          question_snapshot: Json | null;
+          clicker_id: string | null;
+
           id: string;
           assessment_id: string;
           keypad_id: string | null;
@@ -88,6 +94,12 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          exam_type?: string | null;
+          attempted_questions?: number | null;
+          unattempted_questions?: number | null;
+          question_snapshot?: Json | null;
+          clicker_id?: string | null;
+
           id?: string;
           assessment_id: string;
           keypad_id?: string | null;
@@ -109,6 +121,12 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          exam_type?: string | null;
+          attempted_questions?: number | null;
+          unattempted_questions?: number | null;
+          question_snapshot?: Json | null;
+          clicker_id?: string | null;
+
           id?: string;
           assessment_id?: string;
           keypad_id?: string | null;
@@ -145,6 +163,102 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      exam_types: {
+        Row: {
+          name: string;
+          visible: boolean;
+          created_at: string;
+        };
+        Insert: {
+          name: string;
+          visible?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          name?: string;
+          visible?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      question_bank: {
+        Row: {
+          id: string;
+          exam_type: string;
+          class: string;
+          question_no: number;
+          question_text: string | null;
+          correct_answer: string;
+          parameter: string | null;
+          chapter: string | null;
+          topic: string | null;
+          subject: string | null;
+          marks: number;
+          difficulty: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          exam_type: string;
+          class: string;
+          question_no: number;
+          question_text?: string | null;
+          correct_answer: string;
+          parameter?: string | null;
+          chapter?: string | null;
+          topic?: string | null;
+          subject?: string | null;
+          marks?: number;
+          difficulty?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          exam_type?: string;
+          class?: string;
+          question_no?: number;
+          question_text?: string | null;
+          correct_answer?: string;
+          parameter?: string | null;
+          chapter?: string | null;
+          topic?: string | null;
+          subject?: string | null;
+          marks?: number;
+          difficulty?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      question_bank_migration_issues: {
+        Row: {
+          assessment_id: string;
+          exam_type: string | null;
+          class: string | null;
+          reason: string;
+          questions: Json;
+          resolved: boolean;
+        };
+        Insert: {
+          assessment_id: string;
+          exam_type?: string | null;
+          class?: string | null;
+          reason: string;
+          questions: Json;
+          resolved?: boolean;
+        };
+        Update: {
+          assessment_id?: string;
+          exam_type?: string | null;
+          class?: string | null;
+          reason?: string;
+          questions?: Json;
+          resolved?: boolean;
+        };
+        Relationships: [];
       };
       assessments: {
         Row: {
@@ -258,6 +372,15 @@ export type Database = {
       };
       clicker_records: {
         Row: {
+          exam_type: string | null;
+          total_questions: number | null;
+          attempted_questions: number | null;
+          correct_answers: number | null;
+          wrong_answers: number | null;
+          unattempted_questions: number | null;
+          question_snapshot: Json | null;
+          evaluated_at: string | null;
+
           answers: Json;
           assessment_id: string | null;
           class: string | null;
@@ -277,6 +400,15 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          exam_type?: string | null;
+          total_questions?: number | null;
+          attempted_questions?: number | null;
+          correct_answers?: number | null;
+          wrong_answers?: number | null;
+          unattempted_questions?: number | null;
+          question_snapshot?: Json | null;
+          evaluated_at?: string | null;
+
           answers?: Json;
           assessment_id?: string | null;
           class?: string | null;
@@ -296,6 +428,15 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          exam_type?: string | null;
+          total_questions?: number | null;
+          attempted_questions?: number | null;
+          correct_answers?: number | null;
+          wrong_answers?: number | null;
+          unattempted_questions?: number | null;
+          question_snapshot?: Json | null;
+          evaluated_at?: string | null;
+
           answers?: Json;
           assessment_id?: string | null;
           class?: string | null;

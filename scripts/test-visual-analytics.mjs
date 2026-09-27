@@ -248,3 +248,30 @@ assert.ok(schoolPerformanceReport(manySchools, DEFAULT_THRESHOLDS, "").includes(
 console.log(
   "School comparison checks passed: complete school coverage, isolated totals, missing results, and escaping.",
 );
+const savedKey = [
+  { ...question("shared", 1, "STEM"), correct_answer: "B", exam_type: "ICA", class: "5" },
+  question("shared", 2, "Recall"),
+  question("shared", 3, "Analysis"),
+];
+const savedAttempt = {
+  ...record("snapshot", "a", "Early", 1, { S1: "B" }),
+  evaluated_at: "2026-09-27",
+  total_questions: 3,
+  question_snapshot: savedKey,
+  correct_rate: 33.3,
+};
+const saved = prepareAnalytics(students, assessments, questions, [savedAttempt]).attempts[0];
+assert.equal(saved.responses[0].correct, true, "historical snapshot beats current/legacy key");
+assert.equal(saved.responses[0].question.parameter, "STEM");
+assert.equal(saved.responses.length, 3);
+assert.ok(Math.abs(saved.score - 100 / 3) < 1e-10);
+const blanks = prepareAnalytics(students, assessments, questions, [
+  { ...savedAttempt, score: 0, correct_rate: 0, answers: {} },
+]).attempts[0];
+assert.equal(
+  blanks.responses.length,
+  3,
+  "all-blank evaluated attempts remain in question analysis",
+);
+assert.equal(blanks.responses.filter((r) => r.correct).length, 0);
+console.log("Universal snapshot analysis checks passed.");
