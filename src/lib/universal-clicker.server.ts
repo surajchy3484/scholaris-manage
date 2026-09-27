@@ -26,6 +26,19 @@ export async function writeClicker(
     existing.some((r) => !r.school_id || !canSeeSchool(profile, r.school_id))
   )
     throw new Error("School access denied");
+  if (mode === "delete") {
+    const { data, error } = await db.rpc(
+      "delete_clicker_records" as never,
+      {
+        p_ids: ids,
+        p_schools: profile.role === "admin" || profile.allSchools ? null : profile.schoolIds,
+      } as never,
+    );
+    if (!error) return { ok: true, count: Number(data) };
+    // Older deployments with the universal writer can keep using it.
+    // Authorization/validation errors must never trigger another write path.
+    if (!["PGRST202", "42883"].includes(error.code)) throw new Error(error.message);
+  }
   const assessmentIds = [
     ...new Set(
       [
@@ -62,7 +75,9 @@ export async function writeClicker(
   if (error)
     throw new Error(
       ["PGRST202", "42883"].includes(error.code)
-        ? "Apply the Universal Question Master migration before saving Clicker data. No rows were saved."
+        ? mode === "delete"
+          ? "Clicker deletion is not installed in the database. Apply 20260927180000_clicker_delete_recovery.sql in the hosting database SQL editor, then retry. No rows were deleted."
+          : "Apply the Universal Question Master migration before saving Clicker data. No rows were saved."
         : error.message,
     );
   return { ok: true, count: Number(data) };
