@@ -80,6 +80,7 @@ export const COMPAT_READS = new Set([
   "student_details_page",
   "performance_master_page",
   "performance_question_keys",
+  "universal_questions_page",
 ]);
 export async function readWithoutPagingRpc(db: Db, name: string, args: Args): Promise<unknown> {
   if (name === "performance_student_facets") {
@@ -186,6 +187,43 @@ export async function readWithoutPagingRpc(db: Db, name: string, args: Args): Pr
         );
       });
     return page(sortStudents(rows, args.p_sort), args);
+  }
+  if (name === "universal_questions_page") {
+    const [legacy, assessments] = await Promise.all([
+      read(db, "questions"),
+      read(db, "assessments", {}, "assessment_id,exam_type,class"),
+    ]);
+    const context = new Map(assessments.map((row) => [text(row.assessment_id), row]));
+    let rows = legacy
+      .map((row) => {
+        const assessment = context.get(text(row.assessment_id));
+        if (!assessment) return null;
+        return {
+          ...row,
+          exam_type: text(assessment.exam_type).trim().toUpperCase(),
+          class: text(assessment.class)
+            .replace(/^class\s*/i, "")
+            .trim(),
+        };
+      })
+      .filter((row): row is Row => row !== null);
+    if (args.p_exam)
+      rows = rows.filter((row) => row.exam_type === text(args.p_exam).trim().toUpperCase());
+    if (args.p_class)
+      rows = rows.filter(
+        (row) =>
+          text(row.class).toUpperCase() ===
+          text(args.p_class)
+            .replace(/^class\s*/i, "")
+            .trim()
+            .toUpperCase(),
+      );
+    if (text(args.p_search).trim())
+      rows = rows.filter((row) =>
+        Object.values(row).some((value) => includes(value, args.p_search)),
+      );
+    rows.sort((a, b) => Number(a.question_no ?? 0) - Number(b.question_no ?? 0));
+    return { ...page(rows, args), questionColumns: [] };
   }
   if (name === "performance_question_keys" || name === "performance_master_page") {
     const table = name === "performance_question_keys" ? "questions" : text(args.p_table);

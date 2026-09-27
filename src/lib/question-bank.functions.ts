@@ -48,6 +48,9 @@ function fail(error: { code?: string; message: string }) {
         : error.message,
   );
 }
+function isMissingDatabaseObject(error: { code?: string }) {
+  return ["PGRST202", "PGRST205", "42P01", "42883"].includes(error.code ?? "");
+}
 export const listExamTypes = createServerFn({ method: "POST" })
   .validator((d: unknown) => token.parse(d))
   .handler(async ({ data }) => {
@@ -59,7 +62,25 @@ export const listExamTypes = createServerFn({ method: "POST" })
     );
     const db = await adminDb();
     const { data: rows, error } = await db.from("exam_types").select("name,visible").order("name");
-    if (error) fail(error);
+    if (error) {
+      if (!isMissingDatabaseObject(error)) fail(error);
+      const { data: legacy, error: legacyError } = await db
+        .from("assessments")
+        .select("exam_type")
+        .order("exam_type");
+      if (legacyError) fail(legacyError);
+      return [
+        ...new Set(
+          (legacy ?? []).map((row) =>
+            String(row.exam_type ?? "")
+              .trim()
+              .toUpperCase(),
+          ),
+        ),
+      ]
+        .filter(Boolean)
+        .map((name) => ({ name, visible: name === "ICA" }));
+    }
     return rows ?? [];
   });
 export const manageExamType = createServerFn({ method: "POST" })
@@ -86,19 +107,52 @@ export const listUniversalQuestions = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requirePermission(data.token, "questions", "view");
     const db = await adminDb();
-    return fetchAllRows((from, to) => {
-      let q = db
-        .from("question_bank")
-        .select("*")
-        .order("exam_type")
-        .order("class")
-        .order("question_no")
-        .order("id")
-        .range(from, to);
-      if (data.examType) q = q.eq("exam_type", exam.parse(data.examType));
-      if (data.className) q = q.eq("class", klass.parse(data.className));
-      return q;
-    });
+    try {
+      return await fetchAllRows((from, to) => {
+        let q = db
+          .from("question_bank")
+          .select("*")
+          .order("exam_type")
+          .order("class")
+          .order("question_no")
+          .order("id")
+          .range(from, to);
+        if (data.examType) q = q.eq("exam_type", exam.parse(data.examType));
+        if (data.className) q = q.eq("class", klass.parse(data.className));
+        return q;
+      });
+    } catch (error) {
+      if (!isMissingDatabaseObject(error as { code?: string })) throw error;
+      const [{ data: legacy, error: legacyError }, { data: assessments, error: assessmentsError }] =
+        await Promise.all([
+          db.from("questions").select("*").order("question_no"),
+          db.from("assessments").select("assessment_id,exam_type,class"),
+        ]);
+      if (legacyError) fail(legacyError);
+      if (assessmentsError) fail(assessmentsError);
+      const context = new Map((assessments ?? []).map((row) => [row.assessment_id, row] as const));
+      return (legacy ?? [])
+        .map((row) => {
+          const assessment = context.get(row.assessment_id);
+          if (!assessment) return null;
+          try {
+            return {
+              ...row,
+              exam_type: exam.parse(assessment.exam_type),
+              class: klass.parse(assessment.class),
+            };
+          } catch {
+            return null;
+          }
+        })
+        .filter((row): row is Record<string, unknown> => {
+          if (!row) return false;
+          return (
+            (!data.examType || row.exam_type === exam.parse(data.examType)) &&
+            (!data.className || row.class === klass.parse(data.className))
+          );
+        });
+    }
   });
 export const writeUniversalQuestions = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
@@ -137,14 +191,19 @@ export const legacyQuestionIssues = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requirePermission(data.token, "questions", "view");
     const db = await adminDb();
-    return fetchAllRows((from, to) =>
-      db
-        .from("question_bank_migration_issues")
-        .select("*")
-        .eq("resolved", false)
-        .order("assessment_id")
-        .range(from, to),
-    );
+    try {
+      return await fetchAllRows((from, to) =>
+        db
+          .from("question_bank_migration_issues")
+          .select("*")
+          .eq("resolved", false)
+          .order("assessment_id")
+          .range(from, to),
+      );
+    } catch (error) {
+      if (isMissingDatabaseObject(error as { code?: string })) return [];
+      throw error;
+    }
   });
 export const promoteLegacySet = createServerFn({ method: "POST" })
   .validator((d: unknown) => token.extend({ assessmentId: z.string().min(1).max(120) }).parse(d))

@@ -40,7 +40,8 @@ async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
       }
     }
     const missing =
-      error.code === "PGRST202" || (error.code === "42883" && error.message.includes(name));
+      ["PGRST202", "PGRST205"].includes(error.code ?? "") ||
+      (error.code === "42883" && error.message.includes(name));
     if (missing && COMPAT_READS.has(name)) return (await readWithoutPagingRpc(db, name, args)) as T;
     if (missing)
       throw new Error(
