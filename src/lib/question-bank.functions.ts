@@ -173,7 +173,11 @@ export const writeUniversalQuestions = createServerFn({ method: "POST" })
     const db = await adminDb();
     if (data.mode === "delete") {
       const r = await db.from("question_bank").delete().in("id", data.ids);
-      if (r.error) fail(r.error);
+      if (r.error) {
+        if (!isMissingDatabaseObject(r.error)) fail(r.error);
+        const legacy = await db.from("questions").delete().in("id", data.ids);
+        if (legacy.error) fail(legacy.error);
+      }
       return { ok: true };
     }
     const rows = data.rows.map((r) => question.parse(r));
