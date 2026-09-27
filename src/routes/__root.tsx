@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { logoutLocal, refreshProfileFromServer, useAuth } from "@/lib/auth";
 import { setupOffline } from "@/lib/pwa";
 import { BrandName } from "@/components/brand";
+import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -279,7 +280,47 @@ function AuthGate({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const { isAuthed, ready } = useAuth();
   useEffect(() => setupOffline(), []);
+  useEffect(() => {
+    if (!ready || !isAuthed) return;
+
+    const tables = [
+      "app_users",
+      "assessments",
+      "attendance",
+      "clicker_records",
+      "exam_scores",
+      "questions",
+      "school_clusters",
+      "school_divisions",
+      "schools",
+      "session_division_status",
+      "sessions",
+      "students",
+    ] as const;
+    const channel = tables.reduce(
+      (current, table) =>
+        current.on(
+          "postgres_changes",
+          { event: "*", schema: "public", table },
+          () => void queryClient.invalidateQueries(),
+        ),
+      supabase.channel("scholaris-shared-data"),
+    );
+    void channel.subscribe();
+
+    // Realtime may be unavailable on older deployments, so keep a quiet
+    // fallback that refreshes active queries for other users' changes.
+    const fallback = window.setInterval(
+      () => void queryClient.invalidateQueries(),
+      60_000,
+    );
+    return () => {
+      window.clearInterval(fallback);
+      void supabase.removeChannel(channel);
+    };
+  }, [isAuthed, ready, queryClient]);
   useEffect(() => {
     let previousToken = getAccessToken();
     const clearOnAccountChange = (event: Event) => {
