@@ -16,7 +16,8 @@ export async function requireApprovedOperator(ctx: ToolContext) {
     throw new ToolError("This account has no verified email address, so access cannot be granted.");
   }
 
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { getSupabaseAdmin } = await import("../supabase-admin.server");
+  const supabaseAdmin = getSupabaseAdmin();
   const { data, error } = await supabaseAdmin
     .from("mcp_allowed_emails")
     .select("email")
