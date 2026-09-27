@@ -99,6 +99,7 @@ export function can(
 ): boolean {
   if (!profile) return false;
   if (profile.role === "admin") return true;
+  if (module === "users") return false;
   return (profile.permissions?.[module] ?? []).includes(action);
 }
 

@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/private-data";
 import { fetchAllRows } from "./fetch-all";
 import type { School, Student } from "./types";
 import FileSaver from "file-saver";

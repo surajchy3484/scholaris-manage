@@ -426,7 +426,7 @@ function UsersPage() {
                   type="text"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="At least 6 characters"
+                  placeholder="At least 12 characters"
                 />
               </div>
             </div>
@@ -515,12 +515,12 @@ function UsersPage() {
                   toast.error("Username must be at least 3 characters.");
                   return;
                 }
-                if (!form.id && form.password.length < 6) {
-                  toast.error("Set a password of at least 6 characters.");
+                if (!form.id && form.password.length < 12) {
+                  toast.error("Set a password of at least 12 characters.");
                   return;
                 }
-                if (form.password && form.password.length < 6) {
-                  toast.error("Password must be at least 6 characters.");
+                if (form.password && form.password.length < 12) {
+                  toast.error("Password must be at least 12 characters.");
                   return;
                 }
                 saveM.mutate();
@@ -549,14 +549,17 @@ function UsersPage() {
               id="reset-pw"
               value={newPw}
               onChange={(e) => setNewPw(e.target.value)}
-              placeholder="At least 6 characters"
+              placeholder="At least 12 characters"
             />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPwTarget(null)}>
               Cancel
             </Button>
-            <Button disabled={newPw.length < 6 || resetM.isPending} onClick={() => resetM.mutate()}>
+            <Button
+              disabled={newPw.length < 12 || resetM.isPending}
+              onClick={() => resetM.mutate()}
+            >
               {resetM.isPending ? "Saving..." : "Update password"}
             </Button>
           </DialogFooter>

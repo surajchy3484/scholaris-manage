@@ -1,3 +1,4 @@
+import { PrivatePhoto } from "@/components/private-photo";
 import { useState } from "react";
 import { toDisplayablePhotoUrl } from "@/lib/drive.functions";
 import type { StudentListRow, ScoreFilters } from "@/lib/student-list";
@@ -97,7 +98,7 @@ function StudentThumbnail({ student }: { student: StudentListRow }) {
   return (
     <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold text-muted-foreground">
       {src && !failed ? (
-        <img
+        <PrivatePhoto
           src={src}
           alt={student.name}
           width={40}

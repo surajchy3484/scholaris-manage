@@ -25,7 +25,7 @@ import {
   pickDate,
   type ParsedBase,
 } from "@/components/master/sheet-import-dialog";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/private-data";
 import {
   deleteRowsByIds,
   fetchAssessments,

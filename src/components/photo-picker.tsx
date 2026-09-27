@@ -1,3 +1,4 @@
+import { PrivatePhoto } from "@/components/private-photo";
 import { useRef, useState } from "react";
 import { Camera, Image as ImageIcon, X, User } from "lucide-react";
 import { toast } from "sonner";
@@ -49,7 +50,7 @@ export function PhotoPicker({
           aria-label="Change photo"
         >
           {value ? (
-            <img
+            <PrivatePhoto
               src={value.startsWith("data:") ? value : (normalizeDriveUrl(value) ?? "")}
               alt="Student"
               className="h-full w-full object-cover"

@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Upload, Download, AlertCircle, CheckCircle2 } from "lucide-react";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/private-data";
 import type { School } from "@/lib/types";
 import { importStudentBatch } from "@/lib/performance.functions";
 import { getAccessToken } from "@/lib/app-access";

@@ -11,7 +11,7 @@ import {
 import { useDebounced } from "@/hooks/use-master-page";
 import { EMPTY_SCORE_FILTERS, type ScoreFilters, type StudentListRow } from "@/lib/student-list";
 import { StudentListTable, StudentScoreFilters } from "@/components/student-list";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/private-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
