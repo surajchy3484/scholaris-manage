@@ -41,7 +41,7 @@ const id = "00000000-0000-4000-8000-000000000001";
 existing = [{ id, school_id: null, assessment_id: null }];
 await writeClicker(admin, "delete", [], [id]);
 assert.equal(calls.at(-1).args.p_schools, null);
-assert.equal(calls.at(-1).args.p_mode, "delete");
+assert.equal(calls.at(-1).name, "delete_clicker_records");
 for (const profile of [trainer, { ...trainer, allSchools: true }]) {
   calls = [];
   await assert.rejects(writeClicker(profile, "delete", [], [id]), /School access denied/);
@@ -76,6 +76,34 @@ assert.equal(calls.length, 0);
 profile = admin;
 await master.deleteMasterRows({ data: { token: "test", table: "clicker_records", ids: [id] } });
 assert.equal(calls.length, 1);
+
+const normalRpc = db.rpc;
+calls = [];
+db.rpc = async (name, args) => {
+  calls.push({ name, args });
+  return name === "delete_clicker_records"
+    ? { data: null, error: { code: "PGRST202", message: "missing function" } }
+    : { data: 1, error: null };
+};
+await writeClicker(admin, "delete", [], [id]);
+assert.deepEqual(
+  calls.map((call) => call.name),
+  ["delete_clicker_records", "universal_clicker_write"],
+);
+calls = [];
+db.rpc = async (name) => {
+  calls.push({ name });
+  return { data: null, error: { code: "42501", message: "permission denied" } };
+};
+await assert.rejects(writeClicker(admin, "delete", [], [id]), /permission denied/);
+assert.equal(calls.length, 1);
+db.rpc = async () => ({ data: null, error: { code: "PGRST202", message: "missing function" } });
+await assert.rejects(
+  writeClicker(admin, "delete", [], [id]),
+  /20260927180000_clicker_delete_recovery.sql.*No rows were deleted/,
+);
+await assert.rejects(writeClicker(admin, "insert"), /before saving Clicker data/);
+db.rpc = normalRpc;
 
 const folderId = "folder";
 const { checkSchoolDriveSetup } = load("src/lib/school-drive-status.server.ts", {
