@@ -717,11 +717,11 @@ function SessionStatusPage() {
 
 function AssignmentPlanner() {
   const qc = useQueryClient();
-  const { can } = useAuth();
+  const { can, profile } = useAuth();
   const context = useQuery({
     queryKey: ["session-assignment-context"],
     queryFn: fetchAssignmentContext,
-    enabled: can("session_status", "view"),
+    enabled: profile?.role === "admin" && can("session_status", "view"),
   });
   const [mode, setMode] = useState<"school" | "import">("school");
   const [academicYear, setAcademicYear] = useState("");
@@ -738,7 +738,13 @@ function AssignmentPlanner() {
     if (!schoolId && context.data?.schools[0]) setSchoolId(context.data.schools[0].id);
   }, [context.data, academicYear, klass, schoolId]);
 
-  if (!can("session_status", "add") || context.isLoading || !context.data) return null;
+  if (
+    profile?.role !== "admin" ||
+    !can("session_status", "add") ||
+    context.isLoading ||
+    !context.data
+  )
+    return null;
 
   return (
     <Card className="mb-5 space-y-4 border-primary/20 bg-primary/[0.03] p-5 shadow-soft">

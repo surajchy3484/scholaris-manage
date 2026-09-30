@@ -17,6 +17,10 @@ function checkSchool(profile: AccessProfile, schoolId: string) {
   if (!canSeeSchool(profile, schoolId)) throw new Error("School access denied");
 }
 
+function requireAdmin(profile: AccessProfile) {
+  if (profile.role !== "admin") throw new Error("Admin access required");
+}
+
 async function checkedSessions(
   db: Awaited<ReturnType<typeof adminDb>>,
   profile: AccessProfile,
@@ -282,6 +286,7 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
   )
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "add");
+    requireAdmin(profile);
     const db = await adminDb();
     let imported = 0;
     let skipped = 0;
@@ -534,6 +539,7 @@ export const listAssignmentContext = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => token.parse(data))
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "view");
+    requireAdmin(profile);
     const db = await adminDb();
     const schools = await fetchAllRows<{ id: string; name: string }>((from, to) => {
       let query = db.from("schools").select("id,name").order("name").range(from, to);
@@ -570,6 +576,7 @@ export const previewClassAssignment = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => planInput.parse(data))
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "view");
+    requireAdmin(profile);
     const schools = await eligibleSchools(await adminDb(), profile, data.class);
     return {
       academic_year: data.academicYear,
@@ -586,6 +593,7 @@ export const applyClassAssignment = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "add");
+    requireAdmin(profile);
     const db = await adminDb();
     const eligible = await eligibleSchools(db, profile, data.class);
     const { data: plan, error: planError } = await db
@@ -664,6 +672,7 @@ export const overrideAssignmentTarget = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "edit");
+    requireAdmin(profile);
     checkSchool(profile, data.schoolId);
     const db = await adminDb();
     const { data: target, error } = await db
@@ -702,6 +711,7 @@ export const applySchoolAssignment = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "add");
+    requireAdmin(profile);
     checkSchool(profile, data.schoolId);
     const db = await adminDb();
     await checkRosterPair(db, data.schoolId, data.class, data.division ?? "");
