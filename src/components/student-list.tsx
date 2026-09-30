@@ -228,7 +228,7 @@ export function StudentListTable({
                 </td>
                 {[row.ica, row.mca, row.fca].map((v, i) => (
                   <td key={i} className="px-3 py-2 tabular-nums">
-                    {v ?? "—"}
+                    {v == null ? "—" : i === 0 ? `${v}%` : v}
                   </td>
                 ))}
                 <td className="px-3 py-2">
