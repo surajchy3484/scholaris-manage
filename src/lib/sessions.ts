@@ -132,18 +132,22 @@ export async function createSessions(rows: NewSession[]) {
   return insertSessions({ data: { token: getAccessToken(), rows } });
 }
 
-export async function importSessionsForClass(args: {
+export async function importSessionsForSchools(args: {
   academicYear: string;
   unit: Unit;
-  klass: string;
-  rows: { session_name: string; topic: string }[];
+  rows: {
+    class: string;
+    session_name: string;
+    topic: string;
+    division: string;
+    status: SessionStatus;
+  }[];
 }) {
   return importSessionsToEligibleSchools({
     data: {
       token: getAccessToken(),
       academicYear: args.academicYear,
       unit: args.unit,
-      class: args.klass,
       rows: args.rows,
     },
   });

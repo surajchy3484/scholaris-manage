@@ -264,12 +264,14 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
       .extend({
         academicYear,
         unit,
-        class: z.string().min(1).max(50),
         rows: z
           .array(
             z.object({
+              class: z.string().min(1).max(50),
               session_name: z.string().min(1).max(200),
               topic: z.string().max(300).default(""),
+              division: division.default(""),
+              status,
             }),
           )
           .min(1)
@@ -280,56 +282,91 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "add");
     const db = await adminDb();
-    const eligible = await eligibleSchools(db, profile, data.class);
-    const uniqueRows = [
-      ...new Map(
-        data.rows.map((row) => [
-          `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`,
-          row,
-        ]),
-      ).values(),
-    ];
     let imported = 0;
     let skipped = 0;
-    for (const school of eligible) {
-      const { data: existing, error: existingError } = await db
-        .from("sessions")
-        .select("session_name,topic")
-        .eq("school_id", school.school_id)
-        .eq("academic_year", data.academicYear)
-        .eq("unit", data.unit)
-        .eq("class", data.class);
-      if (existingError) throw new Error("Failed to check existing sessions");
-      const keys = new Set(
-        (existing ?? []).map(
-          (row) => `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`,
-        ),
-      );
-      const rows = uniqueRows
-        .filter((row) => {
-          const key = `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`;
-          if (keys.has(key)) {
-            skipped++;
-            return false;
-          }
-          keys.add(key);
-          return true;
-        })
-        .map((row) => ({
-          school_id: school.school_id,
-          academic_year: data.academicYear,
-          unit: data.unit,
-          class: data.class,
-          session_name: row.session_name.trim(),
-          topic: row.topic.trim(),
-          assignment_type: "School-wise",
-        }));
-      if (!rows.length) continue;
-      const { error } = await db.from("sessions").insert(rows);
-      if (error) throw new Error(`Failed to import sessions into ${school.school_name}`);
-      imported += rows.length;
+    const schools = new Map<string, string>();
+    for (const klass of new Set(data.rows.map((row) => row.class))) {
+      for (const school of await eligibleSchools(db, profile, klass))
+        schools.set(school.school_id, school.school_name);
+      const classRows = data.rows.filter((row) => row.class === klass);
+      for (const school of await eligibleSchools(db, profile, klass)) {
+        const { data: existing, error: existingError } = await db
+          .from("sessions")
+          .select("id,session_name,topic")
+          .eq("school_id", school.school_id)
+          .eq("academic_year", data.academicYear)
+          .eq("unit", data.unit)
+          .eq("class", klass);
+        if (existingError) throw new Error("Failed to check existing sessions");
+        const byKey = new Map(
+          (existing ?? []).map((row) => [
+            `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`,
+            row.id,
+          ]),
+        );
+        const uniqueRows = [
+          ...new Map(
+            classRows.map((row) => [
+              `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`,
+              row,
+            ]),
+          ).values(),
+        ];
+        const inserts = uniqueRows
+          .filter((row) => {
+            const key = `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`;
+            if (byKey.has(key)) {
+              skipped++;
+              return false;
+            }
+            return true;
+          })
+          .map((row) => ({
+            school_id: school.school_id,
+            academic_year: data.academicYear,
+            unit: data.unit,
+            class: klass,
+            session_name: row.session_name.trim(),
+            topic: row.topic.trim(),
+            assignment_type: "School-wise",
+          }));
+        if (inserts.length) {
+          const { data: created, error } = await db
+            .from("sessions")
+            .insert(inserts)
+            .select("id,session_name,topic");
+          if (error) throw new Error(`Failed to import sessions into ${school.school_name}`);
+          for (const row of created ?? [])
+            byKey.set(
+              `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`,
+              row.id,
+            );
+          imported += inserts.length;
+        }
+        const statusRows = classRows
+          .filter((row) => row.division.trim())
+          .map((row) => ({
+            session_id: byKey.get(
+              `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`,
+            ),
+            school_id: school.school_id,
+            unit: data.unit,
+            class: klass,
+            division: row.division.trim(),
+            status: row.status,
+            updated_by: profile.username,
+            updated_at: new Date().toISOString(),
+          }))
+          .filter((row): row is typeof row & { session_id: string } => Boolean(row.session_id));
+        if (statusRows.length) {
+          const { error } = await db
+            .from("session_division_status")
+            .upsert(statusRows, { onConflict: "session_id,division" });
+          if (error) throw new Error("Failed to import division statuses");
+        }
+      }
     }
-    return { ok: true, imported, skipped, schools: eligible.length };
+    return { ok: true, imported, skipped, schools: schools.size };
   });
 
 export const updateSessions = createServerFn({ method: "POST" })

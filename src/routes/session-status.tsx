@@ -46,8 +46,7 @@ import { exportRowsToExcel } from "@/lib/exam-export";
 import {
   UNITS,
   createSessions,
-  importSessionsForClass,
-  applyClassPlan,
+  importSessionsForSchools,
   applySchoolPlan,
   fetchAssignmentContext,
   previewClassPlan,
@@ -56,6 +55,7 @@ import {
   fetchSessionRoster,
   fetchUnitCounts,
   normalizeClass,
+  normalizeStatus,
   removeSessions,
   setSessionStatus,
   unitProgress,
@@ -725,7 +725,7 @@ function AssignmentPlanner() {
     queryFn: fetchAssignmentContext,
     enabled: can("session_status", "view"),
   });
-  const [mode, setMode] = useState<"school" | "class" | "import">("class");
+  const [mode, setMode] = useState<"school" | "import">("school");
   const [academicYear, setAcademicYear] = useState("");
   const [unit, setUnit] = useState<Unit>("Unit-1");
   const [klass, setKlass] = useState("");
@@ -752,37 +752,28 @@ function AssignmentPlanner() {
   });
   const apply = useMutation({
     mutationFn: () =>
-      mode === "class"
-        ? applyClassPlan({ academicYear, unit, klass, sessionCount: Number(sessionCount) })
-        : applySchoolPlan({
-            academicYear,
-            schoolId,
-            unit,
-            klass,
-            division,
-            sessionCount: Number(sessionCount),
-          }),
+      applySchoolPlan({
+        academicYear,
+        schoolId,
+        unit,
+        klass,
+        division,
+        sessionCount: Number(sessionCount),
+      }),
     onSuccess: (data) => {
-      toast.success(
-        mode === "class"
-          ? `Applied plan to ${"applied" in data ? data.applied : 0} eligible school(s)`
-          : "School-wise session assignment saved",
-      );
+      void data;
+      toast.success("School-wise session assignment saved");
       setPreview(null);
       void qc.invalidateQueries({ queryKey: ["session-schools"] });
       void qc.invalidateQueries({ queryKey: ["session-roster"] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
-  const schools =
-    mode === "class"
-      ? (preview?.schools ?? [])
-      : schoolId
-        ? (context.data?.schools
-            .filter((school) => school.id === schoolId)
-            .map((school) => ({ school_id: school.id, school_name: school.name, class: klass })) ??
-          [])
-        : [];
+  const schools = schoolId
+    ? (context.data?.schools
+        .filter((school) => school.id === schoolId)
+        .map((school) => ({ school_id: school.id, school_name: school.name, class: klass })) ?? [])
+    : [];
   if (!can("session_status", "add") || context.isLoading || !context.data) return null;
 
   return (
@@ -800,17 +791,6 @@ function AssignmentPlanner() {
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant={mode === "class" ? "default" : "outline"}
-          onClick={() => {
-            setMode("class");
-            setPreview(null);
-          }}
-        >
-          Class-wise Automatic
-        </Button>
         <Button
           type="button"
           size="sm"
@@ -875,18 +855,20 @@ function AssignmentPlanner() {
             ))}
           </select>
         </div>
-        <div className="space-y-1.5">
-          <Label>Class</Label>
-          <select
-            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-            value={klass}
-            onChange={(e) => setKlass(e.target.value)}
-          >
-            {context.data.classes.map((value) => (
-              <option key={value}>{value}</option>
-            ))}
-          </select>
-        </div>
+        {mode === "school" && (
+          <div className="space-y-1.5">
+            <Label>Class</Label>
+            <select
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              value={klass}
+              onChange={(e) => setKlass(e.target.value)}
+            >
+              {context.data.classes.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </div>
+        )}
         {mode === "school" && (
           <div className="space-y-1.5">
             <Label>Division (optional)</Label>
@@ -908,11 +890,7 @@ function AssignmentPlanner() {
       </div>
       <div className="flex flex-wrap items-center gap-3">
         {mode === "import" ? (
-          <Button
-            type="button"
-            onClick={() => setImportOpen(true)}
-            disabled={!klass || !academicYear}
-          >
+          <Button type="button" onClick={() => setImportOpen(true)} disabled={!academicYear}>
             <Upload className="h-4 w-4" /> Choose session Excel file
           </Button>
         ) : (
@@ -921,11 +899,7 @@ function AssignmentPlanner() {
             onClick={() => inspect.mutate()}
             disabled={inspect.isPending || !klass || Number(sessionCount) < 1}
           >
-            {inspect.isPending
-              ? "Finding eligible schools…"
-              : mode === "class"
-                ? "Preview affected schools"
-                : "Review assignment"}
+            {inspect.isPending ? "Finding eligible schools…" : "Review assignment"}
           </Button>
         )}
         {preview && (
@@ -934,35 +908,6 @@ function AssignmentPlanner() {
           </span>
         )}
       </div>
-      {preview && mode === "class" && (
-        <div className="rounded-xl border bg-background p-3">
-          <p className="mb-2 text-sm font-semibold">Affected schools and classes</p>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {schools.map((school) => (
-              <div key={school.school_id} className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
-                {school.school_name}
-                <span className="block text-xs text-muted-foreground">Class {school.class}</span>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-sm font-medium">
-            Class {klass} is available in {schools.length} school(s). Assign {sessionCount} sessions
-            of {unit} to all {schools.length} school(s)?
-          </p>
-          <div className="mt-3 flex gap-2">
-            <Button
-              type="button"
-              onClick={() => apply.mutate()}
-              disabled={apply.isPending || !schools.length}
-            >
-              {apply.isPending ? "Applying…" : "Confirm and apply"}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => setPreview(null)}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
       {preview && mode === "school" && (
         <div className="flex items-center justify-between rounded-xl border bg-background p-3">
           <p className="text-sm">
@@ -978,8 +923,8 @@ function AssignmentPlanner() {
       <SheetImportDialog<ParsedSession>
         open={importOpen}
         onOpenChange={setImportOpen}
-        title={`Import sessions — ${unit} · Class ${klass} · ${academicYear}`}
-        description="Choose a workbook containing Session Name, Class, Topic, Division and Status. The selected Unit, Class and Academic Year are applied to every school where this class currently exists. Existing matching sessions are skipped."
+        title={`Import sessions — ${unit} · ${academicYear}`}
+        description="Required columns: Session Name, Class, Topic, Division and Status. Each row is assigned only to schools where its Class exists. All divisions of a class share the same session set."
         sample={SESSION_SAMPLE}
         parse={(rows) => {
           const seen = new Set<string>();
@@ -987,27 +932,47 @@ function AssignmentPlanner() {
             const session_name = pick(raw, "Session Name", "Session", "Name");
             const rowClass = normalizeClass(pick(raw, "Class", "Grade"));
             const topic = pick(raw, "Topic");
-            const key = `${session_name.toLowerCase()}\n${topic.toLowerCase()}`;
+            const division = pick(raw, "Division", "Section");
+            const rawStatus = pick(raw, "Status");
+            const parsedStatus = rawStatus ? normalizeStatus(rawStatus) : "pending";
+            const key = `${rowClass}\n${session_name.toLowerCase()}\n${topic.toLowerCase()}\n${division.toLowerCase()}`;
             const errors: string[] = [];
             if (!session_name) errors.push("Session Name is required");
-            if (rowClass && rowClass !== klass) errors.push(`Class must be ${klass}`);
+            if (!rowClass) errors.push("Class is required");
+            if (rawStatus && !parsedStatus) errors.push("Status must be Pending or Complete");
             const duplicate = seen.has(key);
             if (duplicate) errors.push("Duplicate session in this file");
             seen.add(key);
-            return { _row: index + 2, errors, duplicate, session_name, class: klass, topic };
+            return {
+              _row: index + 2,
+              errors,
+              duplicate,
+              session_name,
+              class: rowClass,
+              topic,
+              division,
+              status: parsedStatus ?? "pending",
+            };
           });
         }}
         columns={[
           { label: "Session Name", get: (row) => row.session_name },
           { label: "Class", get: (row) => row.class },
           { label: "Topic", get: (row) => row.topic },
+          { label: "Division", get: (row) => row.division },
+          { label: "Status", get: (row) => row.status },
         ]}
         commit={async (valid) => {
-          const result = await importSessionsForClass({
+          const result = await importSessionsForSchools({
             academicYear,
             unit,
-            klass,
-            rows: valid.map((row) => ({ session_name: row.session_name, topic: row.topic })),
+            rows: valid.map((row) => ({
+              class: row.class,
+              session_name: row.session_name,
+              topic: row.topic,
+              division: row.division ?? "",
+              status: row.status ?? "pending",
+            })),
           });
           await qc.invalidateQueries({ queryKey: ["session-schools"] });
           return `Imported ${result.imported} session(s) into ${result.schools} eligible school(s). ${result.skipped} existing duplicate(s) skipped.`;
@@ -1021,6 +986,8 @@ type ParsedSession = ParsedBase & {
   session_name: string;
   class: string;
   topic: string;
+  division?: string;
+  status?: SessionStatus;
 };
 
 function AddSessionDialog({
