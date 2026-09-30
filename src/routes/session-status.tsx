@@ -727,6 +727,7 @@ function AssignmentPlanner() {
   const [academicYear, setAcademicYear] = useState("");
   const [unit, setUnit] = useState<Unit>("Unit-1");
   const [klass, setKlass] = useState("");
+  const [classScope, setClassScope] = useState("all");
   const [schoolId, setSchoolId] = useState("");
   const [schoolScope, setSchoolScope] = useState("all");
   const [importOpen, setImportOpen] = useState(false);
@@ -767,7 +768,6 @@ function AssignmentPlanner() {
           variant={mode === "school" ? "default" : "outline"}
           onClick={() => {
             setMode("school");
-            setPreview(null);
           }}
         >
           School-wise Assignment
@@ -778,7 +778,6 @@ function AssignmentPlanner() {
           variant={mode === "import" ? "default" : "outline"}
           onClick={() => {
             setMode("import");
-            setPreview(null);
           }}
         >
           Import from Excel
@@ -842,6 +841,21 @@ function AssignmentPlanner() {
             ))}
           </select>
         </div>
+        {mode === "import" && (
+          <div className="space-y-1.5">
+            <Label>Class</Label>
+            <select
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              value={classScope}
+              onChange={(e) => setClassScope(e.target.value)}
+            >
+              <option value="all">All Classes</option>
+              {context.data.classes.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </div>
+        )}
         {mode === "school" && (
           <div className="space-y-1.5">
             <Label>Class</Label>
@@ -866,7 +880,7 @@ function AssignmentPlanner() {
         open={importOpen}
         onOpenChange={setImportOpen}
         title={`Import sessions — ${unit} · ${academicYear}`}
-        description="Required columns: Session Name, Class, Topic, Division and Status. All Schools is selected by default; each row is assigned only where its Class exists. All divisions of a class share the same session set."
+        description="Required columns: Session Name, Class, Topic, Division and Status. All Schools and All Classes are selected by default; choose a specific class to import only that class. Each row is assigned only where its Class exists."
         sample={SESSION_SAMPLE}
         parse={(rows) => {
           const seen = new Set<string>();
@@ -881,6 +895,8 @@ function AssignmentPlanner() {
             const errors: string[] = [];
             if (!session_name) errors.push("Session Name is required");
             if (!rowClass) errors.push("Class is required");
+            if (classScope !== "all" && rowClass !== classScope)
+              errors.push(`Class must be ${classScope}`);
             if (rawStatus && !parsedStatus) errors.push("Status must be Pending or Complete");
             const duplicate = seen.has(key);
             if (duplicate) errors.push("Duplicate session in this file");

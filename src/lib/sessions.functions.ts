@@ -256,7 +256,8 @@ export const insertSessions = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "add");
     data.rows.forEach((row) => checkSchool(profile, row.school_id));
-    const db = await adminDb();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = (await adminDb()) as any;
     const { error } = await db.from("sessions").insert(data.rows);
     if (error) throw new Error("Failed to save sessions");
     return { ok: true, count: data.rows.length };
@@ -287,7 +288,8 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "add");
     requireAdmin(profile);
-    const db = await adminDb();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = (await adminDb()) as any;
     let imported = 0;
     let skipped = 0;
     const schools = new Map<string, string>();
@@ -307,7 +309,7 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
           .eq("class", klass);
         if (existingError) throw new Error("Failed to check existing sessions");
         const byKey = new Map(
-          (existing ?? []).map((row) => [
+          (existing ?? []).map((row: { id: string; session_name: string; topic: string }) => [
             `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`,
             row.id,
           ]),
@@ -491,7 +493,8 @@ async function eligibleSchools(
 }
 
 async function ensureTargetSessions(
-  db: Awaited<ReturnType<typeof adminDb>>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
   target: {
     school_id: string;
     academic_year: string;
@@ -515,7 +518,7 @@ async function ensureTargetSessions(
   const rows = existing ?? [];
   const missing = Math.max(0, target.session_count - rows.length);
   if (!missing) return;
-  const names = new Set(rows.map((row) => row.session_name));
+  const names = new Set(rows.map((row: { session_name: string }) => row.session_name));
   const inserts = Array.from({ length: missing }, (_, index) => {
     let name = `Session ${rows.length + index + 1}`;
     while (names.has(name)) name = `${name}*`;
@@ -594,7 +597,8 @@ export const applyClassAssignment = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "add");
     requireAdmin(profile);
-    const db = await adminDb();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = (await adminDb()) as any;
     const eligible = await eligibleSchools(db, profile, data.class);
     const { data: plan, error: planError } = await db
       .from("class_session_plans")
@@ -674,7 +678,8 @@ export const overrideAssignmentTarget = createServerFn({ method: "POST" })
     const profile = await requirePermission(data.token, "session_status", "edit");
     requireAdmin(profile);
     checkSchool(profile, data.schoolId);
-    const db = await adminDb();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = (await adminDb()) as any;
     const { data: target, error } = await db
       .from("session_assignment_targets")
       .upsert(
@@ -713,7 +718,8 @@ export const applySchoolAssignment = createServerFn({ method: "POST" })
     const profile = await requirePermission(data.token, "session_status", "add");
     requireAdmin(profile);
     checkSchool(profile, data.schoolId);
-    const db = await adminDb();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = (await adminDb()) as any;
     await checkRosterPair(db, data.schoolId, data.class, data.division ?? "");
     const { error } = await db.from("session_assignment_targets").upsert(
       {
