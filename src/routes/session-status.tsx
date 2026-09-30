@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,12 +42,12 @@ import {
 import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
 import { SESSION_SAMPLE } from "@/lib/sample-templates";
 import { exportRowsToExcel } from "@/lib/exam-export";
-import { DIVISION_EXAMPLES, divisionsForClass, fetchSchoolDivisions } from "@/lib/divisions";
 import {
   UNITS,
   createSessions,
   fetchDivisionSessions,
-  fetchSessions,
+  fetchSessionSchools,
+  fetchSessionRoster,
   fetchUnitCounts,
   normalizeClass,
   removeSessions,
@@ -59,8 +59,6 @@ import {
   type Unit,
 } from "@/lib/sessions";
 import { RequireModule } from "@/components/require-module";
-
-const DEFAULT_CLASSES = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
 
 export const Route = createFileRoute("/session-status")({
   head: () => ({
@@ -128,10 +126,18 @@ function StatusSelect({
 
 function SessionStatusPage() {
   const qc = useQueryClient();
+  const { profile, can } = useAuth();
+  const accessKey = JSON.stringify([
+    profile?.userId,
+    profile?.role,
+    profile?.allSchools,
+    profile?.schoolIds,
+    profile?.permissions,
+  ]);
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [unit, setUnit] = useState<Unit | null>(null);
   const [klass, setKlass] = useState<string | null>(null);
-  const [division, setDivision] = useState<string>("A");
+  const [division, setDivision] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<"all" | SessionStatus>("all");
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -139,35 +145,57 @@ function SessionStatusPage() {
   const [importOpen, setImportOpen] = useState(false);
 
   const schoolsQuery = useQuery({
-    queryKey: ["schools"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("schools")
-        .select("id, name, code, location")
-        .order("code");
-      if (error) throw new Error(error.message);
-      return data ?? [];
-    },
-    staleTime: 5 * 60_000,
+    queryKey: ["session-schools", accessKey],
+    queryFn: fetchSessionSchools,
+    staleTime: 0,
+    refetchOnWindowFocus: "always",
+    refetchInterval: 30_000,
   });
 
+  const rosterQuery = useQuery({
+    queryKey: ["session-roster", schoolId, accessKey],
+    queryFn: () => fetchSessionRoster(schoolId!),
+    enabled: !!schoolId,
+    staleTime: 0,
+    refetchOnWindowFocus: "always",
+    refetchInterval: 30_000,
+  });
+  const pairs = useMemo(() => rosterQuery.data ?? [], [rosterQuery.data]);
+  const classOptions = useMemo(() => [...new Set(pairs.map((p) => p.class))], [pairs]);
+  const divisionOptions = useMemo(
+    () => pairs.filter((p) => p.class === klass).map((p) => p.division),
+    [pairs, klass],
+  );
+
+  useEffect(() => {
+    if (schoolId && schoolsQuery.data && !schoolsQuery.data.some((s) => s.id === schoolId)) {
+      setSchoolId(null);
+      setUnit(null);
+      setKlass(null);
+      setSelected([]);
+    }
+  }, [schoolId, schoolsQuery.data]);
+  useEffect(() => {
+    if (
+      klass &&
+      rosterQuery.data &&
+      !pairs.some((p) => p.class === klass && p.division === division)
+    ) {
+      setKlass(null);
+      setDivision("");
+      setSelected([]);
+    }
+  }, [klass, division, pairs, rosterQuery.data]);
+
   const unitCounts = useQuery({
-    queryKey: ["session-unit-counts", schoolId],
+    queryKey: ["session-unit-counts", schoolId, accessKey],
     queryFn: () => fetchUnitCounts(schoolId!),
     enabled: !!schoolId,
     staleTime: 60_000,
   });
 
-  // Class options come from the master list of this school+unit only.
-  const classesQuery = useQuery({
-    queryKey: ["session-classes", schoolId, unit],
-    queryFn: () => fetchSessions(schoolId!, { unit: unit! }),
-    enabled: !!schoolId && !!unit,
-    staleTime: 60_000,
-  });
-
   const sessionsQuery = useQuery({
-    queryKey: ["division-sessions", schoolId, unit, klass, division],
+    queryKey: ["division-sessions", schoolId, unit, klass, division, accessKey],
     queryFn: () =>
       fetchDivisionSessions({
         schoolId: schoolId!,
@@ -179,36 +207,7 @@ function SessionStatusPage() {
     staleTime: 30_000,
   });
 
-  // Divisions / batches configured for this school (exact names, never normalised).
-  const divisionsQuery = useQuery({
-    queryKey: ["school-divisions", schoolId],
-    queryFn: () => fetchSchoolDivisions(schoolId!),
-    enabled: !!schoolId,
-    staleTime: 5 * 60_000,
-  });
-
-  const divisionOptions = useMemo(() => {
-    const names = divisionsForClass(divisionsQuery.data ?? [], klass);
-    return names.length ? names : DIVISION_EXAMPLES;
-  }, [divisionsQuery.data, klass]);
-
-  const hasConfiguredDivisions = divisionsForClass(divisionsQuery.data ?? [], klass).length > 0;
-
-  useEffect(() => {
-    if (!divisionOptions.includes(division)) {
-      setDivision(divisionOptions[0] ?? "A");
-      setSelected([]);
-    }
-  }, [divisionOptions, division]);
-
   const school = schoolsQuery.data?.find((s) => s.id === schoolId) ?? null;
-
-  const classOptions = useMemo(() => {
-    const found = new Set((classesQuery.data ?? []).map((r) => r.class).filter(Boolean));
-    return [...new Set([...found, ...DEFAULT_CLASSES])].sort((a, b) =>
-      a.localeCompare(b, undefined, { numeric: true }),
-    );
-  }, [classesQuery.data]);
 
   const rows = useMemo(() => sessionsQuery.data ?? [], [sessionsQuery.data]);
 
@@ -227,8 +226,8 @@ function SessionStatusPage() {
 
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ["division-sessions", schoolId, unit, klass] });
-    await qc.invalidateQueries({ queryKey: ["session-classes", schoolId, unit] });
-    await qc.invalidateQueries({ queryKey: ["session-unit-counts", schoolId] });
+    await qc.invalidateQueries({ queryKey: ["session-roster", schoolId] });
+    await qc.invalidateQueries({ queryKey: ["session-unit-counts", schoolId, accessKey] });
   };
 
   const setStatus = useMutation({
@@ -268,6 +267,11 @@ function SessionStatusPage() {
   if (!schoolId) {
     return (
       <Shell title="Session Status" subtitle="Choose a school to begin">
+        {schoolsQuery.error && (
+          <p role="alert" className="text-destructive">
+            {schoolsQuery.error.message}
+          </p>
+        )}
         {schoolsQuery.isLoading ? (
           <GridSkeleton />
         ) : (
@@ -295,7 +299,7 @@ function SessionStatusPage() {
             ))}
             {schoolsQuery.data?.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                Add a school first from the dashboard.
+                No schools are assigned to your account.
               </p>
             )}
           </div>
@@ -311,6 +315,11 @@ function SessionStatusPage() {
         subtitle="Choose a unit"
         onBack={() => setSchoolId(null)}
       >
+        {unitCounts.error && (
+          <p role="alert" className="text-destructive">
+            {unitCounts.error.message}
+          </p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           {UNITS.map((u, i) => (
             <motion.button
@@ -348,24 +357,42 @@ function SessionStatusPage() {
     return (
       <Shell
         title={`${school?.name ?? "School"} · ${unit}`}
-        subtitle="Choose a class"
+        subtitle="Choose a class and division"
         onBack={() => setUnit(null)}
       >
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {classOptions.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => {
-                setKlass(c);
-                setSelected([]);
-              }}
-              className="rounded-2xl border border-border/60 bg-card p-5 text-center shadow-soft transition hover:border-primary/50 hover:shadow-elegant"
-            >
-              <p className="font-display text-lg font-bold">Class {c}</p>
-            </button>
-          ))}
-        </div>
+        {rosterQuery.error && (
+          <p role="alert" className="text-destructive">
+            {rosterQuery.error.message}
+          </p>
+        )}
+        {rosterQuery.isLoading ? (
+          <GridSkeleton />
+        ) : pairs.length === 0 ? (
+          <Card className="p-6 text-muted-foreground">
+            No student class/division combinations found. Add or upload students for this school.
+          </Card>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {pairs.map((pair) => (
+              <button
+                key={JSON.stringify([pair.class, pair.division])}
+                type="button"
+                onClick={() => {
+                  setKlass(pair.class);
+                  setDivision(pair.division);
+                  setQ("");
+                  setStatusFilter("all");
+                  setSelected([]);
+                }}
+                className="rounded-2xl border border-border/60 bg-card p-5 text-center shadow-soft transition hover:border-primary/50 hover:shadow-elegant"
+              >
+                <p className="font-display text-lg font-bold">
+                  Class {pair.class} – {pair.division || "No division"}
+                </p>
+              </button>
+            ))}
+          </div>
+        )}
       </Shell>
     );
   }
@@ -377,7 +404,7 @@ function SessionStatusPage() {
   return (
     <Shell
       title={`${school?.name ?? "School"} · ${unit}`}
-      subtitle={`Class ${klass} · Division ${division}`}
+      subtitle={`Class ${klass} · ${division ? `Division ${division}` : "No division"}`}
       onBack={() => setKlass(null)}
     >
       <Card className="space-y-3 p-4 shadow-soft">
@@ -399,16 +426,10 @@ function SessionStatusPage() {
                   : "border-border hover:bg-accent"
               }`}
             >
-              {d}
+              {d || "No division"}
             </button>
           ))}
         </div>
-        {!hasConfiguredDivisions && (
-          <p className="text-xs text-muted-foreground">
-            This school has no divisions / batches set up yet — showing examples. Add the real names
-            (e.g. “Batch 1”, “Morning Batch”) by editing the school on the dashboard.
-          </p>
-        )}
       </Card>
 
       <Card className="p-4 shadow-soft">
@@ -462,30 +483,36 @@ function SessionStatusPage() {
                 <SelectItem value="complete">🟢 Complete</SelectItem>
               </SelectContent>
             </Select>
-            <Button size="sm" onClick={() => setAddOpen(true)}>
-              <Plus className="h-4 w-4" /> Add Session
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-              <Upload className="h-4 w-4" /> Import Excel
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                exportRowsToExcel(
-                  `sessions-${unit}-class-${klass}-div-${division}`,
-                  visible.map((r) => ({
-                    "Session Name": r.session_name,
-                    Class: r.class,
-                    Topic: r.topic,
-                    Division: division,
-                    Status: r.status === "complete" ? "Complete" : "Pending",
-                  })),
-                )
-              }
-            >
-              <Download className="h-4 w-4" /> Export
-            </Button>
+            {can("session_status", "add") && (
+              <Button size="sm" onClick={() => setAddOpen(true)}>
+                <Plus className="h-4 w-4" /> Add Session
+              </Button>
+            )}
+            {can("session_status", "add") && (
+              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4" /> Import Excel
+              </Button>
+            )}
+            {can("session_status", "export") && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  exportRowsToExcel(
+                    `sessions-${unit}-class-${klass}-div-${division}`,
+                    visible.map((r) => ({
+                      "Session Name": r.session_name,
+                      Class: r.class,
+                      Topic: r.topic,
+                      Division: division,
+                      Status: r.status === "complete" ? "Complete" : "Pending",
+                    })),
+                  )
+                }
+              >
+                <Download className="h-4 w-4" /> Export
+              </Button>
+            )}
           </div>
         </div>
 
@@ -497,7 +524,7 @@ function SessionStatusPage() {
             <Button
               size="sm"
               className="bg-success text-success-foreground hover:bg-success/90"
-              disabled={setStatus.isPending}
+              disabled={setStatus.isPending || !can("session_status", "status")}
               onClick={() => setStatus.mutate({ ids: selected, status: "complete" })}
             >
               Mark Complete
@@ -505,24 +532,31 @@ function SessionStatusPage() {
             <Button
               size="sm"
               variant="outline"
-              disabled={setStatus.isPending}
+              disabled={setStatus.isPending || !can("session_status", "status")}
               onClick={() => setStatus.mutate({ ids: selected, status: "pending" })}
             >
               Mark Pending
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-destructive"
-              disabled={del.isPending}
-              onClick={() => del.mutate(selected)}
-            >
-              Delete
-            </Button>
+            {can("session_status", "delete") && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-destructive"
+                disabled={del.isPending}
+                onClick={() => del.mutate(selected)}
+              >
+                Delete
+              </Button>
+            )}
           </div>
         )}
       </Card>
 
+      {sessionsQuery.error && (
+        <p role="alert" className="text-destructive">
+          {sessionsQuery.error.message}
+        </p>
+      )}
       {sessionsQuery.isLoading ? (
         <GridSkeleton />
       ) : visible.length === 0 ? (
@@ -572,7 +606,7 @@ function SessionStatusPage() {
                       <td className="px-3 py-2">
                         <StatusSelect
                           value={r.status}
-                          disabled={setStatus.isPending}
+                          disabled={setStatus.isPending || !can("session_status", "status")}
                           onChange={(status) => setStatus.mutate({ ids: [r.id], status })}
                         />
                       </td>
@@ -602,7 +636,7 @@ function SessionStatusPage() {
                     size="lg"
                     className="h-11 flex-1"
                     variant={r.status === "complete" ? "outline" : "default"}
-                    disabled={setStatus.isPending}
+                    disabled={setStatus.isPending || !can("session_status", "status")}
                     onClick={() =>
                       setStatus.mutate({
                         ids: [r.id],
@@ -717,7 +751,7 @@ function AddSessionDialog({
           <DialogTitle>Add session</DialogTitle>
           <DialogDescription>
             Saved for the selected school, unit and class. It becomes available to every division
-            (A–F) of that class.
+            present in the student roster for that class.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-1">

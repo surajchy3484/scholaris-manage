@@ -1,5 +1,7 @@
 import { getAccessToken } from "./app-access";
 import {
+  listSessionSchools,
+  listSessionRoster,
   deleteSessions,
   insertSessions,
   listDivisionSessions,
@@ -164,3 +166,7 @@ export function unitProgress(rows: { status: SessionStatus }[]) {
     percent: total ? Math.round((complete / total) * 100) : 0,
   };
 }
+
+export const fetchSessionSchools = () => listSessionSchools({ data: { token: getAccessToken() } });
+export const fetchSessionRoster = (schoolId: string) =>
+  listSessionRoster({ data: { token: getAccessToken(), schoolId } });
