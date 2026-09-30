@@ -307,7 +307,11 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
           .eq("academic_year", data.academicYear)
           .eq("unit", data.unit)
           .eq("class", klass);
-        if (existingError) throw new Error("Failed to check existing sessions");
+        if (existingError) {
+          throw new Error(
+            `Session assignment database migration is missing. Apply supabase/migrations/20261001000000_session_assignment_plans.sql, then retry. (${existingError.message})`,
+          );
+        }
         const byKey = new Map(
           (existing ?? []).map((row: { id: string; session_name: string; topic: string }) => [
             `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`,
@@ -345,7 +349,11 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
             .from("sessions")
             .insert(inserts)
             .select("id,session_name,topic");
-          if (error) throw new Error(`Failed to import sessions into ${school.school_name}`);
+          if (error) {
+            throw new Error(
+              `Failed to import sessions into ${school.school_name}. Confirm the session assignment migration is applied. (${error.message})`,
+            );
+          }
           for (const row of created ?? [])
             byKey.set(
               `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`,
