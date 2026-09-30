@@ -6,6 +6,11 @@ import {
   insertSessions,
   listDivisionSessions,
   listSessions,
+  listAssignmentContext,
+  previewClassAssignment,
+  applyClassAssignment,
+  overrideAssignmentTarget,
+  applySchoolAssignment,
   sessionUnitCounts,
   setDivisionStatus,
   updateSessions,
@@ -170,3 +175,74 @@ export function unitProgress(rows: { status: SessionStatus }[]) {
 export const fetchSessionSchools = () => listSessionSchools({ data: { token: getAccessToken() } });
 export const fetchSessionRoster = (schoolId: string) =>
   listSessionRoster({ data: { token: getAccessToken(), schoolId } });
+
+export const fetchAssignmentContext = () =>
+  listAssignmentContext({ data: { token: getAccessToken() } });
+export const previewClassPlan = (args: {
+  academicYear: string;
+  unit: Unit;
+  klass: string;
+  sessionCount: number;
+}) =>
+  previewClassAssignment({
+    data: {
+      token: getAccessToken(),
+      academicYear: args.academicYear,
+      unit: args.unit,
+      class: args.klass,
+      sessionCount: args.sessionCount,
+    },
+  });
+export const applyClassPlan = (args: {
+  academicYear: string;
+  unit: Unit;
+  klass: string;
+  sessionCount: number;
+}) =>
+  applyClassAssignment({
+    data: {
+      token: getAccessToken(),
+      academicYear: args.academicYear,
+      unit: args.unit,
+      class: args.klass,
+      sessionCount: args.sessionCount,
+    },
+  });
+export const overrideClassPlan = (args: {
+  academicYear: string;
+  schoolId: string;
+  unit: Unit;
+  klass: string;
+  division?: string;
+  sessionCount: number;
+}) =>
+  overrideAssignmentTarget({
+    data: {
+      token: getAccessToken(),
+      academicYear: args.academicYear,
+      schoolId: args.schoolId,
+      unit: args.unit,
+      class: args.klass,
+      division: args.division ?? "",
+      sessionCount: args.sessionCount,
+    },
+  });
+export const applySchoolPlan = (args: {
+  academicYear: string;
+  schoolId: string;
+  unit: Unit;
+  klass: string;
+  division?: string;
+  sessionCount: number;
+}) =>
+  applySchoolAssignment({
+    data: {
+      token: getAccessToken(),
+      academicYear: args.academicYear,
+      schoolId: args.schoolId,
+      unit: args.unit,
+      class: args.klass,
+      division: args.division ?? "",
+      sessionCount: args.sessionCount,
+    },
+  });

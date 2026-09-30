@@ -9,6 +9,7 @@ import {
   Clock,
   Download,
   Plus,
+  Wand2,
   School as SchoolIcon,
   Search,
   Upload,
@@ -45,6 +46,10 @@ import { exportRowsToExcel } from "@/lib/exam-export";
 import {
   UNITS,
   createSessions,
+  applyClassPlan,
+  applySchoolPlan,
+  fetchAssignmentContext,
+  previewClassPlan,
   fetchDivisionSessions,
   fetchSessionSchools,
   fetchSessionRoster,
@@ -267,6 +272,7 @@ function SessionStatusPage() {
   if (!schoolId) {
     return (
       <Shell title="Session Status" subtitle="Choose a school to begin">
+        <AssignmentPlanner />
         {schoolsQuery.error && (
           <p role="alert" className="text-destructive">
             {schoolsQuery.error.message}
@@ -707,6 +713,244 @@ function SessionStatusPage() {
         }}
       />
     </Shell>
+  );
+}
+
+function AssignmentPlanner() {
+  const qc = useQueryClient();
+  const { can } = useAuth();
+  const context = useQuery({
+    queryKey: ["session-assignment-context"],
+    queryFn: fetchAssignmentContext,
+    enabled: can("session_status", "view"),
+  });
+  const [mode, setMode] = useState<"school" | "class">("class");
+  const [academicYear, setAcademicYear] = useState("");
+  const [unit, setUnit] = useState<Unit>("Unit-1");
+  const [klass, setKlass] = useState("");
+  const [schoolId, setSchoolId] = useState("");
+  const [division, setDivision] = useState("");
+  const [sessionCount, setSessionCount] = useState("8");
+  const [preview, setPreview] = useState<{
+    schools: { school_id: string; school_name: string; class: string }[];
+  } | null>(null);
+
+  useEffect(() => {
+    const years = context.data?.academicYears ?? [];
+    if (!academicYear && years[0]) setAcademicYear(years[0]);
+    if (!klass && context.data?.classes[0]) setKlass(context.data.classes[0]);
+    if (!schoolId && context.data?.schools[0]) setSchoolId(context.data.schools[0].id);
+  }, [context.data, academicYear, klass, schoolId]);
+
+  const inspect = useMutation({
+    mutationFn: () =>
+      previewClassPlan({ academicYear, unit, klass, sessionCount: Number(sessionCount) }),
+    onSuccess: (data) => setPreview(data),
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const apply = useMutation({
+    mutationFn: () =>
+      mode === "class"
+        ? applyClassPlan({ academicYear, unit, klass, sessionCount: Number(sessionCount) })
+        : applySchoolPlan({
+            academicYear,
+            schoolId,
+            unit,
+            klass,
+            division,
+            sessionCount: Number(sessionCount),
+          }),
+    onSuccess: (data) => {
+      toast.success(
+        mode === "class"
+          ? `Applied plan to ${"applied" in data ? data.applied : 0} eligible school(s)`
+          : "School-wise session assignment saved",
+      );
+      setPreview(null);
+      void qc.invalidateQueries({ queryKey: ["session-schools"] });
+      void qc.invalidateQueries({ queryKey: ["session-roster"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const schools =
+    mode === "class"
+      ? (preview?.schools ?? [])
+      : schoolId
+        ? (context.data?.schools
+            .filter((school) => school.id === schoolId)
+            .map((school) => ({ school_id: school.id, school_name: school.name, class: klass })) ??
+          [])
+        : [];
+  if (!can("session_status", "add") || context.isLoading || !context.data) return null;
+
+  return (
+    <Card className="mb-5 space-y-4 border-primary/20 bg-primary/[0.03] p-5 shadow-soft">
+      <div className="flex items-start gap-3">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+          <Wand2 className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="font-display text-lg font-bold">Automatic session assignment</h2>
+          <p className="text-sm text-muted-foreground">
+            Set a target once, keep it isolated by academic year, and apply it only where the class
+            exists.
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={mode === "class" ? "default" : "outline"}
+          onClick={() => {
+            setMode("class");
+            setPreview(null);
+          }}
+        >
+          Class-wise Automatic
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={mode === "school" ? "default" : "outline"}
+          onClick={() => {
+            setMode("school");
+            setPreview(null);
+          }}
+        >
+          School-wise Assignment
+        </Button>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="space-y-1.5">
+          <Label>Academic Year</Label>
+          <select
+            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            value={academicYear}
+            onChange={(e) => setAcademicYear(e.target.value)}
+          >
+            {context.data.academicYears.map((year) => (
+              <option key={year}>{year}</option>
+            ))}
+          </select>
+        </div>
+        {mode === "school" && (
+          <div className="space-y-1.5">
+            <Label>School</Label>
+            <select
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              value={schoolId}
+              onChange={(e) => setSchoolId(e.target.value)}
+            >
+              {context.data.schools.map((school) => (
+                <option key={school.id} value={school.id}>
+                  {school.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <div className="space-y-1.5">
+          <Label>Unit</Label>
+          <select
+            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            value={unit}
+            onChange={(e) => setUnit(e.target.value as Unit)}
+          >
+            {UNITS.map((value) => (
+              <option key={value}>{value}</option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Class</Label>
+          <select
+            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            value={klass}
+            onChange={(e) => setKlass(e.target.value)}
+          >
+            {context.data.classes.map((value) => (
+              <option key={value}>{value}</option>
+            ))}
+          </select>
+        </div>
+        {mode === "school" && (
+          <div className="space-y-1.5">
+            <Label>Division (optional)</Label>
+            <Input value={division} onChange={(e) => setDivision(e.target.value)} placeholder="A" />
+          </div>
+        )}
+        <div className="space-y-1.5">
+          <Label>Number of Sessions</Label>
+          <Input
+            type="number"
+            min={1}
+            max={500}
+            value={sessionCount}
+            onChange={(e) => setSessionCount(e.target.value)}
+          />
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          onClick={() => inspect.mutate()}
+          disabled={inspect.isPending || !klass || Number(sessionCount) < 1}
+        >
+          {inspect.isPending
+            ? "Finding eligible schools…"
+            : mode === "class"
+              ? "Preview affected schools"
+              : "Review assignment"}
+        </Button>
+        {preview && (
+          <span className="text-sm text-muted-foreground">
+            {schools.length} eligible school(s) found.
+          </span>
+        )}
+      </div>
+      {preview && mode === "class" && (
+        <div className="rounded-xl border bg-background p-3">
+          <p className="mb-2 text-sm font-semibold">Affected schools and classes</p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {schools.map((school) => (
+              <div key={school.school_id} className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
+                {school.school_name}
+                <span className="block text-xs text-muted-foreground">Class {school.class}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-sm font-medium">
+            Class {klass} is available in {schools.length} school(s). Assign {sessionCount} sessions
+            of {unit} to all {schools.length} school(s)?
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button
+              type="button"
+              onClick={() => apply.mutate()}
+              disabled={apply.isPending || !schools.length}
+            >
+              {apply.isPending ? "Applying…" : "Confirm and apply"}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setPreview(null)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+      {preview && mode === "school" && (
+        <div className="flex items-center justify-between rounded-xl border bg-background p-3">
+          <p className="text-sm">
+            Assign {sessionCount} sessions of {unit} to{" "}
+            {schools[0]?.school_name ?? "the selected school"}, Class {klass}
+            {division ? `, Division ${division}` : ""}?
+          </p>
+          <Button type="button" onClick={() => apply.mutate()} disabled={apply.isPending}>
+            {apply.isPending ? "Applying…" : "Confirm and apply"}
+          </Button>
+        </div>
+      )}
+    </Card>
   );
 }
 

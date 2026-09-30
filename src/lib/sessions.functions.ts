@@ -334,3 +334,284 @@ export const deleteSessions = createServerFn({ method: "POST" })
     if (error) throw new Error("Failed to delete sessions");
     return { ok: true };
   });
+
+const academicYear = z.string().regex(/^\d{4}(?:-\d{4})?$/);
+const assignmentType = z.enum(["School-wise", "Class-wise Automatic", "School-level Override"]);
+
+type EligibleSchool = { school_id: string; school_name: string; class: string };
+
+async function eligibleSchools(
+  db: Awaited<ReturnType<typeof adminDb>>,
+  profile: AccessProfile,
+  klass: string,
+): Promise<EligibleSchool[]> {
+  const students = await fetchAllRows<{ school_id: string; class: string }>((from, to) => {
+    let query = db
+      .from("students")
+      .select("school_id,class")
+      .eq("class", klass)
+      .order("school_id")
+      .range(from, to);
+    if (profile.role !== "admin" && !profile.allSchools)
+      query = query.in("school_id", profile.schoolIds);
+    return query;
+  });
+  const ids = [...new Set(students.map((row) => row.school_id))];
+  if (!ids.length) return [];
+  const schools = await fetchAllRows<{ id: string; name: string }>((from, to) =>
+    db.from("schools").select("id,name").in("id", ids).order("name").range(from, to),
+  );
+  const names = new Map(schools.map((school) => [school.id, school.name]));
+  return ids
+    .sort((a, b) => (names.get(a) ?? "").localeCompare(names.get(b) ?? ""))
+    .map((school_id) => ({
+      school_id,
+      school_name: names.get(school_id) ?? "Unknown school",
+      class: klass,
+    }));
+}
+
+async function ensureTargetSessions(
+  db: Awaited<ReturnType<typeof adminDb>>,
+  target: {
+    school_id: string;
+    academic_year: string;
+    unit: string;
+    class: string;
+    session_count: number;
+    assignment_type: string;
+    class_plan_id?: string | null;
+  },
+) {
+  const { data: existing, error } = await db
+    .from("sessions")
+    .select("id,session_name")
+    .eq("school_id", target.school_id)
+    .eq("academic_year", target.academic_year)
+    .eq("unit", target.unit)
+    .eq("class", target.class)
+    .order("created_at")
+    .order("id");
+  if (error) throw new Error("Failed to load existing sessions");
+  const rows = existing ?? [];
+  const missing = Math.max(0, target.session_count - rows.length);
+  if (!missing) return;
+  const names = new Set(rows.map((row) => row.session_name));
+  const inserts = Array.from({ length: missing }, (_, index) => {
+    let name = `Session ${rows.length + index + 1}`;
+    while (names.has(name)) name = `${name}*`;
+    names.add(name);
+    return {
+      school_id: target.school_id,
+      academic_year: target.academic_year,
+      unit: target.unit,
+      class: target.class,
+      session_name: name,
+      topic: "",
+      assignment_type: target.assignment_type,
+      class_plan_id: target.class_plan_id ?? null,
+    };
+  });
+  const result = await db.from("sessions").insert(inserts);
+  if (result.error) throw new Error("Failed to create assigned sessions");
+}
+
+export const listAssignmentContext = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => token.parse(data))
+  .handler(async ({ data }) => {
+    const profile = await requirePermission(data.token, "session_status", "view");
+    const db = await adminDb();
+    const schools = await fetchAllRows<{ id: string; name: string }>((from, to) => {
+      let query = db.from("schools").select("id,name").order("name").range(from, to);
+      if (profile.role !== "admin" && !profile.allSchools)
+        query = query.in("id", profile.schoolIds);
+      return query;
+    });
+    const rows = await fetchAllRows<{ school_id: string; class: string }>((from, to) => {
+      let query = db.from("students").select("school_id,class").order("school_id").range(from, to);
+      if (profile.role !== "admin" && !profile.allSchools)
+        query = query.in("school_id", profile.schoolIds);
+      return query;
+    });
+    return {
+      schools,
+      classes: [...new Set(rows.map((row) => row.class).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true }),
+      ),
+      academicYears: [
+        String(new Date().getFullYear()),
+        `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+      ],
+    };
+  });
+
+const planInput = token.extend({
+  academicYear,
+  unit,
+  class: z.string().min(1).max(50),
+  sessionCount: z.number().int().min(1).max(500),
+});
+
+export const previewClassAssignment = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => planInput.parse(data))
+  .handler(async ({ data }) => {
+    const profile = await requirePermission(data.token, "session_status", "view");
+    const schools = await eligibleSchools(await adminDb(), profile, data.class);
+    return {
+      academic_year: data.academicYear,
+      unit: data.unit,
+      class: data.class,
+      session_count: data.sessionCount,
+      schools,
+    };
+  });
+
+export const applyClassAssignment = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    planInput.extend({ syncOnly: z.boolean().optional() }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    const profile = await requirePermission(data.token, "session_status", "add");
+    const db = await adminDb();
+    const eligible = await eligibleSchools(db, profile, data.class);
+    const { data: plan, error: planError } = await db
+      .from("class_session_plans")
+      .upsert(
+        {
+          academic_year: data.academicYear,
+          unit: data.unit,
+          class: data.class,
+          session_count: data.sessionCount,
+          created_by: profile.username,
+        },
+        { onConflict: "academic_year,unit,class" },
+      )
+      .select("id")
+      .single();
+    if (planError || !plan) throw new Error("Failed to save the class-wise session plan");
+    let applied = 0;
+    for (const school of eligible) {
+      const { data: current } = await db
+        .from("session_assignment_targets")
+        .select("assignment_type,session_count")
+        .match({
+          academic_year: data.academicYear,
+          school_id: school.school_id,
+          unit: data.unit,
+          class: data.class,
+          division: "",
+        })
+        .maybeSingle();
+      const target =
+        current?.assignment_type === "School-level Override"
+          ? { session_count: current.session_count, assignment_type: current.assignment_type }
+          : { session_count: data.sessionCount, assignment_type: "Class-wise Automatic" };
+      const { error } = await db.from("session_assignment_targets").upsert(
+        {
+          academic_year: data.academicYear,
+          school_id: school.school_id,
+          unit: data.unit,
+          class: data.class,
+          division: "",
+          session_count: target.session_count,
+          assignment_type: target.assignment_type,
+          class_plan_id: plan.id,
+          created_by: profile.username,
+        },
+        { onConflict: "academic_year,school_id,unit,class,division" },
+      );
+      if (error) throw new Error("Failed to save school assignment targets");
+      await ensureTargetSessions(db, {
+        school_id: school.school_id,
+        academic_year: data.academicYear,
+        unit: data.unit,
+        class: data.class,
+        session_count: target.session_count,
+        assignment_type: target.assignment_type,
+        class_plan_id: plan.id,
+      });
+      applied++;
+    }
+    return { ok: true, applied, eligible: eligible.length };
+  });
+
+export const overrideAssignmentTarget = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    token
+      .extend({
+        academicYear,
+        schoolId: z.string().uuid(),
+        unit,
+        class: z.string().min(1).max(50),
+        division: division.optional(),
+        sessionCount: z.number().int().min(1).max(500),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const profile = await requirePermission(data.token, "session_status", "edit");
+    checkSchool(profile, data.schoolId);
+    const db = await adminDb();
+    const { data: target, error } = await db
+      .from("session_assignment_targets")
+      .upsert(
+        {
+          academic_year: data.academicYear,
+          school_id: data.schoolId,
+          unit: data.unit,
+          class: data.class,
+          division: data.division ?? "",
+          session_count: data.sessionCount,
+          assignment_type: "School-level Override",
+          created_by: profile.username,
+        },
+        { onConflict: "academic_year,school_id,unit,class,division" },
+      )
+      .select("class_plan_id")
+      .single();
+    if (error) throw new Error("Failed to save school-level override");
+    await ensureTargetSessions(db, {
+      school_id: data.schoolId,
+      academic_year: data.academicYear,
+      unit: data.unit,
+      class: data.class,
+      session_count: data.sessionCount,
+      assignment_type: "School-level Override",
+      class_plan_id: target?.class_plan_id,
+    });
+    return { ok: true };
+  });
+
+export const applySchoolAssignment = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    planInput.extend({ schoolId: z.string().uuid(), division: division.optional() }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    const profile = await requirePermission(data.token, "session_status", "add");
+    checkSchool(profile, data.schoolId);
+    const db = await adminDb();
+    await checkRosterPair(db, data.schoolId, data.class, data.division ?? "");
+    const { error } = await db.from("session_assignment_targets").upsert(
+      {
+        academic_year: data.academicYear,
+        school_id: data.schoolId,
+        unit: data.unit,
+        class: data.class,
+        division: data.division ?? "",
+        session_count: data.sessionCount,
+        assignment_type: "School-wise",
+        created_by: profile.username,
+      },
+      { onConflict: "academic_year,school_id,unit,class,division" },
+    );
+    if (error) throw new Error("Failed to save school-wise assignment");
+    await ensureTargetSessions(db, {
+      school_id: data.schoolId,
+      academic_year: data.academicYear,
+      unit: data.unit,
+      class: data.class,
+      session_count: data.sessionCount,
+      assignment_type: "School-wise",
+    });
+    return { ok: true };
+  });
