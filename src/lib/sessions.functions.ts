@@ -270,6 +270,7 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
         academicYear,
         unit,
         schoolIds: z.array(z.string().uuid()).max(1000).optional(),
+        updateExisting: z.boolean().default(false),
         rows: z
           .array(
             z.object({
@@ -292,6 +293,7 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
     const db = (await adminDb()) as any;
     let imported = 0;
     let skipped = 0;
+    let updated = 0;
     const schools = new Map<string, string>();
     for (const klass of new Set(data.rows.map((row) => row.class))) {
       const eligible = (await eligibleSchools(db, profile, klass)).filter(
@@ -318,6 +320,14 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
             row.id,
           ]),
         );
+        const byName = new Map<
+          string,
+          { id: string; session_name: string; topic: string } | null
+        >();
+        for (const row of existing ?? []) {
+          const name = row.session_name.trim().toLowerCase();
+          byName.set(name, byName.has(name) ? null : row);
+        }
         const uniqueRows = [
           ...new Map(
             classRows.map((row) => [
@@ -329,6 +339,15 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
         const inserts = uniqueRows
           .filter((row) => {
             const key = `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`;
+            const existingRow =
+              byKey.get(key) ??
+              (data.updateExisting
+                ? byName.get(row.session_name.trim().toLowerCase())?.id
+                : undefined);
+            if (existingRow) {
+              if (!data.updateExisting) skipped++;
+              return false;
+            }
             if (byKey.has(key)) {
               skipped++;
               return false;
@@ -344,6 +363,21 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
             topic: row.topic.trim(),
             assignment_type: "School-wise",
           }));
+        if (data.updateExisting) {
+          for (const row of uniqueRows) {
+            const key = `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`;
+            const existingId =
+              byKey.get(key) ?? byName.get(row.session_name.trim().toLowerCase())?.id;
+            if (!existingId) continue;
+            const { error } = await db
+              .from("sessions")
+              .update({ session_name: row.session_name.trim(), topic: row.topic.trim() })
+              .eq("id", existingId);
+            if (error) throw new Error(`Failed to update sessions in ${school.school_name}`);
+            byKey.set(key, existingId);
+            updated++;
+          }
+        }
         if (inserts.length) {
           const { data: created, error } = await db
             .from("sessions")
@@ -384,7 +418,7 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
         }
       }
     }
-    return { ok: true, imported, skipped, schools: schools.size };
+    return { ok: true, imported, updated, skipped, schools: schools.size };
   });
 
 export const updateSessions = createServerFn({ method: "POST" })

@@ -731,6 +731,7 @@ function AssignmentPlanner() {
   const [schoolId, setSchoolId] = useState("");
   const [schoolScope, setSchoolScope] = useState("all");
   const [importOpen, setImportOpen] = useState(false);
+  const [importMode, setImportMode] = useState<"add" | "update">("add");
 
   useEffect(() => {
     const years = context.data?.academicYears ?? [];
@@ -872,15 +873,37 @@ function AssignmentPlanner() {
         )}
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" onClick={() => setImportOpen(true)} disabled={!academicYear}>
+        <Button
+          type="button"
+          onClick={() => {
+            setImportMode("add");
+            setImportOpen(true);
+          }}
+          disabled={!academicYear}
+        >
           <Upload className="h-4 w-4" /> Choose session Excel file
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setImportMode("update");
+            setImportOpen(true);
+          }}
+          disabled={!academicYear}
+        >
+          Update Existing Sessions
         </Button>
       </div>
       <SheetImportDialog<ParsedSession>
         open={importOpen}
         onOpenChange={setImportOpen}
-        title={`Import sessions — ${unit} · ${academicYear}`}
-        description="Required columns: Session Name, Class, Topic, Division and Status. All Schools and All Classes are selected by default; choose a specific class to import only that class. Each row is assigned only where its Class exists."
+        title={`${importMode === "update" ? "Update" : "Import"} sessions — ${unit} · ${academicYear}`}
+        description={
+          importMode === "update"
+            ? "Update existing sessions by Session Name for the selected school scope, unit, academic year and class. New workbook rows are added; matching topics and statuses are updated without creating duplicates."
+            : "Required columns: Session Name, Class, Topic, Division and Status. All Schools and All Classes are selected by default; choose a specific class to import only that class. Each row is assigned only where its Class exists."
+        }
         sample={SESSION_SAMPLE}
         parse={(rows) => {
           const seen = new Set<string>();
@@ -925,6 +948,7 @@ function AssignmentPlanner() {
             academicYear,
             unit,
             schoolIds: schoolScope === "all" ? undefined : [schoolScope],
+            updateExisting: importMode === "update",
             rows: valid.map((row) => ({
               class: row.class,
               session_name: row.session_name,
@@ -934,7 +958,7 @@ function AssignmentPlanner() {
             })),
           });
           await qc.invalidateQueries({ queryKey: ["session-schools"] });
-          return `Imported ${result.imported} session(s) into ${result.schools} eligible school(s). ${result.skipped} existing duplicate(s) skipped.`;
+          return `${importMode === "update" ? `Updated ${result.updated} existing session(s) and imported ${result.imported} new session(s)` : `Imported ${result.imported} session(s)`} into ${result.schools} eligible school(s). ${result.skipped} existing duplicate(s) skipped.`;
         }}
       />
     </Card>

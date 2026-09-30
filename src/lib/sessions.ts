@@ -136,6 +136,7 @@ export async function importSessionsForSchools(args: {
   academicYear: string;
   unit: Unit;
   schoolIds?: string[];
+  updateExisting?: boolean;
   rows: {
     class: string;
     session_name: string;
@@ -150,6 +151,7 @@ export async function importSessionsForSchools(args: {
       academicYear: args.academicYear,
       unit: args.unit,
       ...(args.schoolIds?.length ? { schoolIds: args.schoolIds } : {}),
+      updateExisting: args.updateExisting ?? false,
       rows: args.rows,
     },
   });
