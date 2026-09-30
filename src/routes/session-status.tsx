@@ -725,7 +725,7 @@ function AssignmentPlanner() {
     queryFn: fetchAssignmentContext,
     enabled: can("session_status", "view"),
   });
-  const [mode, setMode] = useState<"school" | "class">("class");
+  const [mode, setMode] = useState<"school" | "class" | "import">("class");
   const [academicYear, setAcademicYear] = useState("");
   const [unit, setUnit] = useState<Unit>("Unit-1");
   const [klass, setKlass] = useState("");
@@ -822,6 +822,17 @@ function AssignmentPlanner() {
         >
           School-wise Assignment
         </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={mode === "import" ? "default" : "outline"}
+          onClick={() => {
+            setMode("import");
+            setPreview(null);
+          }}
+        >
+          Import from Excel
+        </Button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="space-y-1.5">
@@ -882,37 +893,41 @@ function AssignmentPlanner() {
             <Input value={division} onChange={(e) => setDivision(e.target.value)} placeholder="A" />
           </div>
         )}
-        <div className="space-y-1.5">
-          <Label>Number of Sessions</Label>
-          <Input
-            type="number"
-            min={1}
-            max={500}
-            value={sessionCount}
-            onChange={(e) => setSessionCount(e.target.value)}
-          />
-        </div>
+        {mode !== "import" && (
+          <div className="space-y-1.5">
+            <Label>Number of Sessions</Label>
+            <Input
+              type="number"
+              min={1}
+              max={500}
+              value={sessionCount}
+              onChange={(e) => setSessionCount(e.target.value)}
+            />
+          </div>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          onClick={() => inspect.mutate()}
-          disabled={inspect.isPending || !klass || Number(sessionCount) < 1}
-        >
-          {inspect.isPending
-            ? "Finding eligible schools…"
-            : mode === "class"
-              ? "Preview affected schools"
-              : "Review assignment"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setImportOpen(true)}
-          disabled={!klass || !academicYear}
-        >
-          <Upload className="h-4 w-4" /> Import session Excel
-        </Button>
+        {mode === "import" ? (
+          <Button
+            type="button"
+            onClick={() => setImportOpen(true)}
+            disabled={!klass || !academicYear}
+          >
+            <Upload className="h-4 w-4" /> Choose session Excel file
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            onClick={() => inspect.mutate()}
+            disabled={inspect.isPending || !klass || Number(sessionCount) < 1}
+          >
+            {inspect.isPending
+              ? "Finding eligible schools…"
+              : mode === "class"
+                ? "Preview affected schools"
+                : "Review assignment"}
+          </Button>
+        )}
         {preview && (
           <span className="text-sm text-muted-foreground">
             {schools.length} eligible school(s) found.
