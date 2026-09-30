@@ -46,6 +46,7 @@ import { exportRowsToExcel } from "@/lib/exam-export";
 import {
   UNITS,
   createSessions,
+  importSessionsForClass,
   applyClassPlan,
   applySchoolPlan,
   fetchAssignmentContext,
@@ -734,6 +735,7 @@ function AssignmentPlanner() {
   const [preview, setPreview] = useState<{
     schools: { school_id: string; school_name: string; class: string }[];
   } | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     const years = context.data?.academicYears ?? [];
@@ -903,6 +905,14 @@ function AssignmentPlanner() {
               ? "Preview affected schools"
               : "Review assignment"}
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setImportOpen(true)}
+          disabled={!klass || !academicYear}
+        >
+          <Upload className="h-4 w-4" /> Import session Excel
+        </Button>
         {preview && (
           <span className="text-sm text-muted-foreground">
             {schools.length} eligible school(s) found.
@@ -950,6 +960,44 @@ function AssignmentPlanner() {
           </Button>
         </div>
       )}
+      <SheetImportDialog<ParsedSession>
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        title={`Import sessions — ${unit} · Class ${klass} · ${academicYear}`}
+        description="Choose a workbook containing Session Name, Class, Topic, Division and Status. The selected Unit, Class and Academic Year are applied to every school where this class currently exists. Existing matching sessions are skipped."
+        sample={SESSION_SAMPLE}
+        parse={(rows) => {
+          const seen = new Set<string>();
+          return rows.map((raw, index) => {
+            const session_name = pick(raw, "Session Name", "Session", "Name");
+            const rowClass = normalizeClass(pick(raw, "Class", "Grade"));
+            const topic = pick(raw, "Topic");
+            const key = `${session_name.toLowerCase()}\n${topic.toLowerCase()}`;
+            const errors: string[] = [];
+            if (!session_name) errors.push("Session Name is required");
+            if (rowClass && rowClass !== klass) errors.push(`Class must be ${klass}`);
+            const duplicate = seen.has(key);
+            if (duplicate) errors.push("Duplicate session in this file");
+            seen.add(key);
+            return { _row: index + 2, errors, duplicate, session_name, class: klass, topic };
+          });
+        }}
+        columns={[
+          { label: "Session Name", get: (row) => row.session_name },
+          { label: "Class", get: (row) => row.class },
+          { label: "Topic", get: (row) => row.topic },
+        ]}
+        commit={async (valid) => {
+          const result = await importSessionsForClass({
+            academicYear,
+            unit,
+            klass,
+            rows: valid.map((row) => ({ session_name: row.session_name, topic: row.topic })),
+          });
+          await qc.invalidateQueries({ queryKey: ["session-schools"] });
+          return `Imported ${result.imported} session(s) into ${result.schools} eligible school(s). ${result.skipped} existing duplicate(s) skipped.`;
+        }}
+      />
     </Card>
   );
 }

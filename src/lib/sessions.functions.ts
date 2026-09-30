@@ -10,6 +10,8 @@ const status = z.enum(["pending", "complete"]);
 const unit = z.enum(["Unit-1", "Unit-2", "Unit-3", "Unit-4"]);
 // Divisions / batches are admin-defined free text ("A", "Batch 1", "Morning Batch").
 const division = z.string().max(60);
+const academicYear = z.string().regex(/^\d{4}(?:-\d{4})?$/);
+const assignmentType = z.enum(["School-wise", "Class-wise Automatic", "School-level Override"]);
 
 function checkSchool(profile: AccessProfile, schoolId: string) {
   if (!canSeeSchool(profile, schoolId)) throw new Error("School access denied");
@@ -236,6 +238,7 @@ export const insertSessions = createServerFn({ method: "POST" })
             z.object({
               school_id: z.string().uuid(),
               unit,
+              academic_year: academicYear.optional(),
               session_name: z.string().min(1).max(200),
               class: z.string().max(50).default(""),
               topic: z.string().max(300).default(""),
@@ -253,6 +256,80 @@ export const insertSessions = createServerFn({ method: "POST" })
     const { error } = await db.from("sessions").insert(data.rows);
     if (error) throw new Error("Failed to save sessions");
     return { ok: true, count: data.rows.length };
+  });
+
+export const importSessionsToEligibleSchools = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    token
+      .extend({
+        academicYear,
+        unit,
+        class: z.string().min(1).max(50),
+        rows: z
+          .array(
+            z.object({
+              session_name: z.string().min(1).max(200),
+              topic: z.string().max(300).default(""),
+            }),
+          )
+          .min(1)
+          .max(5000),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const profile = await requirePermission(data.token, "session_status", "add");
+    const db = await adminDb();
+    const eligible = await eligibleSchools(db, profile, data.class);
+    const uniqueRows = [
+      ...new Map(
+        data.rows.map((row) => [
+          `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`,
+          row,
+        ]),
+      ).values(),
+    ];
+    let imported = 0;
+    let skipped = 0;
+    for (const school of eligible) {
+      const { data: existing, error: existingError } = await db
+        .from("sessions")
+        .select("session_name,topic")
+        .eq("school_id", school.school_id)
+        .eq("academic_year", data.academicYear)
+        .eq("unit", data.unit)
+        .eq("class", data.class);
+      if (existingError) throw new Error("Failed to check existing sessions");
+      const keys = new Set(
+        (existing ?? []).map(
+          (row) => `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`,
+        ),
+      );
+      const rows = uniqueRows
+        .filter((row) => {
+          const key = `${row.session_name.trim().toLowerCase()}\n${row.topic.trim().toLowerCase()}`;
+          if (keys.has(key)) {
+            skipped++;
+            return false;
+          }
+          keys.add(key);
+          return true;
+        })
+        .map((row) => ({
+          school_id: school.school_id,
+          academic_year: data.academicYear,
+          unit: data.unit,
+          class: data.class,
+          session_name: row.session_name.trim(),
+          topic: row.topic.trim(),
+          assignment_type: "School-wise",
+        }));
+      if (!rows.length) continue;
+      const { error } = await db.from("sessions").insert(rows);
+      if (error) throw new Error(`Failed to import sessions into ${school.school_name}`);
+      imported += rows.length;
+    }
+    return { ok: true, imported, skipped, schools: eligible.length };
   });
 
 export const updateSessions = createServerFn({ method: "POST" })
@@ -334,9 +411,6 @@ export const deleteSessions = createServerFn({ method: "POST" })
     if (error) throw new Error("Failed to delete sessions");
     return { ok: true };
   });
-
-const academicYear = z.string().regex(/^\d{4}(?:-\d{4})?$/);
-const assignmentType = z.enum(["School-wise", "Class-wise Automatic", "School-level Override"]);
 
 type EligibleSchool = { school_id: string; school_name: string; class: string };
 

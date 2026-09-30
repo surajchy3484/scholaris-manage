@@ -11,6 +11,7 @@ import {
   applyClassAssignment,
   overrideAssignmentTarget,
   applySchoolAssignment,
+  importSessionsToEligibleSchools,
   sessionUnitCounts,
   setDivisionStatus,
   updateSessions,
@@ -129,6 +130,23 @@ export async function fetchUnitCounts(schoolId: string) {
 
 export async function createSessions(rows: NewSession[]) {
   return insertSessions({ data: { token: getAccessToken(), rows } });
+}
+
+export async function importSessionsForClass(args: {
+  academicYear: string;
+  unit: Unit;
+  klass: string;
+  rows: { session_name: string; topic: string }[];
+}) {
+  return importSessionsToEligibleSchools({
+    data: {
+      token: getAccessToken(),
+      academicYear: args.academicYear,
+      unit: args.unit,
+      class: args.klass,
+      rows: args.rows,
+    },
+  });
 }
 
 export async function patchSessions(ids: string[], patch: Partial<NewSession>) {
