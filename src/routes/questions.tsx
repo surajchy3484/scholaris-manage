@@ -80,7 +80,6 @@ function QuestionsPage() {
     { key: "exam_type", label: "Exam Type", value: (r) => r.exam_type },
     { key: "class", label: "Class", value: (r) => r.class },
     { key: "question_no", label: "Question Number", value: (r) => r.question_no },
-    { key: "question_text", label: "Question", value: (r) => r.question_text ?? "" },
     { key: "correct_answer", label: "Answer Key", value: (r) => r.correct_answer },
     { key: "parameter", label: "Parameter", value: (r) => r.parameter ?? "" },
     { key: "chapter", label: "Chapter", value: (r) => r.chapter ?? "" },
