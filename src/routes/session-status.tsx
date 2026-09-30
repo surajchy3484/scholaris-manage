@@ -47,9 +47,7 @@ import {
   UNITS,
   createSessions,
   importSessionsForSchools,
-  applySchoolPlan,
   fetchAssignmentContext,
-  previewClassPlan,
   fetchDivisionSessions,
   fetchSessionSchools,
   fetchSessionRoster,
@@ -730,11 +728,6 @@ function AssignmentPlanner() {
   const [unit, setUnit] = useState<Unit>("Unit-1");
   const [klass, setKlass] = useState("");
   const [schoolId, setSchoolId] = useState("");
-  const [division, setDivision] = useState("");
-  const [sessionCount, setSessionCount] = useState("8");
-  const [preview, setPreview] = useState<{
-    schools: { school_id: string; school_name: string; class: string }[];
-  } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
@@ -744,36 +737,6 @@ function AssignmentPlanner() {
     if (!schoolId && context.data?.schools[0]) setSchoolId(context.data.schools[0].id);
   }, [context.data, academicYear, klass, schoolId]);
 
-  const inspect = useMutation({
-    mutationFn: () =>
-      previewClassPlan({ academicYear, unit, klass, sessionCount: Number(sessionCount) }),
-    onSuccess: (data) => setPreview(data),
-    onError: (error: Error) => toast.error(error.message),
-  });
-  const apply = useMutation({
-    mutationFn: () =>
-      applySchoolPlan({
-        academicYear,
-        schoolId,
-        unit,
-        klass,
-        division,
-        sessionCount: Number(sessionCount),
-      }),
-    onSuccess: (data) => {
-      void data;
-      toast.success("School-wise session assignment saved");
-      setPreview(null);
-      void qc.invalidateQueries({ queryKey: ["session-schools"] });
-      void qc.invalidateQueries({ queryKey: ["session-roster"] });
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-  const schools = schoolId
-    ? (context.data?.schools
-        .filter((school) => school.id === schoolId)
-        .map((school) => ({ school_id: school.id, school_name: school.name, class: klass })) ?? [])
-    : [];
   if (!can("session_status", "add") || context.isLoading || !context.data) return null;
 
   return (
@@ -869,57 +832,12 @@ function AssignmentPlanner() {
             </select>
           </div>
         )}
-        {mode === "school" && (
-          <div className="space-y-1.5">
-            <Label>Division (optional)</Label>
-            <Input value={division} onChange={(e) => setDivision(e.target.value)} placeholder="A" />
-          </div>
-        )}
-        {mode !== "import" && (
-          <div className="space-y-1.5">
-            <Label>Number of Sessions</Label>
-            <Input
-              type="number"
-              min={1}
-              max={500}
-              value={sessionCount}
-              onChange={(e) => setSessionCount(e.target.value)}
-            />
-          </div>
-        )}
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        {mode === "import" ? (
-          <Button type="button" onClick={() => setImportOpen(true)} disabled={!academicYear}>
-            <Upload className="h-4 w-4" /> Choose session Excel file
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            onClick={() => inspect.mutate()}
-            disabled={inspect.isPending || !klass || Number(sessionCount) < 1}
-          >
-            {inspect.isPending ? "Finding eligible schools…" : "Review assignment"}
-          </Button>
-        )}
-        {preview && (
-          <span className="text-sm text-muted-foreground">
-            {schools.length} eligible school(s) found.
-          </span>
-        )}
+        <Button type="button" onClick={() => setImportOpen(true)} disabled={!academicYear}>
+          <Upload className="h-4 w-4" /> Choose session Excel file
+        </Button>
       </div>
-      {preview && mode === "school" && (
-        <div className="flex items-center justify-between rounded-xl border bg-background p-3">
-          <p className="text-sm">
-            Assign {sessionCount} sessions of {unit} to{" "}
-            {schools[0]?.school_name ?? "the selected school"}, Class {klass}
-            {division ? `, Division ${division}` : ""}?
-          </p>
-          <Button type="button" onClick={() => apply.mutate()} disabled={apply.isPending}>
-            {apply.isPending ? "Applying…" : "Confirm and apply"}
-          </Button>
-        </div>
-      )}
       <SheetImportDialog<ParsedSession>
         open={importOpen}
         onOpenChange={setImportOpen}
