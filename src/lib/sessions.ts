@@ -135,6 +135,7 @@ export async function createSessions(rows: NewSession[]) {
 export async function importSessionsForSchools(args: {
   academicYear: string;
   unit: Unit;
+  schoolIds?: string[];
   rows: {
     class: string;
     session_name: string;
@@ -148,6 +149,7 @@ export async function importSessionsForSchools(args: {
       token: getAccessToken(),
       academicYear: args.academicYear,
       unit: args.unit,
+      ...(args.schoolIds?.length ? { schoolIds: args.schoolIds } : {}),
       rows: args.rows,
     },
   });

@@ -728,6 +728,7 @@ function AssignmentPlanner() {
   const [unit, setUnit] = useState<Unit>("Unit-1");
   const [klass, setKlass] = useState("");
   const [schoolId, setSchoolId] = useState("");
+  const [schoolScope, setSchoolScope] = useState("all");
   const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
@@ -806,6 +807,23 @@ function AssignmentPlanner() {
             </select>
           </div>
         )}
+        {mode === "import" && (
+          <div className="space-y-1.5">
+            <Label>School</Label>
+            <select
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              value={schoolScope}
+              onChange={(e) => setSchoolScope(e.target.value)}
+            >
+              <option value="all">All Schools</option>
+              {context.data.schools.map((school) => (
+                <option key={school.id} value={school.id}>
+                  {school.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="space-y-1.5">
           <Label>Unit</Label>
           <select
@@ -842,7 +860,7 @@ function AssignmentPlanner() {
         open={importOpen}
         onOpenChange={setImportOpen}
         title={`Import sessions — ${unit} · ${academicYear}`}
-        description="Required columns: Session Name, Class, Topic, Division and Status. Each row is assigned only to schools where its Class exists. All divisions of a class share the same session set."
+        description="Required columns: Session Name, Class, Topic, Division and Status. All Schools is selected by default; each row is assigned only where its Class exists. All divisions of a class share the same session set."
         sample={SESSION_SAMPLE}
         parse={(rows) => {
           const seen = new Set<string>();
@@ -884,6 +902,7 @@ function AssignmentPlanner() {
           const result = await importSessionsForSchools({
             academicYear,
             unit,
+            schoolIds: schoolScope === "all" ? undefined : [schoolScope],
             rows: valid.map((row) => ({
               class: row.class,
               session_name: row.session_name,

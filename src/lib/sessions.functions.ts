@@ -264,6 +264,7 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
       .extend({
         academicYear,
         unit,
+        schoolIds: z.array(z.string().uuid()).max(1000).optional(),
         rows: z
           .array(
             z.object({
@@ -286,10 +287,12 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
     let skipped = 0;
     const schools = new Map<string, string>();
     for (const klass of new Set(data.rows.map((row) => row.class))) {
-      for (const school of await eligibleSchools(db, profile, klass))
-        schools.set(school.school_id, school.school_name);
+      const eligible = (await eligibleSchools(db, profile, klass)).filter(
+        (school) => !data.schoolIds?.length || data.schoolIds.includes(school.school_id),
+      );
+      for (const school of eligible) schools.set(school.school_id, school.school_name);
       const classRows = data.rows.filter((row) => row.class === klass);
-      for (const school of await eligibleSchools(db, profile, klass)) {
+      for (const school of eligible) {
         const { data: existing, error: existingError } = await db
           .from("sessions")
           .select("id,session_name,topic")
