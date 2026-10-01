@@ -1,3 +1,4 @@
+import { getAcademicYear, setAcademicYear as selectGlobalYear } from "@/lib/academic-year";
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -724,7 +725,7 @@ function AssignmentPlanner() {
     enabled: profile?.role === "admin" && can("session_status", "view"),
   });
   const [mode, setMode] = useState<"school" | "import">("school");
-  const [academicYear, setAcademicYear] = useState("");
+  const [academicYear, setAcademicYear] = useState(getAcademicYear() ?? "");
   const [unit, setUnit] = useState<Unit>("Unit-1");
   const [klass, setKlass] = useState("");
   const [classScope, setClassScope] = useState("all");
@@ -790,7 +791,7 @@ function AssignmentPlanner() {
           <select
             className="h-10 w-full rounded-md border bg-background px-3 text-sm"
             value={academicYear}
-            onChange={(e) => setAcademicYear(e.target.value)}
+            onChange={(e) => selectGlobalYear(e.target.value)}
           >
             {context.data.academicYears.map((year) => (
               <option key={year}>{year}</option>

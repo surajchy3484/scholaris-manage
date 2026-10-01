@@ -1,4 +1,5 @@
-import { supabase } from "@/integrations/supabase/client";
+import { getAcademicYear } from "@/lib/academic-year";
+import { supabase } from "@/lib/academic-data";
 import { getAccessToken } from "./app-access";
 import { deleteScoresForStudents, listExamScores, saveExamScore } from "./exam-scores.functions";
 import { fetchAllRows } from "./fetch-all";
@@ -114,7 +115,7 @@ export async function fetchExamData(): Promise<ExamData> {
     fetchAllRows<{ student_id: string; status: string }>((from, to) =>
       supabase.from("attendance").select("student_id,status").range(from, to),
     ),
-    listExamScores({ data: { token: getAccessToken() } }) as Promise<ScoreRow[]>,
+    listExamScores({ data: { token: getAccessToken(), academicYear: getAcademicYear() } }) as Promise<ScoreRow[]>,
   ]);
   if (schoolsRes.error) throw schoolsRes.error;
   const studentsRes = { data: studentRows };
@@ -256,7 +257,7 @@ export async function saveScore(params: {
   const { schoolId, studentId, examType, score, remarks } = params;
   await saveExamScore({
     data: {
-      token: getAccessToken(),
+      token: getAccessToken(), academicYear: getAcademicYear(),
       schoolId,
       studentId,
       examType,
@@ -269,7 +270,7 @@ export async function saveScore(params: {
 /** Delete every exam score belonging to the given students. */
 export async function deleteScoresForStudentIds(studentIds: string[]) {
   if (studentIds.length === 0) return;
-  await deleteScoresForStudents({ data: { token: getAccessToken(), studentIds } });
+  await deleteScoresForStudents({ data: { token: getAccessToken(), academicYear: getAcademicYear(), studentIds } });
 }
 
 export const CLASS_OPTIONS = Array.from({ length: 12 }, (_, i) => String(i + 1));

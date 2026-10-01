@@ -1,4 +1,4 @@
-import { adminDb } from "./app-access.server";
+import { academicDb } from "./academic-db.server";
 import { canSeeSchool, type AccessProfile } from "./access-control";
 import { fetchAllRows } from "./fetch-all";
 export async function writeClicker(
@@ -7,8 +7,9 @@ export async function writeClicker(
   rows: Record<string, unknown>[] = [],
   ids: string[] = [],
   patch: Record<string, unknown> = {},
+  academicYear?: string,
 ) {
-  const db = await adminDb();
+  const db = await academicDb(academicYear);
   const existing = ids.length
     ? await fetchAllRows((from, to) =>
         db
@@ -19,6 +20,8 @@ export async function writeClicker(
           .range(from, to),
       )
     : [];
+  if (existing.length !== new Set(ids).size)
+    throw new Error("Some records are not in the selected academic year. Refresh and retry.");
   // Administrators can clean up legacy rows that have no school assignment.
   // Restricted users must still have an explicit, authorized school on every row.
   if (

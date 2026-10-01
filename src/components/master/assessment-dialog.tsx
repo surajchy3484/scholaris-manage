@@ -1,3 +1,6 @@
+import { getAcademicYear } from "@/lib/academic-year";
+import { listQuestionSetVersions } from "@/lib/academic.functions";
+import { getAccessToken } from "@/lib/app-access";
 import { fetchExamTypes } from "@/lib/question-bank";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -50,6 +53,11 @@ export function AssessmentDialog({
 }) {
   const qc = useQueryClient();
   const examTypes = useQuery({ queryKey: ["exam-types"], queryFn: fetchExamTypes });
+  const versions = useQuery({
+    queryKey: ["question-versions"],
+    queryFn: () => listQuestionSetVersions({ data: { token: getAccessToken() } }),
+  });
+  const [version, setVersion] = useState("");
   const isEdit = !!assessment?.id && !defaultCode;
 
   const [code, setCode] = useState("");
@@ -60,7 +68,7 @@ export function AssessmentDialog({
   const [cls, setCls] = useState("");
   const [section, setSection] = useState("");
   const [total, setTotal] = useState("0");
-  const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [year, setYear] = useState(getAcademicYear() ?? "");
   const [subject, setSubject] = useState("");
   const [totalMarks, setTotalMarks] = useState("0");
   const [passMarks, setPassMarks] = useState("0");
@@ -78,7 +86,8 @@ export function AssessmentDialog({
     setCls(assessment?.class ?? "");
     setSection(assessment?.section ?? "");
     setTotal(String(assessment?.total_questions ?? 0));
-    setYear(assessment?.academic_year ?? String(new Date().getFullYear()));
+    setYear(isEdit ? (assessment?.academic_year ?? "") : (getAcademicYear() ?? ""));
+    setVersion(isEdit ? (assessment?.question_set_version_id ?? "") : "");
     setSubject(assessment?.subject ?? "");
     setTotalMarks(String(assessment?.total_marks ?? 0));
     setPassMarks(String(assessment?.passing_marks ?? 0));
@@ -98,7 +107,8 @@ export function AssessmentDialog({
         class: cls.trim() || null,
         section: section.trim().toUpperCase() || null,
         total_questions: Number(total) || 0,
-        academic_year: year.trim() || String(new Date().getFullYear()),
+        academic_year: year || getAcademicYear(),
+        question_set_version_id: version || null,
         subject: subject.trim() || null,
         total_marks: Number(totalMarks) || 0,
         passing_marks: Number(passMarks) || 0,
@@ -210,7 +220,28 @@ export function AssessmentDialog({
             <Input value={total} onChange={(e) => setTotal(e.target.value)} inputMode="numeric" />
           </Field>
           <Field label="Academic Year">
-            <Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="2026" />
+            <Input value={year} readOnly />
+          </Field>
+          <Field label="Question set version (optional)">
+            <select
+              value={version}
+              onChange={(e) => setVersion(e.target.value)}
+              className="w-full rounded border bg-background p-2"
+            >
+              <option value="">Current universal question bank</option>
+              {versions.data
+                ?.filter(
+                  (v) =>
+                    v.exam_type === examType &&
+                    v.class === cls.trim().replace(/^class\s*/i, "") &&
+                    (!v.academic_year || v.academic_year === year),
+                )
+                .map((v) => (
+                  <option value={v.id} key={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+            </select>
           </Field>
           <Field label="Subject">
             <Input

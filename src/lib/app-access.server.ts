@@ -126,9 +126,9 @@ async function readToken(token: string): Promise<TokenPayload | null> {
   }
 }
 
-export async function adminDb() {
+export async function adminDb(academicYear?: string) {
   const { getSupabaseAdmin } = await import("./supabase-admin.server");
-  return getSupabaseAdmin();
+  return getSupabaseAdmin(academicYear);
 }
 
 const LEGACY_ADMIN: AccessProfile = {

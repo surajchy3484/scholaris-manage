@@ -1,9 +1,10 @@
+import { getAcademicYear } from "@/lib/academic-year";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Upload, Download, AlertCircle, CheckCircle2 } from "lucide-react";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/academic-data";
 import type { School } from "@/lib/types";
 import { importStudentBatch } from "@/lib/performance.functions";
 import { getAccessToken } from "@/lib/app-access";
@@ -127,7 +128,7 @@ export function ImportStudentsDialog({
             try {
               added += await importStudentBatch({
                 data: {
-                  token: getAccessToken(),
+                  token: getAccessToken(), academicYear: getAcademicYear(),
                   schoolId: school.id,
                   rows: batch.map(({ name, class: klass, division, roll_number }) => ({
                     name,

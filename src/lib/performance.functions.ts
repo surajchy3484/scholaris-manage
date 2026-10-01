@@ -1,8 +1,9 @@
+import { academicDb } from "./academic-db.server";
 import { fetchAllRows } from "./fetch-all";
 import { COMPAT_READS, readWithoutPagingRpc } from "./paging-compat.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { adminDb, requirePermission } from "./app-access.server";
+import { requirePermission } from "./app-access.server";
 import { canSeeSchool } from "./access-control";
 import type { PageResult } from "./paging";
 
@@ -16,6 +17,7 @@ const grid = z.object({
 const isMissingDbObject = (error: { code?: string }) =>
   ["PGRST202", "PGRST205", "42P01", "42883"].includes(error.code ?? "");
 const schema = grid.extend({
+  academicYear: z.string().max(80).optional(),
   token: z.string().min(1),
   table: z.enum(["assessments", "questions", "clicker_records"]),
   assessmentId: z.string().max(120).optional(),
@@ -28,7 +30,8 @@ const schema = grid.extend({
 });
 // RPCs are service-role-only and invoker-security. All callers pass through the existing module guard.
 async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
-  const db = await adminDb();
+  const db = await academicDb(args.__year as string | undefined);
+  delete args.__year;
   const { data, error } = await db.rpc(name as never, args as never);
   if (error) {
     if (error.code === "23505") {
@@ -63,6 +66,7 @@ export const listMasterPage = createServerFn({ method: "POST" })
     );
     if (data.table === "questions")
       return rpc<PageResult<import("./question-bank").BankQuestion>>("universal_questions_page", {
+        __year: data.academicYear,
         p_exam: data.examType ?? "",
         p_class: data.className ?? "",
         p_search: data.search,
@@ -78,6 +82,7 @@ export const listMasterPage = createServerFn({ method: "POST" })
         | import("./master").ClickerRecord
       >
     >("performance_master_page", {
+      __year: data.academicYear,
       p_table: data.table,
       p_page: data.page,
       p_size: data.pageSize,
@@ -97,6 +102,7 @@ export const listStudentPage = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     grid
       .extend({
+        academicYear: z.string().max(80).optional(),
         token: z.string().min(1),
         schoolId: z.string().uuid(),
         klass: z.string().max(100),
@@ -108,6 +114,7 @@ export const listStudentPage = createServerFn({ method: "POST" })
     const profile = await requirePermission(data.token, "students", "view");
     if (!canSeeSchool(profile, data.schoolId)) throw new Error("School access denied");
     return rpc<PageResult<import("./types").Student>>("performance_student_page", {
+      __year: data.academicYear,
       p_school: data.schoolId,
       p_class: data.klass,
       p_division: data.division,
@@ -121,6 +128,7 @@ export const studentFacets = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z
       .object({
+        academicYear: z.string().max(80).optional(),
         token: z.string().min(1),
         schoolId: z.string().uuid(),
         module: z.enum(["students", "exam_report"]).default("students"),
@@ -132,13 +140,14 @@ export const studentFacets = createServerFn({ method: "POST" })
     if (!canSeeSchool(profile, data.schoolId)) throw new Error("School access denied");
     return rpc<{ total: number; groups: { class: string; division: string }[] }>(
       "performance_student_facets",
-      { p_school: data.schoolId },
+      { __year: data.academicYear, p_school: data.schoolId },
     );
   });
 export const importStudentBatch = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z
       .object({
+        academicYear: z.string().max(80).optional(),
         token: z.string().min(1),
         schoolId: z.string().uuid(),
         rows: z
@@ -159,16 +168,19 @@ export const importStudentBatch = createServerFn({ method: "POST" })
     const profile = await requirePermission(data.token, "students", "import");
     if (!canSeeSchool(profile, data.schoolId)) throw new Error("School access denied");
     return rpc<number>("performance_import_students", {
+      __year: data.academicYear,
       p_school: data.schoolId,
       p_rows: data.rows,
     });
   });
 
 export const clickerFacets = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ token: z.string().min(1) }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({ academicYear: z.string().max(80).optional(), token: z.string().min(1) }).parse(d),
+  )
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "clicker", "view");
-    const db = await adminDb();
+    const db = await academicDb(data.academicYear);
     const classes = new Set<string>();
     const sections = new Set<string>();
     const teams = new Set<string>();
@@ -199,12 +211,16 @@ export const clickerFacets = createServerFn({ method: "POST" })
 export const listClickerQuestionKeys = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z
-      .object({ token: z.string().min(1), assessmentIds: z.array(z.string().max(120)).max(250) })
+      .object({
+        academicYear: z.string().max(80).optional(),
+        token: z.string().min(1),
+        assessmentIds: z.array(z.string().max(120)).max(250),
+      })
       .parse(d),
   )
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "clicker", "view");
-    const db = await adminDb();
+    const db = await academicDb(data.academicYear);
     const { data: assessments, error } = await db
       .from("assessments")
       .select("assessment_id,school_id,exam_type,class")
@@ -283,6 +299,7 @@ export const listStudentDetails = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     grid
       .extend({
+        academicYear: z.string().max(80).optional(),
         token: z.string().min(1),
         module: z.enum(["students", "exam_report"]),
         schoolId: z.string().uuid(),
@@ -304,6 +321,7 @@ export const listStudentDetails = createServerFn({ method: "POST" })
     const profile = await requirePermission(data.token, data.module, "view");
     if (!canSeeSchool(profile, data.schoolId)) throw new Error("School access denied");
     return rpc<PageResult<import("./student-list").StudentListRow>>("student_details_page", {
+      __year: data.academicYear,
       p_school: data.schoolId,
       p_class: data.klass,
       p_division: data.division,
@@ -322,6 +340,7 @@ export const deleteStudentDetails = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z
       .object({
+        academicYear: z.string().max(80).optional(),
         token: z.string().min(1),
         module: z.enum(["students", "exam_report"]),
         schoolId: z.string().uuid(),
@@ -332,13 +351,15 @@ export const deleteStudentDetails = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, data.module, "delete");
     if (!canSeeSchool(profile, data.schoolId)) throw new Error("School access denied");
-    await rpc<null>("delete_student_details", { p_school: data.schoolId, p_ids: data.ids });
-    return { ok: true };
+    throw new Error(
+      "Student history is preserved. Set enrollment status to Left School or Inactive in Academic Year instead of deleting the student.",
+    );
   });
 export const saveStudentDetails = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z
       .object({
+        academicYear: z.string().max(80).optional(),
         token: z.string().min(1),
         module: z.enum(["students", "exam_report"]),
         schoolId: z.string().uuid(),
@@ -358,8 +379,16 @@ export const saveStudentDetails = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, data.module, data.id ? "edit" : "add");
     if (!canSeeSchool(profile, data.schoolId)) throw new Error("School access denied");
-    const db = await adminDb();
+    const db = await academicDb(data.academicYear);
     if (data.id) {
+      const enrollment = await db
+        .from("students")
+        .select("id")
+        .eq("id", data.id)
+        .eq("school_id", data.schoolId)
+        .maybeSingle();
+      if (enrollment.error || !enrollment.data)
+        throw new Error("Student is not enrolled in the selected school and year");
       const { data: row, error } = await db
         .from("students")
         .update(data.values)
@@ -368,7 +397,9 @@ export const saveStudentDetails = createServerFn({ method: "POST" })
         .select("id")
         .single();
       if (error || !row)
-        throw new Error("Unable to update student; check duplicate ID or roll number");
+        throw new Error(
+          error?.message ?? "Unable to update student; check duplicate ID or roll number",
+        );
       return row;
     }
     if (!data.values.student_code) throw new Error("Student ID is required");
@@ -384,6 +415,7 @@ export const updateStudentGrouping = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z
       .object({
+        academicYear: z.string().max(80).optional(),
         token: z.string().min(1),
         schoolId: z.string().uuid(),
         ids: z.array(z.string().uuid()).min(1).max(250),
@@ -400,7 +432,7 @@ export const updateStudentGrouping = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "students", "edit");
     if (!canSeeSchool(profile, data.schoolId)) throw new Error("School access denied");
-    const db = await adminDb();
+    const db = await academicDb(data.academicYear);
     const { error } = await db
       .from("students")
       .update(data.values)

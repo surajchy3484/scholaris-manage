@@ -26,6 +26,7 @@ const db = {
   },
 };
 const { writeClicker } = load("src/lib/universal-clicker.server.ts", {
+  "./academic-db.server": { academicDb: async () => db },
   "./app-access.server": { adminDb: async () => db },
   "./access-control": access,
   "./fetch-all": { fetchAllRows: async () => existing },
@@ -57,7 +58,9 @@ let profile = trainer;
 const fn = { inputValidator: () => fn, handler: (handler) => handler };
 const master = load("src/lib/master.functions.ts", {
   "./universal-clicker.server": { writeClicker },
+  "./access-control": access,
   "@tanstack/react-start": { createServerFn: () => fn },
+  "./academic-db.server": { academicDb: async () => db },
   "./app-access.server": {
     adminDb: async () => db,
     requirePermission: async (_, module, action) => {

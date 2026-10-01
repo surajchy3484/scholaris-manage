@@ -1,3 +1,4 @@
+import { getAcademicYear } from "@/lib/academic-year";
 import { useDebounced } from "@/hooks/use-master-page";
 import {
   listStudentDetails,
@@ -31,7 +32,7 @@ import {
 } from "lucide-react";
 import { EditSchoolDialog } from "@/components/add-school-dialog";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/academic-data";
 import type { School, Student, AttendanceRecord } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -148,7 +149,7 @@ function SchoolDetail() {
 
   const facets = useQuery({
     queryKey: ["students", schoolId, "facets"],
-    queryFn: () => studentFacets({ data: { token: getAccessToken(), schoolId } }),
+    queryFn: () => studentFacets({ data: { token: getAccessToken(), academicYear: getAcademicYear(), schoolId } }),
   });
   const pageQuery = useQuery({
     queryKey: [
@@ -165,7 +166,7 @@ function SchoolDetail() {
     queryFn: () =>
       listStudentDetails({
         data: {
-          token: getAccessToken(),
+          token: getAccessToken(), academicYear: getAcademicYear(),
           module: "students",
           ...scoreArgs,
           schoolId,
@@ -200,7 +201,7 @@ function SchoolDetail() {
   const del = useMutation({
     mutationFn: async (id: string) => {
       await deleteStudentDetails({
-        data: { token: getAccessToken(), module: "students", schoolId, ids: [id] },
+        data: { token: getAccessToken(), academicYear: getAcademicYear(), module: "students", schoolId, ids: [id] },
       });
     },
     onSuccess: (_data, id) => {
@@ -217,7 +218,7 @@ function SchoolDetail() {
       for (let offset = 0; offset < ids.length; offset += 250) {
         await deleteStudentDetails({
           data: {
-            token: getAccessToken(),
+            token: getAccessToken(), academicYear: getAcademicYear(),
             module: "students",
             schoolId,
             ids: ids.slice(offset, offset + 250),
@@ -250,7 +251,7 @@ function SchoolDetail() {
       for (let offset = 0; offset < ids.length; offset += 250) {
         await updateStudentGrouping({
           data: {
-            token: getAccessToken(),
+            token: getAccessToken(), academicYear: getAcademicYear(),
             schoolId,
             ids: ids.slice(offset, offset + 250),
             values: payload,
@@ -323,7 +324,7 @@ function SchoolDetail() {
       for (let selectedPage = 0; ; selectedPage++) {
         const result = await listStudentDetails({
           data: {
-            token: getAccessToken(),
+            token: getAccessToken(), academicYear: getAcademicYear(),
             module: "students",
             ...scoreFilters,
             min: scoreFilters.min === "" ? null : Number(scoreFilters.min),

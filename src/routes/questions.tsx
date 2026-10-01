@@ -1,3 +1,4 @@
+import { QuestionSetVersions } from "@/components/question-set-versions";
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -227,6 +228,7 @@ function QuestionsPage() {
           {list.error.message}
         </p>
       )}
+      <QuestionSetVersions />
       <DataGrid
         title="Universal questions"
         description={`${list.data?.total ?? 0} questions`}

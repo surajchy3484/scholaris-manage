@@ -143,6 +143,7 @@ const api = load("src/lib/sessions.functions.ts", {
       },
     }),
   },
+  "./academic-db.server": { academicDb: async () => db },
   "./app-access.server": {
     adminDb: async () => db,
     requirePermission: async (_, module, action) => {

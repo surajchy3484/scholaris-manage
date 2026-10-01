@@ -1,3 +1,4 @@
+import { academicDb } from "./academic-db.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -5,12 +6,12 @@ import { canSeeSchool, type AccessProfile } from "./access-control";
 import { fetchAllRows } from "./fetch-all";
 import { adminDb, requirePermission } from "./app-access.server";
 
-const token = z.object({ token: z.string().min(1) });
+const token = z.object({ academicYear: z.string().max(80).optional(), token: z.string().min(1) });
 const status = z.enum(["pending", "complete"]);
 const unit = z.enum(["Unit-1", "Unit-2", "Unit-3", "Unit-4"]);
 // Divisions / batches are admin-defined free text ("A", "Batch 1", "Morning Batch").
 const division = z.string().max(60);
-const academicYear = z.string().regex(/^\d{4}(?:-\d{4})?$/);
+const academicYear = z.string().min(1).max(80);
 const assignmentType = z.enum(["School-wise", "Class-wise Automatic", "School-level Override"]);
 
 function checkSchool(profile: AccessProfile, schoolId: string) {
@@ -63,7 +64,7 @@ export const listSessionSchools = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "view");
     if (profile.role !== "admin" && !profile.allSchools && !profile.schoolIds.length) return [];
-    const db = await adminDb();
+    const db = await academicDb(data.academicYear);
     return fetchAllRows<{ id: string; name: string; code: string; location: string }>(
       (from, to) => {
         let query = db.from("schools").select("id,name,code,location").order("code").order("id");
@@ -79,7 +80,7 @@ export const listSessionRoster = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "view");
     checkSchool(profile, data.schoolId);
-    const db = await adminDb();
+    const db = await academicDb(data.academicYear);
     // Read only the two roster fields; page through all students, including beyond 1,000.
     const students = await fetchAllRows<{ class: string; division: string | null }>((from, to) =>
       db
@@ -122,7 +123,7 @@ export const listSessions = createServerFn({ method: "POST" })
     const profile = await requirePermission(data.token, "session_status", "view");
     if (data.schoolId) checkSchool(profile, data.schoolId);
     if (profile.role !== "admin" && !profile.allSchools && !profile.schoolIds.length) return [];
-    const db = await adminDb();
+    const db = await academicDb(data.academicYear);
     const out: Record<string, unknown>[] = [];
     const batch = 1000;
     for (let from = 0; ; from += batch) {
@@ -161,7 +162,7 @@ export const listDivisionSessions = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<any[]> => {
     const profile = await requirePermission(data.token, "session_status", "view");
     checkSchool(profile, data.schoolId);
-    const db = await adminDb();
+    const db = await academicDb(data.academicYear);
     await checkRosterPair(db, data.schoolId, data.class, data.division);
 
     const rows = await fetchAllRows<{
@@ -219,7 +220,7 @@ export const sessionUnitCounts = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<Record<string, number>> => {
     const profile = await requirePermission(data.token, "session_status", "view");
     checkSchool(profile, data.schoolId);
-    const db = await adminDb();
+    const db = await academicDb(data.academicYear);
     const out: Record<string, number> = {};
     for (const u of ["Unit-1", "Unit-2", "Unit-3", "Unit-4"]) {
       const { count, error } = await db
@@ -257,7 +258,7 @@ export const insertSessions = createServerFn({ method: "POST" })
     const profile = await requirePermission(data.token, "session_status", "add");
     data.rows.forEach((row) => checkSchool(profile, row.school_id));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = (await adminDb()) as any;
+    const db = (await academicDb(data.academicYear)) as any;
     const { error } = await db.from("sessions").insert(data.rows);
     if (error) throw new Error("Failed to save sessions");
     return { ok: true, count: data.rows.length };
@@ -290,7 +291,7 @@ export const importSessionsToEligibleSchools = createServerFn({ method: "POST" }
     const profile = await requirePermission(data.token, "session_status", "add");
     requireAdmin(profile);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = (await adminDb()) as any;
+    const db = (await academicDb(data.academicYear)) as any;
     let imported = 0;
     let skipped = 0;
     let updated = 0;
@@ -437,7 +438,7 @@ export const updateSessions = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "edit");
-    const db = await adminDb();
+    const db = await academicDb(data.academicYear);
     await checkedSessions(db, profile, data.ids);
     const { error } = await db.from("sessions").update(data.patch).in("id", data.ids);
     if (error) throw new Error("Failed to update sessions");
@@ -461,7 +462,7 @@ export const setDivisionStatus = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "status");
     checkSchool(profile, data.schoolId);
-    const db = await adminDb();
+    const db = await academicDb(data.academicYear);
     await checkRosterPair(db, data.schoolId, data.class, data.division);
     const sessions = await checkedSessions(db, profile, data.ids);
     if (
@@ -494,7 +495,7 @@ export const deleteSessions = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "delete");
-    const db = await adminDb();
+    const db = await academicDb(data.academicYear);
     await checkedSessions(db, profile, data.ids);
     const { error } = await db.from("sessions").delete().in("id", data.ids);
     if (error) throw new Error("Failed to delete sessions");
@@ -585,7 +586,7 @@ export const listAssignmentContext = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "view");
     requireAdmin(profile);
-    const db = await adminDb();
+    const db = await academicDb(data.academicYear);
     const schools = await fetchAllRows<{ id: string; name: string }>((from, to) => {
       let query = db.from("schools").select("id,name").order("name").range(from, to);
       if (profile.role !== "admin" && !profile.allSchools)
@@ -598,15 +599,19 @@ export const listAssignmentContext = createServerFn({ method: "POST" })
         query = query.in("school_id", profile.schoolIds);
       return query;
     });
+    const { data: years, error: yearError } = await (
+      await adminDb()
+    )
+      .from("academic_years" as never)
+      .select("id")
+      .order("id", { ascending: false });
+    if (yearError) throw new Error("Academic Year setup required");
     return {
       schools,
       classes: [...new Set(rows.map((row) => row.class).filter(Boolean))].sort((a, b) =>
         a.localeCompare(b, undefined, { numeric: true }),
       ),
-      academicYears: [
-        String(new Date().getFullYear()),
-        `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
-      ],
+      academicYears: ((years as { id: string }[]) ?? []).map((y) => y.id),
     };
   });
 
@@ -622,7 +627,7 @@ export const previewClassAssignment = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, "session_status", "view");
     requireAdmin(profile);
-    const schools = await eligibleSchools(await adminDb(), profile, data.class);
+    const schools = await eligibleSchools(await academicDb(data.academicYear), profile, data.class);
     return {
       academic_year: data.academicYear,
       unit: data.unit,
@@ -640,7 +645,7 @@ export const applyClassAssignment = createServerFn({ method: "POST" })
     const profile = await requirePermission(data.token, "session_status", "add");
     requireAdmin(profile);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = (await adminDb()) as any;
+    const db = (await academicDb(data.academicYear)) as any;
     const eligible = await eligibleSchools(db, profile, data.class);
     const { data: plan, error: planError } = await db
       .from("class_session_plans")
@@ -721,7 +726,7 @@ export const overrideAssignmentTarget = createServerFn({ method: "POST" })
     requireAdmin(profile);
     checkSchool(profile, data.schoolId);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = (await adminDb()) as any;
+    const db = (await academicDb(data.academicYear)) as any;
     const { data: target, error } = await db
       .from("session_assignment_targets")
       .upsert(
@@ -761,7 +766,7 @@ export const applySchoolAssignment = createServerFn({ method: "POST" })
     requireAdmin(profile);
     checkSchool(profile, data.schoolId);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const db = (await adminDb()) as any;
+    const db = (await academicDb(data.academicYear)) as any;
     await checkRosterPair(db, data.schoolId, data.class, data.division ?? "");
     const { error } = await db.from("session_assignment_targets").upsert(
       {

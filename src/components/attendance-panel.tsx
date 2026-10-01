@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Check, X, CalendarIcon, CheckCheck, XCircle, Save } from "lucide-react";
 import { format } from "date-fns";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/academic-data";
 import type { Student, AttendanceRecord } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

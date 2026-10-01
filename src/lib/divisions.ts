@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/academic-data";
 
 /**
  * Divisions / batches are fully administrator-defined. They are configured per

@@ -1,3 +1,4 @@
+import { getAcademicYear } from "@/lib/academic-year";
 import { getAccessToken } from "./app-access";
 import {
   deleteMasterRows,
@@ -19,6 +20,8 @@ export const ASSESSMENT_STATUS_OPTIONS = ["Draft", "Scheduled", "Active", "Compl
 export const ANSWER_OPTIONS = ["A", "B", "C", "D"] as const;
 
 export type Assessment = {
+  question_set_version_id?: string | null;
+  question_snapshot?: Question[] | null;
   id: string;
   assessment_id: string;
   exam_type: string;
@@ -58,6 +61,7 @@ export type Question = {
 };
 
 export type ClickerRecord = {
+  academic_year?: string | null;
   exam_type?: string | null;
   total_questions?: number | null;
   attempted_questions?: number | null;
@@ -95,7 +99,9 @@ export type ClickerMetrics = {
 export type MasterTable = "assessments" | "questions" | "clicker_records" | "assessment_results";
 
 async function listRows(table: MasterTable, assessmentId?: string) {
-  return listMasterRows({ data: { token: getAccessToken(), table, assessmentId } });
+  return listMasterRows({
+    data: { token: getAccessToken(), academicYear: getAcademicYear(), table, assessmentId },
+  });
 }
 
 export async function fetchAssessments(): Promise<Assessment[]> {
@@ -124,7 +130,9 @@ export async function insertRows(
 ): Promise<number> {
   const token = getAccessToken();
   for (let i = 0; i < rows.length; i += chunk) {
-    await insertMasterRows({ data: { token, table, rows: rows.slice(i, i + chunk) } });
+    await insertMasterRows({
+      data: { token, academicYear: getAcademicYear(), table, rows: rows.slice(i, i + chunk) },
+    });
   }
   return rows.length;
 }
@@ -137,7 +145,9 @@ export async function updateRowsByIds(
 ): Promise<void> {
   const token = getAccessToken();
   for (let i = 0; i < ids.length; i += chunk) {
-    await updateMasterRows({ data: { token, table, ids: ids.slice(i, i + chunk), patch } });
+    await updateMasterRows({
+      data: { token, academicYear: getAcademicYear(), table, ids: ids.slice(i, i + chunk), patch },
+    });
   }
 }
 
@@ -148,7 +158,7 @@ export function nextAssessmentCode(existing: Assessment[]): string {
     const m = /(\d+)\s*$/.exec(a.assessment_id ?? "");
     if (m) max = Math.max(max, Number(m[1]));
   }
-  return `ASM-${String(max + 1).padStart(4, "0")}`;
+  return `ASM-${getAcademicYear() ?? "YEAR"}-${String(max + 1).padStart(4, "0")}`;
 }
 
 /** Deletes rows in chunks so bulk selections never exceed request limits. */
@@ -159,7 +169,9 @@ export async function deleteRowsByIds(
 ): Promise<number> {
   const token = getAccessToken();
   for (let i = 0; i < ids.length; i += chunk) {
-    await deleteMasterRows({ data: { token, table, ids: ids.slice(i, i + chunk) } });
+    await deleteMasterRows({
+      data: { token, academicYear: getAcademicYear(), table, ids: ids.slice(i, i + chunk) },
+    });
   }
   return ids.length;
 }
