@@ -1,9 +1,13 @@
 -- Session assignment plans are separate from the individual session rows so target changes
 -- never overwrite completion history or assignments from another academic year.
 ALTER TABLE public.sessions
-  ADD COLUMN IF NOT EXISTS academic_year text NOT NULL DEFAULT to_char(CURRENT_DATE, 'YYYY'),
+  ADD COLUMN IF NOT EXISTS academic_year text NOT NULL DEFAULT '2026-27',
   ADD COLUMN IF NOT EXISTS assignment_type text NOT NULL DEFAULT 'School-wise',
   ADD COLUMN IF NOT EXISTS class_plan_id uuid;
+
+UPDATE public.sessions
+SET academic_year = '2026-27'
+WHERE academic_year IS NULL OR academic_year = '2026';
 
 ALTER TABLE public.sessions
   DROP CONSTRAINT IF EXISTS sessions_assignment_type_check;
