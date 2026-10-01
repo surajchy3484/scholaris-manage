@@ -1,4 +1,5 @@
 import { getAccessToken } from "./app-access";
+import { getAcademicYear } from "./academic-year";
 import {
   listExamTypes,
   listUniversalQuestions,
@@ -45,16 +46,25 @@ export function answerColumn(value: string) {
 }
 export const fetchExamTypes = () => listExamTypes({ data: { token: getAccessToken() } });
 export const fetchBankQuestions = (examType = "", className = "") =>
-  listUniversalQuestions({ data: { token: getAccessToken(), examType, className } });
+  listUniversalQuestions({
+    data: { token: getAccessToken(), academicYear: getAcademicYear(), examType, className },
+  });
 export const saveBankQuestions = (rows: Record<string, unknown>[], ids: string[] = []) =>
   writeUniversalQuestions({
-    data: { token: getAccessToken(), mode: ids.length ? "update" : "insert", rows, ids },
+    data: {
+      token: getAccessToken(),
+      academicYear: getAcademicYear(),
+      mode: ids.length ? "update" : "insert",
+      rows,
+      ids,
+    },
   });
 export async function deleteBankQuestions(ids: string[]) {
   for (let start = 0; start < ids.length; start += 500)
     await writeUniversalQuestions({
       data: {
         token: getAccessToken(),
+        academicYear: getAcademicYear(),
         mode: "delete",
         rows: [],
         ids: ids.slice(start, start + 500),
