@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Plus, Search, School as SchoolIcon, ArrowUpDown, Users } from "lucide-react";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/academic-data";
 import { useAuth } from "@/lib/auth";
 import type { School } from "@/lib/types";
 import { Button } from "@/components/ui/button";

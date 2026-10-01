@@ -9,7 +9,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { GraduationCap, ArrowLeft, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -312,10 +312,7 @@ function RootComponent() {
 
     // Realtime may be unavailable on older deployments, so keep a quiet
     // fallback that refreshes active queries for other users' changes.
-    const fallback = window.setInterval(
-      () => void queryClient.invalidateQueries(),
-      60_000,
-    );
+    const fallback = window.setInterval(() => void queryClient.invalidateQueries(), 60_000);
     return () => {
       window.clearInterval(fallback);
       void supabase.removeChannel(channel);
@@ -338,6 +335,15 @@ function RootComponent() {
       window.removeEventListener("storage", clearOnAccountChange);
     };
   }, [queryClient]);
+  const [yearRevision, setYearRevision] = useState(0);
+  useEffect(() => {
+    const changed = () => {
+      queryClient.clear();
+      setYearRevision((v) => v + 1);
+    };
+    window.addEventListener("schoolrise:academic-year", changed);
+    return () => window.removeEventListener("schoolrise:academic-year", changed);
+  }, [queryClient]);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const onLogin = pathname === "/login" || pathname.startsWith("/.lovable");
   return (
@@ -348,7 +354,7 @@ function RootComponent() {
             <Outlet />
           </div>
         ) : (
-          <SidebarProvider>
+          <SidebarProvider key={yearRevision}>
             <AppSidebar />
             <SidebarInset className="min-h-screen bg-background text-foreground">
               <Header />

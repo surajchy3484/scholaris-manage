@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format, subDays, startOfWeek, startOfMonth, isAfter } from "date-fns";
 import { BarChart3 } from "lucide-react";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/academic-data";
 import type { Student, AttendanceRecord } from "@/lib/types";
 import { Card } from "@/components/ui/card";
 import {

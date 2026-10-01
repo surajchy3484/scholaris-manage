@@ -1,3 +1,4 @@
+import { getAcademicYear } from "@/lib/academic-year";
 import { useMasterPage } from "@/hooks/use-master-page";
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
@@ -25,7 +26,7 @@ import {
   pickDate,
   type ParsedBase,
 } from "@/components/master/sheet-import-dialog";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/academic-data";
 import {
   deleteRowsByIds,
   fetchAssessments,
@@ -328,7 +329,7 @@ function AssessmentsPage() {
               name,
               exam_type: (pick(row, "Exam Type", "exam_type") || "ICA").toUpperCase(),
               academic_year:
-                pick(row, "Academic Year", "academic_year") || String(new Date().getFullYear()),
+                pick(row, "Academic Year", "academic_year") || (getAcademicYear() ?? ""),
               subject: pick(row, "Subject", "subject") || null,
               class: pick(row, "Class", "class") || null,
               section: pick(row, "Section", "section") || null,

@@ -1,3 +1,4 @@
+import { getAcademicYear } from "@/lib/academic-year";
 import {
   fetchExamTypes,
   normalizeClass,
@@ -16,7 +17,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2, Upload } from "lucide-react";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/academic-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -256,7 +257,8 @@ function ClickerPage() {
   const assessments = useQuery({ queryKey: ["assessments"], queryFn: fetchAssessments });
   const facets = useQuery({
     queryKey: ["clicker-filter-options"],
-    queryFn: () => clickerFacets({ data: { token: getAccessToken() } }),
+    queryFn: () =>
+      clickerFacets({ data: { token: getAccessToken(), academicYear: getAcademicYear() } }),
     staleTime: 60_000,
   });
   const sortedAssessments = useMemo(
@@ -282,7 +284,11 @@ function ClickerPage() {
     enabled: visibleAssessmentIds.length > 0,
     queryFn: async () => {
       const questions = await listClickerQuestionKeys({
-        data: { token: getAccessToken(), assessmentIds: visibleAssessmentIds },
+        data: {
+          token: getAccessToken(),
+          academicYear: getAcademicYear(),
+          assessmentIds: visibleAssessmentIds,
+        },
       });
       const grouped = new Map<string, typeof questions>();
       for (const question of questions) {
@@ -354,6 +360,11 @@ function ClickerPage() {
 
   const columns = useMemo<GridColumn<ClickerRecord>[]>(() => {
     const base: GridColumn<ClickerRecord>[] = [
+      {
+        key: "academic_year",
+        label: "Academic Year",
+        value: (r) => r.academic_year ?? "Unassigned",
+      },
       { key: "exam_type", label: "Exam Type", value: (r) => r.exam_type ?? "Unassigned" },
       { key: "keypad_id", label: "Keypad ID", value: (r) => r.keypad_id },
       { key: "student_name", label: "Student Name", value: (r) => r.student_name },
@@ -378,6 +389,7 @@ function ClickerPage() {
         <AnswerCell
           value={r.answers[c] ?? ""}
           correctAnswer={
+            r.question_snapshot?.length ||
             types.data?.some((t) => t.name === r.exam_type && t.visible)
               ? (r.question_snapshot?.find(
                   (q) =>
@@ -603,6 +615,9 @@ function ClickerPage() {
             const keypad = pick(row, "Keypad ID", "keypad_id", "Keypad");
             const name = pick(row, "Student Name", "student_name", "Student", "Name");
             const errors: string[] = [];
+            const importedYear = pick(row, "Academic Year", "academic_year");
+            if (importedYear && importedYear !== getAcademicYear())
+              errors.push("Academic Year must match the selected year");
             if (!keypad) errors.push("Keypad ID required");
             if (!name) errors.push("Student name required");
             const answers: Record<string, string> = {};

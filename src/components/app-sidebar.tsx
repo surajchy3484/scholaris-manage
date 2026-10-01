@@ -1,3 +1,4 @@
+import { AcademicYearSelect } from "@/components/academic-year-select";
 import { useEffect, useState } from "react";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import {
@@ -46,6 +47,7 @@ import { BrandName } from "@/components/brand";
 const SCHOLARS_KEY = "scholaris:scholars-menu-open";
 
 const SCHOLARS_ITEMS = [
+  { to: "/academic-years", label: "Academic Year", icon: CalendarCheck, module: "students" as AppModule, match: (p: string) => p.startsWith("/academic-years") },
   {
     to: "/",
     label: "Student Management",
@@ -159,6 +161,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
+        <AcademicYearSelect />
         <SidebarGroup>
           <SidebarGroupLabel>Overview</SidebarGroupLabel>
           <SidebarGroupContent>

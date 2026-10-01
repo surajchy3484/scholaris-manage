@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { AlertTriangle, CheckCircle2, Download, Upload } from "lucide-react";
 import { downloadSampleSheet, EXAM_SAMPLE } from "@/lib/sample-templates";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/academic-data";
 import {
   Dialog,
   DialogContent,

@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PhotoPicker } from "./photo-picker";
 import { Checkbox } from "@/components/ui/checkbox";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/academic-data";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";

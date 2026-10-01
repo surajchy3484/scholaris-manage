@@ -1,3 +1,4 @@
+import { getAcademicYear } from "@/lib/academic-year";
 import { saveStudentDetails } from "@/lib/performance.functions";
 import { getAccessToken } from "@/lib/app-access";
 import { useEffect, useState } from "react";
@@ -5,7 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/academic-data";
 import {
   Dialog,
   DialogContent,
@@ -174,7 +175,7 @@ export function ExamStudentDialog({
       setStatus("Saving student...");
       const { id: studentId } = await saveStudentDetails({
         data: {
-          token: getAccessToken(),
+          token: getAccessToken(), academicYear: getAcademicYear(),
           module: "exam_report",
           schoolId,
           id: rest.mode === "edit" ? rest.student.id : undefined,

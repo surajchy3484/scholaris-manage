@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AcademicYearsRouteImport } from './routes/academic-years'
 import { Route as AssessmentsRouteImport } from './routes/assessments'
 import { Route as ClickerRouteImport } from './routes/clicker'
 import { Route as LoginRouteImport } from './routes/login'
@@ -31,6 +32,11 @@ import { Route as ExamReportSchoolIdStudentsRouteImport } from './routes/exam-re
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AcademicYearsRoute = AcademicYearsRouteImport.update({
+  id: '/academic-years',
+  path: '/academic-years',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AssessmentsRoute = AssessmentsRouteImport.update({
@@ -125,6 +131,7 @@ const ExamReportSchoolIdStudentsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/academic-years': typeof AcademicYearsRoute
   '/assessments': typeof AssessmentsRoute
   '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/academic-years': typeof AcademicYearsRoute
   '/assessments': typeof AssessmentsRoute
   '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
@@ -166,6 +174,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/academic-years': typeof AcademicYearsRoute
   '/assessments': typeof AssessmentsRoute
   '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/academic-years'
     | '/assessments'
     | '/clicker'
     | '/login'
@@ -208,6 +218,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/academic-years'
     | '/assessments'
     | '/clicker'
     | '/login'
@@ -228,6 +239,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/academic-years'
     | '/assessments'
     | '/clicker'
     | '/login'
@@ -249,6 +261,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AcademicYearsRoute: typeof AcademicYearsRoute
   AssessmentsRoute: typeof AssessmentsRoute
   ClickerRoute: typeof ClickerRoute
   LoginRoute: typeof LoginRoute
@@ -275,6 +288,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/academic-years': {
+      id: '/academic-years'
+      path: '/academic-years'
+      fullPath: '/academic-years'
+      preLoaderRoute: typeof AcademicYearsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/assessments': {
@@ -401,6 +421,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AcademicYearsRoute: AcademicYearsRoute,
   AssessmentsRoute: AssessmentsRoute,
   ClickerRoute: ClickerRoute,
   LoginRoute: LoginRoute,
