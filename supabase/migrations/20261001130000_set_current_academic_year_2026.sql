@@ -4,4 +4,9 @@ VALUES ('2026', '2026', false)
 ON CONFLICT (id) DO NOTHING;
 
 UPDATE public.academic_years
-SET is_current = (id = '2026');
+SET is_current = false
+WHERE is_current;
+
+UPDATE public.academic_years
+SET is_current = true
+WHERE id = '2026';
