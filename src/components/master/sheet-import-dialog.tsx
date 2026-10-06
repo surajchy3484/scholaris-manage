@@ -92,6 +92,7 @@ export function SheetImportDialog<T extends ParsedBase>({
   commit,
   columns,
   sample,
+  stats,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -101,6 +102,8 @@ export function SheetImportDialog<T extends ParsedBase>({
   commit: (valid: T[], onProgress?: (done: number) => void) => Promise<string>;
   columns: { label: string; get: (r: T) => ReactNode }[];
   sample?: { fileName: string; sheetName: string; rows: Record<string, string | number>[] };
+  /** Optional extra validation summary rendered under the counts. */
+  stats?: (rows: T[]) => ReactNode;
 }) {
   const [rows, setRows] = useState<T[]>([]);
   const [fileName, setFileName] = useState("");
@@ -228,6 +231,7 @@ export function SheetImportDialog<T extends ParsedBase>({
                   </Button>
                 )}
               </div>
+              {stats?.(rows)}
 
               {run.isPending && (
                 <div className="space-y-1">
