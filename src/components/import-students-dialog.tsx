@@ -155,6 +155,7 @@ export function ImportStudentsDialog({
     },
     onSuccess: (n) => {
       qc.invalidateQueries({ queryKey: ["students"] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
       toast.success(`Imported ${n} students`);
       reset();
@@ -163,6 +164,7 @@ export function ImportStudentsDialog({
     onError: (e: Error) => toast.error(e.message),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["students"] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
     },
   });

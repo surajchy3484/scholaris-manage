@@ -66,6 +66,8 @@ export function overallPerformance(
 }
 
 export type StudentReport = Student & {
+  academic_year?: string;
+  enrollment_status?: string;
   school_name: string;
   school_code: string;
   attendance_pct: number;
@@ -94,6 +96,8 @@ export type ExamData = {
   students: StudentReport[];
 };
 
+type EnrollmentStudent = Student & { academic_year: string; enrollment_status: string };
+
 type ScoreRow = {
   student_id: string;
   exam_type: string;
@@ -102,27 +106,33 @@ type ScoreRow = {
 };
 
 export async function fetchExamData(): Promise<ExamData> {
-  const [schoolsRes, studentRows, attendanceRows, scoreRows] = await Promise.all([
-    supabase.from("schools").select("*").order("name"),
-    fetchAllRows<Student>((from, to) =>
+  const [schoolRows, studentRows, attendanceRows, scoreRows] = await Promise.all([
+    fetchAllRows<School>((from, to) =>
+      supabase.from("schools").select("*").order("name").order("id").range(from, to),
+    ),
+    fetchAllRows<EnrollmentStudent>((from, to) =>
       supabase
         .from("students")
         .select(
-          "id,school_id,student_code,name,class,division,roll_number,photo_url,enrollment_date,created_at,updated_at",
+          "id,school_id,student_code,name,class,division,roll_number,photo_url,enrollment_date,created_at,updated_at,academic_year,enrollment_status",
         )
-        .range(from, to),
+        // The authorized proxy maps students reads to the academic_roster view.
+        .order("id")
+        .range(from, to)
+        .returns<EnrollmentStudent[]>(),
     ),
     fetchAllRows<{ student_id: string; status: string }>((from, to) =>
-      supabase.from("attendance").select("student_id,status").range(from, to),
+      supabase.from("attendance").select("student_id,status").order("id").range(from, to),
     ),
-    listExamScores({ data: { token: getAccessToken(), academicYear: getAcademicYear() } }) as Promise<ScoreRow[]>,
+    listExamScores({
+      data: { token: getAccessToken(), academicYear: getAcademicYear() },
+    }) as Promise<ScoreRow[]>,
   ]);
-  if (schoolsRes.error) throw schoolsRes.error;
   const studentsRes = { data: studentRows };
   const attendanceRes = { data: attendanceRows };
   const scoresRes = { data: scoreRows };
 
-  const schools = (schoolsRes.data ?? []) as School[];
+  const schools = schoolRows;
   const schoolById = new Map(schools.map((s) => [s.id, s]));
 
   const attTotals = new Map<string, { present: number; total: number }>();
@@ -140,7 +150,7 @@ export async function fetchExamData(): Promise<ExamData> {
     scores.set(row.student_id, m);
   }
 
-  const students: StudentReport[] = ((studentsRes.data ?? []) as Student[]).map((s) => {
+  const students: StudentReport[] = (studentsRes.data ?? []).map((s) => {
     const school = schoolById.get(s.school_id);
     const m = scores.get(s.id);
     const ica = m?.get("ICA")?.score ?? null;
@@ -257,7 +267,8 @@ export async function saveScore(params: {
   const { schoolId, studentId, examType, score, remarks } = params;
   await saveExamScore({
     data: {
-      token: getAccessToken(), academicYear: getAcademicYear(),
+      token: getAccessToken(),
+      academicYear: getAcademicYear(),
       schoolId,
       studentId,
       examType,
@@ -270,7 +281,9 @@ export async function saveScore(params: {
 /** Delete every exam score belonging to the given students. */
 export async function deleteScoresForStudentIds(studentIds: string[]) {
   if (studentIds.length === 0) return;
-  await deleteScoresForStudents({ data: { token: getAccessToken(), academicYear: getAcademicYear(), studentIds } });
+  await deleteScoresForStudents({
+    data: { token: getAccessToken(), academicYear: getAcademicYear(), studentIds },
+  });
 }
 
 export const CLASS_OPTIONS = Array.from({ length: 12 }, (_, i) => String(i + 1));

@@ -74,6 +74,7 @@ export function StudentCard({
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["students"] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       toast.success("Photo updated");
       setPhotoOpen(false);
     },
