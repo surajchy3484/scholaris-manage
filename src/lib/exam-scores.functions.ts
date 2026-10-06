@@ -110,7 +110,8 @@ export const saveExamScore = createServerFn({ method: "POST" })
         exam_type: examType,
         score,
         remarks: remarks ?? null,
-      });
+        // academic_year is injected by the year-scoped admin client.
+      } as never);
       if (error) throw new Error("Failed to save score");
     }
     return { ok: true };
