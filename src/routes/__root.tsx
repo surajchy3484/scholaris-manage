@@ -298,6 +298,8 @@ function RootComponent() {
       "session_division_status",
       "sessions",
       "students",
+      "student_enrollments",
+      "academic_years",
     ] as const;
     const channel = tables.reduce(
       (current, table) =>

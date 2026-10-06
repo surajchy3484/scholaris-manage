@@ -75,6 +75,8 @@ function AcademicYearsPage() {
       await fn();
       await qc.invalidateQueries({ queryKey: ["academic-years"] });
       await qc.invalidateQueries({ queryKey: ["enrollments"] });
+      await qc.invalidateQueries({ queryKey: ["exam-data"] });
+      await qc.invalidateQueries({ queryKey: ["schools"] });
       toast.success("Saved");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Unable to save");

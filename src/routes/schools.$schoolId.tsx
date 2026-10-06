@@ -207,6 +207,7 @@ function SchoolDetail() {
     onSuccess: (_data, id) => {
       setSelectedIds((current) => current.filter((selectedId) => selectedId !== id));
       qc.invalidateQueries({ queryKey: ["students", schoolId] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
       toast.success("Student deleted");
     },
@@ -230,12 +231,14 @@ function SchoolDetail() {
       setSelectedIds([]);
       setBulkDeleteOpen(false);
       qc.invalidateQueries({ queryKey: ["students", schoolId] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
       toast.success("Selected students deleted");
     },
     onError: (e: Error) => toast.error(e.message),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["students", schoolId] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
     },
   });
@@ -266,11 +269,13 @@ function SchoolDetail() {
       setMoveDivision("");
       setMoveRoll("");
       qc.invalidateQueries({ queryKey: ["students", schoolId] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       toast.success("Student details updated");
     },
     onError: (e: Error) => toast.error(e.message),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["students", schoolId] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
     },
   });

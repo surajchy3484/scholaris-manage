@@ -1,3 +1,7 @@
+import { getAcademicYear } from "@/lib/academic-year";
+import { getAccessToken } from "@/lib/app-access";
+import { activeReportRoster, schoolStudentCounts } from "@/lib/overall-student-counts";
+import { overallReportActivity } from "@/lib/overall-report.functions";
 import { VisualAnalytics, useVisualAnalytics } from "@/components/exam/visual-analytics";
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
@@ -130,7 +134,7 @@ function escapeHtml(value: unknown) {
 function reportShell(title: string, body: string) {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
   @page{size:A4;margin:11mm}body{font-family:Arial,sans-serif;color:#172033;font-size:11px;line-height:1.4;background:#f7f9fc}.report-frame{border:2px solid #173b71;border-radius:16px;padding:18px;background:#fff;box-shadow:inset 0 0 0 5px #eef2ff}.brand{display:flex;align-items:center;gap:14px;border:1px solid #c7d2fe;border-left:7px solid #e22f39;border-radius:12px;padding:10px 14px;background:linear-gradient(110deg,#eef2ff,#fff7ed);position:relative}.brand:after{content:"";position:absolute;left:0;right:0;bottom:-5px;height:3px;border-radius:4px;background:linear-gradient(90deg,#173b71,#7c3aed,#10b981,#f59e0b,#e22f39)}h1{font-size:22px;margin:0 0 3px;color:#173b71}h2{font-size:15px;border:1px solid #c7d2fe;border-left:6px solid #7c3aed;border-radius:8px;padding:7px 10px;margin:20px 0 8px;color:#173b71;background:linear-gradient(90deg,#eef2ff,#fff)}.reap-logo{width:150px;height:58px;object-fit:contain;object-position:left center}.logo{width:58px;height:58px;border:2px solid #173b71;border-radius:50%;display:grid;place-items:center;color:#e22f39;font-size:16px;font-weight:800}.muted{color:#667085}.meta{margin:10px 0 16px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 18px}.field{border:1px solid #dbe4f0;border-left:4px solid #06b6d4;border-radius:7px;padding:7px 9px;background:#fbfdff}.field b{display:inline-block;min-width:120px;color:#173b71}.summary{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.stat{border:1px solid #c7d2fe;border-top:4px solid #7c3aed;border-radius:9px;padding:10px;text-align:center;background:#fafaff}.stat:nth-child(2){border-top-color:#06b6d4}.stat:nth-child(3){border-top-color:#10b981}.stat:nth-child(4){border-top-color:#f59e0b}.stat:nth-child(5){border-top-color:#e22f39}.stat b{display:block;font-size:17px;color:#173b71}table{width:100%;border-collapse:separate;border-spacing:0;margin:9px 0 16px;border:1px solid #b8c5d9;border-radius:9px;overflow:hidden}th{background:linear-gradient(100deg,#173b71,#4f46e5);color:white;text-align:left}th,td{border-right:1px solid #d8e0ec;border-bottom:1px solid #d8e0ec;padding:7px}th:last-child,td:last-child{border-right:0}tr:last-child td{border-bottom:0}tr:nth-child(even){background:#f7f9fc}.right{text-align:right}.footer{margin-top:20px;border-top:1px solid #d8dee9;padding-top:10px;color:#667085;font-size:10px}.signature{border:1px dashed #94a3b8;border-radius:9px;min-height:60px;padding:10px;background:#fffdf5}
-  </style></head><body><div class="report-frame"><div class="brand"><img class="reap-logo" src="/reap-logo.png" alt="REAP logo"><div><h1>STUDENT PERFORMANCE REPORT</h1><div class="muted">SchoolRise · Student Learning &amp; Performance Management System</div></div></div>${body}<div class="footer">This is a computer-generated report. Academic Year: 2026–27 · REAP / SchoolRise</div></div></body></html>`;
+  </style></head><body><div class="report-frame"><div class="brand"><img class="reap-logo" src="/reap-logo.png" alt="REAP logo"><div><h1>STUDENT PERFORMANCE REPORT</h1><div class="muted">SchoolRise · Student Learning &amp; Performance Management System</div></div></div>${body}<div class="footer">This is a computer-generated report. Academic Year: ${escapeHtml(getAcademicYear() ?? "Current")} · REAP / SchoolRise</div></div></body></html>`;
 }
 
 function downloadWord(filename: string, html: string) {
@@ -181,14 +185,28 @@ function OverallReport() {
   const [studentPreviewOpen, setStudentPreviewOpen] = useState(false);
   const [search, setSearch] = useState("");
   const { data, isLoading, error } = useQuery({
-    queryKey: ["exam-data"],
+    queryKey: ["exam-data", getAcademicYear()],
     queryFn: fetchExamData,
-    staleTime: 5 * 60_000,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchInterval: 30_000,
     gcTime: 30 * 60_000,
   });
 
   const schools = data?.schools ?? [];
-  const students = useMemo(() => data?.students ?? [], [data?.students]);
+  const roster = useMemo(
+    () => activeReportRoster(data?.students ?? [], data?.schools ?? [], getAcademicYear()),
+    [data],
+  );
+  const students = roster.students;
+  const activity = useQuery({
+    queryKey: ["overall-report-activity", getAcademicYear()],
+    queryFn: () =>
+      overallReportActivity({ data: { token: getAccessToken(), academicYear: getAcademicYear() } }),
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchInterval: 30_000,
+  });
   const classes = useMemo(
     () =>
       [
@@ -214,12 +232,36 @@ function OverallReport() {
   });
   const selectedStudent = visibleStudents.find((s) => s.id === studentId) ?? visibleStudents[0];
 
-  const reports = useMemo(() => buildSchoolReports(data ?? { schools: [], students: [] }), [data]);
+  const selectedSchools = schools.filter((s) => schoolId === "all" || s.id === schoolId);
+  const reports = buildSchoolReports({ schools: selectedSchools, students: visibleStudents });
+  const schoolCounts = schoolStudentCounts(
+    selectedSchools,
+    visibleStudents,
+    activity.data?.sessions ?? [],
+    activity.data?.assessments ?? [],
+    classKey,
+  );
+  const schoolTableHeaders = [
+    "School Name",
+    "Location",
+    "Total Students",
+    "Classes",
+    "Sessions",
+    "Assessments",
+  ];
+  const schoolTableRows = schoolCounts.map((r) => [
+    r.school.name,
+    r.school.location,
+    r.totalStudents,
+    r.classes,
+    activity.data ? r.sessions : "—",
+    activity.data ? r.assessments : "—",
+  ]);
   const classReports = useMemo(() => buildClassReports(visibleStudents), [visibleStudents]);
 
   const analytics = useVisualAnalytics({
-    students,
-    schools,
+    students: visibleStudents,
+    schools: selectedSchools,
     schoolId,
     schoolName: selectedSchool?.name ?? "",
     classKey,
@@ -228,12 +270,13 @@ function OverallReport() {
   });
   const analyticsRequired =
     mode === "class" || mode === "school" || (mode === "student" && schoolId !== "all");
-  const exportDisabled = analyticsRequired && !analytics.ready;
+  const exportDisabled =
+    (analyticsRequired && !analytics.ready) ||
+    ((mode === "overall" || mode === "school") && !activity.data);
 
   const buildReport = () => {
     const schoolRows = reports.filter((r) => schoolId === "all" || r.school.id === schoolId);
-    const all = schoolRows.flatMap((r) => students.filter((s) => s.school_id === r.school.id));
-    const base = all.length ? all : visibleStudents;
+    const base = visibleStudents;
     const total = base.length;
     const body = (() => {
       if (mode === "student")
@@ -277,7 +320,7 @@ function OverallReport() {
       const mca = avg(base.filter((s) => s.mca != null).map((s) => s.mca as number));
       const fca = avg(base.filter((s) => s.fca != null).map((s) => s.fca as number));
       const performance = avg(base.map((s) => s.performance));
-      return `<h2>OVERALL SUMMARY</h2><div class="summary"><div class="stat"><b>${schools.length}</b>Schools</div><div class="stat"><b>${total}</b>Students</div><div class="stat"><b>${attendance}%</b>Attendance</div><div class="stat"><b>${ica}%</b>ICA Average</div><div class="stat"><b>${performance}%</b>Overall</div></div>${table(
+      return `<h2>OVERALL SUMMARY</h2><div class="summary"><div class="stat"><b>${selectedSchools.length}</b>Schools</div><div class="stat"><b>${total}</b>Students</div><div class="stat"><b>${attendance}%</b>Attendance</div><div class="stat"><b>${ica}%</b>ICA Average</div><div class="stat"><b>${performance}%</b>Overall</div></div>${table(
         ["Metric", "Value", "Grade"],
         [
           ["ICA Average", ica, grade(ica)],
@@ -289,7 +332,9 @@ function OverallReport() {
     })();
     return reportShell(
       modeOptions.find((m) => m.value === mode)?.label ?? "Overall Report",
-      body,
+      (mode === "overall" || mode === "school"
+        ? `<h2>Schools</h2>${table(schoolTableHeaders, schoolTableRows)}`
+        : "") + body,
     ).replace('src="/reap-logo.png"', `src="${window.location.origin}/reap-logo.png"`);
   };
 
@@ -474,6 +519,26 @@ function OverallReport() {
         </Dialog>
       )}
 
+      {roster.duplicateRows > 0 && (
+        <p role="status" className="text-sm text-muted-foreground">
+          {roster.duplicateRows} duplicate student record(s) excluded from counts. Review duplicate
+          Student IDs in the student list.
+        </p>
+      )}
+      {(mode === "overall" || mode === "school") && (
+        <>
+          <p className="text-sm text-muted-foreground">
+            Academic Year: {getAcademicYear() ?? "Current"} · Total Students:{" "}
+            {visibleStudents.length} · Active enrollments
+          </p>
+          {activity.error && (
+            <p role="alert" className="text-sm text-destructive">
+              Session and assessment counts could not load. Student totals remain available.
+            </p>
+          )}
+          <PreviewTable title="Schools" headers={schoolTableHeaders} rows={schoolTableRows} />
+        </>
+      )}
       <VisualAnalytics analytics={analytics} />
 
       {(!analyticsRequired || (mode === "school" && schoolId === "all")) && (
@@ -659,7 +724,9 @@ function StudentPreview({
         />
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-2xl font-bold">STUDENT PERFORMANCE MARKSHEET</h2>
-          <p className="text-sm text-muted-foreground">Academic Year: 2026–27 · SchoolRise</p>
+          <p className="text-sm text-muted-foreground">
+            Academic Year: ${escapeHtml(getAcademicYear() ?? "Current")} · SchoolRise
+          </p>
         </div>
         <Button type="button" size="sm" onClick={onDownloadPdf} className="shrink-0">
           <Printer className="h-4 w-4" /> Download PDF

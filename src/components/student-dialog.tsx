@@ -192,6 +192,7 @@ export function StudentDialog({
     onSuccess: () => {
       setStatus("");
       qc.invalidateQueries({ queryKey: ["students"] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
       toast.success(isEdit ? "Student updated" : "Student added");
       onOpenChange(false);
