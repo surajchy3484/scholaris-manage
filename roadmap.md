@@ -16,3 +16,9 @@
 - Virtualised tables and lazy-loaded photos
 - UI animation polish: page transitions, cards, dialogs, dropdowns, tabs, stat counters (respect reduced motion)
 - Dashboard visual refresh
+
+## Clicker Master → Student Score Integration
+- [x] Match clicker rows to Student Master by Student ID / student code, else exact Name+Roll+Class+Section (no new students created)
+- [x] Import preview: Matched / New Results / Updated Scores / Unmatched / Duplicate counts; unmatched rows blocked and listed in error report
+- [x] Re-upload updates the existing result instead of duplicating
+- [x] Scores flow to exam_scores (per student, exam type, academic year) → all reports
