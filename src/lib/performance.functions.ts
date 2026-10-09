@@ -411,6 +411,44 @@ export const saveStudentDetails = createServerFn({ method: "POST" })
     if (error || !row) throw new Error("Unable to add student; check duplicate ID or roll number");
     return row;
   });
+export const createStudentFromClicker = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        academicYear: z.string().max(80).optional(),
+        token: z.string().min(1),
+        schoolId: z.string().uuid(),
+        name: z.string().trim().min(1).max(300),
+        class: z.string().trim().min(1).max(100),
+        division: z.string().trim().min(1).max(100),
+        roll_number: z.string().trim().min(1).max(100),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const profile = await requirePermission(data.token, "clicker", "add");
+    if (!canSeeSchool(profile, data.schoolId)) throw new Error("School access denied");
+    const db = await academicDb(data.academicYear);
+    const code = await db.rpc("academic_next_student_code", { p_school: data.schoolId });
+    if (code.error || !code.data)
+      throw new Error(code.error?.message ?? "Unable to generate Student ID");
+    const result = await db
+      .from("students")
+      .insert({
+        school_id: data.schoolId,
+        student_code: code.data as string,
+        name: data.name,
+        class: data.class,
+        division: data.division,
+        roll_number: data.roll_number,
+        photo_url: null,
+      })
+      .select("id,student_code")
+      .single();
+    if (result.error || !result.data)
+      throw new Error(result.error?.message ?? "Unable to add student from Clicker data");
+    return result.data;
+  });
 export const updateStudentGrouping = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z

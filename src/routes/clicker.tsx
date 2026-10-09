@@ -53,6 +53,7 @@ import {
 import { clickerSample } from "@/lib/sample-templates";
 import { RequireModule } from "@/components/require-module";
 import { fetchAllRows } from "@/lib/fetch-all";
+import { createStudentFromClicker } from "@/lib/performance.functions";
 
 export const Route = createFileRoute("/clicker")({
   head: () => ({
@@ -94,7 +95,7 @@ type ParsedClicker = ParsedBase & {
   ranking: number | null;
   answers: Record<string, string>;
   _existingId?: string | null;
-  _match?: "matched" | "update" | "unmatched" | "duplicate";
+  _match?: "matched" | "create" | "created" | "update" | "unmatched" | "duplicate";
 };
 
 function sameValue(left: string | null | undefined, right: string | null | undefined) {
@@ -224,10 +225,28 @@ async function linkStudents(
     const school = byAid.get(row.assessment_id)?.school_id;
     const studentId = resolveStudentId(row, school ? (lookup.get(school) ?? []) : []);
     if (!studentId) {
+      if (school && row.student_name && row.class && row.section && row.roll_number) {
+        const createKey = [
+          school,
+          normalizeMatch(row.student_name),
+          normalizeMatch(row.class),
+          normalizeMatch(row.section),
+          normalizeMatch(row.roll_number),
+        ].join("|");
+        if (seen.has(`create|${createKey}`)) {
+          row.duplicate = true;
+          row.errors.push("Duplicate new student details in the selected files");
+          row._match = "duplicate";
+          continue;
+        }
+        seen.add(`create|${createKey}`);
+        row._match = "create";
+        continue;
+      }
       row.errors.push(
         row.student_id
           ? `Student ID "${row.student_id}" not found in this school's Student Master`
-          : `Unmatched student "${row.student_name}". Add Student ID or exact Name + Roll + Class + Section`,
+          : `Unmatched student "${row.student_name}". Name, Roll, Class and Section are required to create the student`,
       );
       row._match = "unmatched";
       continue;
@@ -681,7 +700,7 @@ function ClickerPage() {
         title="Import clicker data"
         sample={clickerSample(questionCols)}
         multiple
-        description="Include Exam Type and Class. Include Assessment ID to identify the school/session; ambiguous matches are rejected. Use S1 or 1-S1 answer columns. Scores and rankings are calculated on the server; uploaded totals are ignored."
+        description="Include Exam Type, Class, Section, Roll and Student Name. Missing students are created in the assessment school without a photo. Include Assessment ID to identify the school/session; ambiguous matches are rejected. Use S1 or 1-S1 answer columns. Scores and rankings are calculated on the server; uploaded totals are ignored."
         parse={(raw) => {
           const known = new Set([
             "assessment id",
@@ -769,24 +788,32 @@ function ClickerPage() {
             get: (r) =>
               r._match === "update"
                 ? "Updates score"
-                : r._match === "matched"
-                  ? "Matched"
-                  : r._match === "duplicate"
-                    ? "Duplicate"
-                    : "Unmatched",
+                : r._match === "create"
+                  ? "Creates student"
+                  : r._match === "created"
+                    ? "Student created"
+                    : r._match === "matched"
+                      ? "Matched"
+                      : r._match === "duplicate"
+                        ? "Duplicate"
+                        : "Unmatched",
           },
         ]}
         stats={(rows) => {
           const count = (m: ParsedClicker["_match"]) => rows.filter((r) => r._match === m).length;
           const updated = count("update");
           const fresh = count("matched");
+          const created = count("create") + count("created");
           return (
-            <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs sm:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs sm:grid-cols-6">
               <span>
                 <b>Matched Students:</b> {fresh + updated}
               </span>
               <span>
                 <b>New Results:</b> {fresh}
+              </span>
+              <span>
+                <b>New Students:</b> {created}
               </span>
               <span>
                 <b>Updated Scores:</b> {updated}
@@ -827,10 +854,36 @@ function ClickerPage() {
               school_name: a?.school_name ?? null,
             };
           };
+          const toCreate = valid.filter((r) => r._match === "create");
+          let done = 0;
+          for (const row of toCreate) {
+            const assessmentRow = (assessments.data ?? []).find(
+              (a) => a.assessment_id === row.assessment_id,
+            );
+            if (!assessmentRow?.school_id || !row.class || !row.section || !row.roll_number)
+              throw new Error(
+                `Cannot create student "${row.student_name}": missing school or student details`,
+              );
+            const created = await createStudentFromClicker({
+              data: {
+                token: getAccessToken(),
+                academicYear: getAcademicYear(),
+                schoolId: assessmentRow.school_id,
+                name: row.student_name,
+                class: row.class,
+                division: row.section,
+                roll_number: row.roll_number,
+              },
+            });
+            row.student_id = created.id;
+            row._match = "created";
+            done++;
+            onProgress?.(done);
+          }
           const inserts = valid.filter((r) => !r._existingId).map(toPayload);
           const updates = valid.filter((r) => r._existingId);
           if (inserts.length) await insertRows("clicker_records", inserts, 300);
-          let done = inserts.length;
+          done = inserts.length;
           onProgress?.(done);
           for (let i = 0; i < updates.length; i += 5) {
             await Promise.all(
