@@ -26,7 +26,22 @@ BEGIN
   FOREACH t IN ARRAY tables LOOP
     EXECUTE format('LOCK TABLE public.%I IN ACCESS EXCLUSIVE MODE',t);
   END LOOP;
-  SELECT id INTO STRICT yr FROM public.academic_years WHERE is_current;
+  -- Older databases can contain academic years without a current flag. Pick
+  -- the newest available year in that case; if the table is empty, create the
+  -- application baseline year instead of aborting with SELECT INTO STRICT.
+  SELECT id INTO yr FROM public.academic_years WHERE is_current LIMIT 1;
+  IF yr IS NULL THEN
+    SELECT id INTO yr FROM public.academic_years
+      WHERE NOT is_archived ORDER BY id DESC LIMIT 1;
+    IF yr IS NULL THEN
+      INSERT INTO public.academic_years(id,name,is_current)
+        VALUES('2026-27','2026–27',true)
+        ON CONFLICT(id) DO UPDATE SET is_current=true;
+      yr := '2026-27';
+    ELSE
+      UPDATE public.academic_years SET is_current=(id=yr), is_archived=(id<>yr);
+    END IF;
+  END IF;
   -- These records cannot be folded into one year without losing a distinct value.
   IF EXISTS(SELECT 1 FROM public.exam_scores GROUP BY student_id,exam_type,coalesce(subject,'') HAVING count(*)>1) THEN
     RAISE EXCEPTION 'Current-year correction stopped: conflicting exam scores across year labels. No records changed. Review the duplicate student/exam/subject records before retrying.';
