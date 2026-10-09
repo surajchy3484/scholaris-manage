@@ -89,7 +89,7 @@ export function StudentDialog({
     if (!cls.trim()) e.class = "Class is required.";
     if (!division.trim()) e.division = "Division is required.";
     if (!roll.trim()) e.roll = "Roll number is required.";
-    if (!photo) e.photo = "Student photo is required.";
+    if (!isEdit && !photo) e.photo = "Student photo is required when adding a student.";
     return e;
   }
 
@@ -219,7 +219,11 @@ export function StudentDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit student" : "Add student"}</DialogTitle>
-          <DialogDescription>All fields are required, including a photo.</DialogDescription>
+          <DialogDescription>
+            {isEdit
+              ? "Update the student details. A photo is optional when editing."
+              : "All fields are required, including a photo."}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
