@@ -184,7 +184,11 @@ export const saveUser = createServerFn({ method: "POST" })
 
     if (data.id) {
       const patch = data.password
-        ? { ...base, password_hash: await hashPassword(data.password) }
+        ? {
+            ...base,
+            password_hash: await hashPassword(data.password),
+            password_changed_at: new Date().toISOString(),
+          }
         : base;
       const { error } = await db.from("app_users").update(patch).eq("id", data.id);
       if (error) {
@@ -240,7 +244,10 @@ export const resetUserPassword = createServerFn({ method: "POST" })
     const db = await adminDb();
     const { error } = await db
       .from("app_users")
-      .update({ password_hash: await hashPassword(data.password) })
+      .update({
+        password_hash: await hashPassword(data.password),
+        password_changed_at: new Date().toISOString(),
+      })
       .eq("id", data.id);
     if (error) throw new Error("Failed to reset password");
     return { ok: true };

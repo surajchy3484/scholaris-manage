@@ -104,10 +104,14 @@ export async function verifyPassword(password: string, stored: string): Promise<
 
 /** ---------- session tokens ---------- */
 
-type TokenPayload = { uid: string; exp: number };
+type TokenPayload = { uid: string; exp: number; iat: number };
 
 export async function issueToken(userId: string): Promise<string> {
-  const payload: TokenPayload = { uid: userId, exp: Date.now() + SESSION_TTL_MS };
+  const payload: TokenPayload = {
+    uid: userId,
+    exp: Date.now() + SESSION_TTL_MS,
+    iat: Date.now(),
+  };
   const body = b64url(encoder.encode(JSON.stringify(payload)));
   return `${TOKEN_PREFIX}${body}.${await hmac(body)}`;
 }
@@ -156,12 +160,21 @@ export async function resolveAccess(token: string): Promise<AccessProfile> {
   const db = await adminDb();
   const { data, error } = await db
     .from("app_users")
-    .select("id,username,full_name,role,is_active,permissions,school_ids,all_schools")
+    .select(
+      "id,username,full_name,role,is_active,permissions,school_ids,all_schools,password_changed_at",
+    )
     .eq("id", payload.uid)
     .maybeSingle();
   if (error) throw new Error("Unauthorized");
   if (!data) throw new Error("Unauthorized");
   if (!data.is_active) throw new Error("This account has been disabled.");
+
+  // Any session created before the last password change is revoked, so
+  // changing a password signs out every device still using the old one.
+  const changedAt = data.password_changed_at ? Date.parse(data.password_changed_at) : 0;
+  if (changedAt && (payload.iat ?? 0) < changedAt - 1000) {
+    throw new Error("Session expired. Please sign in again.");
+  }
 
   return {
     userId: data.id,

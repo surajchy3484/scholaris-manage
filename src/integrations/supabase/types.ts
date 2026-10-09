@@ -46,6 +46,7 @@ export type Database = {
           last_login_at: string | null
           login_count: number
           must_change_password: boolean
+          password_changed_at: string
           password_hash: string
           permissions: Json
           phone: string | null
@@ -64,6 +65,7 @@ export type Database = {
           last_login_at?: string | null
           login_count?: number
           must_change_password?: boolean
+          password_changed_at?: string
           password_hash: string
           permissions?: Json
           phone?: string | null
@@ -82,6 +84,7 @@ export type Database = {
           last_login_at?: string | null
           login_count?: number
           must_change_password?: boolean
+          password_changed_at?: string
           password_hash?: string
           permissions?: Json
           phone?: string | null
