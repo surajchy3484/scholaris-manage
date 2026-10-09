@@ -680,6 +680,7 @@ function ClickerPage() {
         onOpenChange={setImportOpen}
         title="Import clicker data"
         sample={clickerSample(questionCols)}
+        multiple
         description="Include Exam Type and Class. Include Assessment ID to identify the school/session; ambiguous matches are rejected. Use S1 or 1-S1 answer columns. Scores and rankings are calculated on the server; uploaded totals are ignored."
         parse={(raw) => {
           const known = new Set([

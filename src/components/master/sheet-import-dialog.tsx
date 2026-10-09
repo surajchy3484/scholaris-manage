@@ -93,6 +93,7 @@ export function SheetImportDialog<T extends ParsedBase>({
   columns,
   sample,
   stats,
+  multiple = false,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -104,6 +105,8 @@ export function SheetImportDialog<T extends ParsedBase>({
   sample?: { fileName: string; sheetName: string; rows: Record<string, string | number>[] };
   /** Optional extra validation summary rendered under the counts. */
   stats?: (rows: T[]) => ReactNode;
+  /** Allow selecting and validating several workbooks as one import batch. */
+  multiple?: boolean;
 }) {
   const [rows, setRows] = useState<T[]>([]);
   const [fileName, setFileName] = useState("");
@@ -170,24 +173,35 @@ export function SheetImportDialog<T extends ParsedBase>({
           <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border p-8 text-center transition hover:border-primary/60 hover:bg-muted/40">
             <Upload className="h-6 w-6 text-primary" />
             <span className="text-sm font-medium">
-              {fileName || "Choose an .xlsx, .xls or .csv file"}
+              {fileName ||
+                (multiple
+                  ? "Choose one or more Excel/CSV files"
+                  : "Choose an .xlsx, .xls or .csv file")}
             </span>
             {reading && <span className="text-xs text-muted-foreground">Reading file…</span>}
             <input
               type="file"
               accept=".xls,.xlsx,.csv"
+              multiple={multiple}
               className="hidden"
               onChange={async (e) => {
-                const f = e.target.files?.[0];
-                if (!f) return;
+                const files = Array.from(e.target.files ?? []);
+                if (!files.length) return;
                 setSummary(null);
-                setFileName(f.name);
+                setFileName(files.length === 1 ? files[0].name : `${files.length} files selected`);
                 setReading(true);
                 await tick();
                 try {
-                  const raw = await readSheet(f);
-                  if (raw.length === 0) throw new Error("That file has no data rows");
-                  setRows(await parse(raw));
+                  const combined: Record<string, unknown>[] = [];
+                  const sourceFiles: string[] = [];
+                  for (const file of files) {
+                    const raw = await readSheet(file);
+                    if (raw.length === 0) throw new Error(`${file.name} has no data rows`);
+                    combined.push(...raw);
+                    sourceFiles.push(...raw.map(() => file.name));
+                  }
+                  const parsed = await parse(combined);
+                  setRows(parsed.map((row, index) => ({ ...row, _file: sourceFiles[index] })));
                 } catch (err) {
                   setRows([]);
                   toast.error(err instanceof Error ? err.message : "Could not read that file");
@@ -252,6 +266,7 @@ export function SheetImportDialog<T extends ParsedBase>({
                   <thead className="sticky top-0 bg-muted">
                     <tr>
                       <th className="px-2 py-2 text-left font-semibold">Row</th>
+                      {showFiles && <th className="px-2 py-2 text-left font-semibold">File</th>}
                       {columns.map((c) => (
                         <th key={c.label} className="px-2 py-2 text-left font-semibold">
                           {c.label}
@@ -263,10 +278,11 @@ export function SheetImportDialog<T extends ParsedBase>({
                   <tbody>
                     {rows.slice(0, 400).map((r) => (
                       <tr
-                        key={r._row}
+                        key={`${r._file ?? "file"}-${r._row}`}
                         className={r.errors.length ? "bg-destructive/5" : "border-t border-border"}
                       >
                         <td className="px-2 py-1.5">{r._row}</td>
+                        {showFiles && <td className="max-w-40 truncate px-2 py-1.5">{r._file}</td>}
                         {columns.map((c) => (
                           <td key={c.label} className="whitespace-nowrap px-2 py-1.5">
                             {c.get(r)}
