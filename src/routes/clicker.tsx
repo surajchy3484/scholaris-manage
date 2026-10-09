@@ -169,7 +169,9 @@ function resolveStudentId(row: ParsedClicker, students: StudentLookup[]) {
     const hit = students.find(
       (s) => s.id.toLowerCase() === sid || normalizeMatch(s.student_code) === sid,
     );
-    return hit?.id ?? null;
+    if (hit) return hit.id;
+    // A stale Student ID should not block a safe fallback match using the
+    // unique Roll Number + Class + Section identity below.
   }
   const name = normalizeMatch(row.student_name);
   const roll = normalizeMatch(row.roll_number);
