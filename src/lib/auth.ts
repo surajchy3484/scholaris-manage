@@ -62,8 +62,14 @@ export async function refreshProfileFromServer() {
     const { getAccessToken } = await import("@/lib/app-access");
     const profile = await currentProfile({ data: { token: getAccessToken() } });
     updateStoredProfile(profile);
-  } catch {
-    // Offline or expired token: keep whatever we have; server calls will fail loudly.
+  } catch (error) {
+    // The server rejected the session (expired, disabled, or the password
+    // changed): sign out locally so the user is sent back to the login page.
+    const message = error instanceof Error ? error.message : "";
+    if (/session expired|unauthorized|disabled/i.test(message)) {
+      logoutLocal();
+    }
+    // Otherwise (offline etc.) keep whatever we have; server calls will fail loudly.
   }
 }
 
