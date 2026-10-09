@@ -71,9 +71,9 @@ export function useMasterPage<T>(
   const query = useQuery({
     queryKey: [table === "clicker_records" ? "clicker" : table, "page", args],
     queryFn: () =>
-      listMasterPage({ data: { token: getAccessToken(), academicYear: getAcademicYear(), table, ...args } }) as Promise<
-        PageResult<T>
-      >,
+      listMasterPage({
+        data: { token: getAccessToken(), academicYear: getAcademicYear(), table, ...args },
+      }) as Promise<PageResult<T>>,
   });
   useEffect(() => {
     if (query.data && request.page > 0 && request.page * request.pageSize >= query.data.total)
@@ -93,7 +93,14 @@ export function useMasterPage<T>(
         // Export uses the same server filters and ordering, not just the visible page.
         for (let page = 0; ; page++) {
           const result = (await listMasterPage({
-            data: { token: getAccessToken(), academicYear: getAcademicYear(), table, ...args, page, pageSize: batch },
+            data: {
+              token: getAccessToken(),
+              academicYear: getAcademicYear(),
+              table,
+              ...args,
+              page,
+              pageSize: batch,
+            },
           })) as PageResult<T>;
           rows.push(...result.rows);
           if (result.rows.length < batch || rows.length >= result.total) break;

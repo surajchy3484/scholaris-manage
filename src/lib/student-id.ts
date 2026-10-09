@@ -8,7 +8,7 @@ export function formatStudentCode(schoolCode: string, seq: number): string {
 
 // Compute the next sequence for a school by looking at existing student codes.
 export async function nextStudentCode(schoolId: string, schoolCode: string): Promise<string> {
-  return nextPermanentStudentCode({data:{token:getAccessToken(),schoolId}});
+  return nextPermanentStudentCode({ data: { token: getAccessToken(), schoolId } });
 }
 
 export function isStudentUniqueConflict(error: unknown): boolean {

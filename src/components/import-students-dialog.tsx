@@ -128,7 +128,8 @@ export function ImportStudentsDialog({
             try {
               added += await importStudentBatch({
                 data: {
-                  token: getAccessToken(), academicYear: getAcademicYear(),
+                  token: getAccessToken(),
+                  academicYear: getAcademicYear(),
                   schoolId: school.id,
                   rows: batch.map(({ name, class: klass, division, roll_number }) => ({
                     name,

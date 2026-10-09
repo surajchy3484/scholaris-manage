@@ -56,7 +56,11 @@ function QuestionsPage() {
   const list = useMasterPage<BankQuestion>("questions", { examType: exam, className: cls });
   const classOptions = useMemo(
     () =>
-      [...new Set((availableQuestions.data ?? []).map((question) => normalizeClass(question.class)))]
+      [
+        ...new Set(
+          (availableQuestions.data ?? []).map((question) => normalizeClass(question.class)),
+        ),
+      ]
         .filter(Boolean)
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
     [availableQuestions.data],

@@ -72,7 +72,6 @@ export const listMasterRows = createServerFn({ method: "POST" })
     return out;
   });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const rowSchema = z.record(z.string(), z.any());
 
 const insertSchema = tokenSchema.extend({

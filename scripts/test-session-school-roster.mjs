@@ -42,7 +42,14 @@ const tables = {
     { id: "99998", school_id: B, class: "9", division: "B" },
   ],
   sessions: [
-    { id, school_id: A, unit: "Unit-1", class: "5", academic_year: "2026-27", session_name: "First" },
+    {
+      id,
+      school_id: A,
+      unit: "Unit-1",
+      class: "5",
+      academic_year: "2026-27",
+      session_name: "First",
+    },
     { id: other, school_id: B, unit: "Unit-1", class: "5", academic_year: "2026-27" },
   ],
   session_division_status: [],

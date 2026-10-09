@@ -149,7 +149,10 @@ function SchoolDetail() {
 
   const facets = useQuery({
     queryKey: ["students", schoolId, "facets"],
-    queryFn: () => studentFacets({ data: { token: getAccessToken(), academicYear: getAcademicYear(), schoolId } }),
+    queryFn: () =>
+      studentFacets({
+        data: { token: getAccessToken(), academicYear: getAcademicYear(), schoolId },
+      }),
   });
   const pageQuery = useQuery({
     queryKey: [
@@ -166,7 +169,8 @@ function SchoolDetail() {
     queryFn: () =>
       listStudentDetails({
         data: {
-          token: getAccessToken(), academicYear: getAcademicYear(),
+          token: getAccessToken(),
+          academicYear: getAcademicYear(),
           module: "students",
           ...scoreArgs,
           schoolId,
@@ -201,7 +205,13 @@ function SchoolDetail() {
   const del = useMutation({
     mutationFn: async (id: string) => {
       await deleteStudentDetails({
-        data: { token: getAccessToken(), academicYear: getAcademicYear(), module: "students", schoolId, ids: [id] },
+        data: {
+          token: getAccessToken(),
+          academicYear: getAcademicYear(),
+          module: "students",
+          schoolId,
+          ids: [id],
+        },
       });
     },
     onSuccess: (_data, id) => {
@@ -219,7 +229,8 @@ function SchoolDetail() {
       for (let offset = 0; offset < ids.length; offset += 250) {
         await deleteStudentDetails({
           data: {
-            token: getAccessToken(), academicYear: getAcademicYear(),
+            token: getAccessToken(),
+            academicYear: getAcademicYear(),
             module: "students",
             schoolId,
             ids: ids.slice(offset, offset + 250),
@@ -254,7 +265,8 @@ function SchoolDetail() {
       for (let offset = 0; offset < ids.length; offset += 250) {
         await updateStudentGrouping({
           data: {
-            token: getAccessToken(), academicYear: getAcademicYear(),
+            token: getAccessToken(),
+            academicYear: getAcademicYear(),
             schoolId,
             ids: ids.slice(offset, offset + 250),
             values: payload,
@@ -329,7 +341,8 @@ function SchoolDetail() {
       for (let selectedPage = 0; ; selectedPage++) {
         const result = await listStudentDetails({
           data: {
-            token: getAccessToken(), academicYear: getAcademicYear(),
+            token: getAccessToken(),
+            academicYear: getAcademicYear(),
             module: "students",
             ...scoreFilters,
             min: scoreFilters.min === "" ? null : Number(scoreFilters.min),

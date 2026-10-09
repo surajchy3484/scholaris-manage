@@ -358,7 +358,7 @@ function AssessmentsPage() {
           for (let i = 0; i < valid.length; i += chunk) {
             const payload = valid
               .slice(i, i + chunk)
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
               .map(({ _row, errors, duplicate, ...rest }) => rest);
             await insertRows("assessments", payload);
             onProgress?.(Math.min(i + chunk, valid.length));

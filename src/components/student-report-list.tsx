@@ -79,12 +79,27 @@ export function StudentReportList({
   const list = useQuery({
     queryKey: ["students", schoolId, "report-list", args, page],
     queryFn: () =>
-      listStudentDetails({ data: { token: getAccessToken(), academicYear: getAcademicYear(), ...args, page, pageSize: 50 } }),
+      listStudentDetails({
+        data: {
+          token: getAccessToken(),
+          academicYear: getAcademicYear(),
+          ...args,
+          page,
+          pageSize: 50,
+        },
+      }),
   });
   const facets = useQuery({
     queryKey: ["students", schoolId, "report-facets"],
     queryFn: () =>
-      studentFacets({ data: { token: getAccessToken(), academicYear: getAcademicYear(), schoolId, module: "exam_report" } }),
+      studentFacets({
+        data: {
+          token: getAccessToken(),
+          academicYear: getAcademicYear(),
+          schoolId,
+          module: "exam_report",
+        },
+      }),
   });
   const school = useQuery({
     queryKey: ["school", schoolId],
@@ -105,7 +120,13 @@ export function StudentReportList({
     const result: StudentListRow[] = [];
     for (let page = 0; ; page++) {
       const part = await listStudentDetails({
-        data: { token: getAccessToken(), academicYear: getAcademicYear(), ...args, page, pageSize: 250 },
+        data: {
+          token: getAccessToken(),
+          academicYear: getAcademicYear(),
+          ...args,
+          page,
+          pageSize: 250,
+        },
       });
       result.push(...part.rows);
       if (part.rows.length < 250 || result.length >= part.total) break;
@@ -134,7 +155,8 @@ export function StudentReportList({
       for (let start = 0; start < items.length; start += 250)
         await deleteStudentDetails({
           data: {
-            token: getAccessToken(), academicYear: getAcademicYear(),
+            token: getAccessToken(),
+            academicYear: getAcademicYear(),
             module: "exam_report",
             schoolId,
             ids: items.slice(start, start + 250).map((r) => r.id),

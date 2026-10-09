@@ -47,7 +47,13 @@ import { BrandName } from "@/components/brand";
 const SCHOLARS_KEY = "scholaris:scholars-menu-open";
 
 const SCHOLARS_ITEMS = [
-  { to: "/academic-years", label: "Academic Year", icon: CalendarCheck, module: "students" as AppModule, match: (p: string) => p.startsWith("/academic-years") },
+  {
+    to: "/academic-years",
+    label: "Academic Year",
+    icon: CalendarCheck,
+    module: "students" as AppModule,
+    match: (p: string) => p.startsWith("/academic-years"),
+  },
   {
     to: "/",
     label: "Student Management",

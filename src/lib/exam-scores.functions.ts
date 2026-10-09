@@ -104,14 +104,14 @@ export const saveExamScore = createServerFn({ method: "POST" })
         .eq("id", existing[0].id);
       if (error) throw new Error("Failed to save score");
     } else {
-      const { error } = await db.from("exam_scores").insert(<never>{
+      const { error } = await db.from("exam_scores").insert((<never>{
         school_id: schoolId,
         student_id: studentId,
         exam_type: examType,
         score,
         remarks: remarks ?? null,
         // academic_year is injected by the year-scoped admin client.
-      } as never);
+      }) as never);
       if (error) throw new Error("Failed to save score");
     }
     return { ok: true };

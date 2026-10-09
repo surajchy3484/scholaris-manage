@@ -175,7 +175,8 @@ export function ExamStudentDialog({
       setStatus("Saving student...");
       const { id: studentId } = await saveStudentDetails({
         data: {
-          token: getAccessToken(), academicYear: getAcademicYear(),
+          token: getAccessToken(),
+          academicYear: getAcademicYear(),
           module: "exam_report",
           schoolId,
           id: rest.mode === "edit" ? rest.student.id : undefined,

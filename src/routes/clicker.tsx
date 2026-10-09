@@ -247,7 +247,9 @@ async function linkStudents(
         (e.student_id === studentId || e.keypad_id === row.keypad_id),
     );
     if (prior && prior.student_id && prior.student_id !== studentId) {
-      row.errors.push(`Keypad ${row.keypad_id} is already used by another student in this assessment`);
+      row.errors.push(
+        `Keypad ${row.keypad_id} is already used by another student in this assessment`,
+      );
       row._match = "unmatched";
       continue;
     }
