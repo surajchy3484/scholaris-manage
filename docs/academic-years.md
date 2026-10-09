@@ -42,3 +42,22 @@ Clicker Master includes Academic Year. Imported rows must match the selected yea
 - Existing session-school-roster, Clicker access/deletion and visual analytics regression tests.
 
 Tests use local fixtures, not live school data. Production migrations and a live user acceptance check remain hosting deployment steps.
+
+## Current-year baseline correction (October 2026)
+
+Apply these migrations in order after the existing academic-year migration:
+
+1. `20261006110000_current_year_baseline.sql`
+2. `20261006111000_academic_progress.sql`
+
+The first migration is a **one-time correction of the existing data**, not a yearly rollover. It uses whichever year is marked `is_current` when applied. It assigns existing enrollments, assessments, Clicker records/results, manual exam scores, attendance, sessions and assignment plans to that year. It preserves student IDs, answer snapshots, scores and record IDs. If the current year is stored as `2026`, its display name becomes `2026–27`; its ID remains unchanged.
+
+Original rows are retained in the server-only `academic_year_reset_backup` table. Duplicate enrollment associations for the same student are archived there; the current enrollment (otherwise the newest enrollment) is retained. No student, attendance, session, assessment, Clicker, or score records are deleted. Old year labels are retired from selection, not deleted from the database.
+
+Conflicting manual scores or session plans cannot be combined without choosing which value to keep. The migration intentionally aborts and rolls back if these exist. Review the named conflicts before retrying; do not drop uniqueness constraints or delete scores to force the migration through. A successful run is recorded in `academic_year_baselines`, so rerunning cannot move future-year data back to the baseline.
+
+The second migration adds a read-only, paginated cross-year comparison with school-scoped access. After more than one available year exists, choose **All Years / Progress History** in the Academic Year selector or Academic Year Management. The table compares the same student identity across years, using mean Clicker correct-rate percentages per exam type and recorded manual score percentages when no Clicker result exists. Missing results display a dash, not zero. MCA and IMF are grouped together. Selecting a student opens detailed assessment, attendance, session and answer-key history.
+
+For future years, use **Academic Year Management → Add Year**, review/promote student enrollments, and **Set Current** when ready. Creation and activation never run the baseline correction or copy/overwrite scores. The default follows the active database year; invalid/retired selections and selections left over from a changed active year reset automatically. Data entry always targets a single selected year; All Years is a separate read-only report.
+
+Verification after applying: confirm one available/current year, compare student and activity counts with the backup, check an existing Clicker score and question snapshot, then open Overall Report and School Report. The application build alone does not apply migrations or verify the live database.

@@ -1,3 +1,5 @@
+import { AcademicProgress } from "@/components/academic-progress";
+import { getAcademicYear } from "@/lib/academic-year";
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,10 +19,17 @@ import {
 import { StudentHistory } from "@/components/student-history";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-export const Route = createFileRoute("/academic-years")({ component: AcademicYearsPage });
+export const Route = createFileRoute("/academic-years")({
+  validateSearch: (search: Record<string, unknown>): { view?: "history" } => ({
+    view: search.view === "history" ? "history" : undefined,
+  }),
+  component: AcademicYearsPage,
+});
 const statuses = ["Active", "Promoted", "Transferred", "Left School", "Inactive"] as const;
 function AcademicYearsPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, can } = useAuth();
+  const { view } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const qc = useQueryClient();
   const [className, setClassName] = useState("");
   const [division, setDivision] = useState("");
@@ -51,7 +60,7 @@ function AcademicYearsPage() {
     queryKey: ["academic-schools"],
     queryFn: () => academicSchools({ data: auth() }),
   });
-  const year = source || years.data?.find((y) => y.is_current)?.id || "";
+  const year = source || getAcademicYear() || years.data?.find((y) => y.is_current)?.id || "";
   const rows = useQuery({
     queryKey: ["enrollments", year, school, search, className, division, page],
     queryFn: () =>
@@ -67,7 +76,7 @@ function AcademicYearsPage() {
           size: 50,
         },
       }),
-    enabled: !!year,
+    enabled: !!year && view !== "history",
   });
   async function action(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -84,9 +93,27 @@ function AcademicYearsPage() {
       setBusy(false);
     }
   }
+  if (view === "history")
+    return (
+      <main className="mx-auto max-w-7xl space-y-4 p-5">
+        <Button variant="outline" onClick={() => void navigate({ search: {} })}>
+          Academic Year Management
+        </Button>
+        {can("exam_report", "view") ? (
+          <AcademicProgress />
+        ) : (
+          <p role="alert">Report access required.</p>
+        )}
+      </main>
+    );
   return (
     <main className="mx-auto max-w-7xl space-y-4 p-5">
-      <h1 className="text-3xl font-bold">Academic Year</h1>
+      <h1 className="text-3xl font-bold">Academic Year Management</h1>
+      {(years.data?.length ?? 0) > 1 && can("exam_report", "view") && (
+        <Button variant="outline" onClick={() => void navigate({ search: { view: "history" } })}>
+          All Years / Progress History
+        </Button>
+      )}
       <p>Current year, previous years, student promotion and historical records.</p>
       {years.error && <p role="alert">{years.error.message}</p>}
       {isAdmin && (

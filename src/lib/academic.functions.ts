@@ -1,3 +1,4 @@
+import { resolveAcademicYear } from "./academic-db.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { adminDb, requireAdmin, requirePermission, resolveAccess } from "./app-access.server";
@@ -33,6 +34,10 @@ async function db() {
   return (await adminDb()) as unknown as SupabaseClient;
 }
 function failed(error: { message: string; code?: string } | null) {
+  if (error?.code === "42703" && error.message.includes("is_archived"))
+    throw new Error(
+      "Apply 20261006110000_current_year_baseline.sql before using Academic Year Management.",
+    );
   if (error)
     throw new Error(
       ["42P01", "PGRST205", "PGRST202"].includes(error.code ?? "")
@@ -49,6 +54,7 @@ export const listAcademicYears = createServerFn({ method: "POST" })
     )
       .from("academic_years")
       .select("id,name,is_current")
+      .eq("is_archived", false)
       .order("id", { ascending: false });
     failed(result.error);
     return result.data ?? [];
@@ -96,6 +102,7 @@ export const listEnrollments = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }): Promise<{ rows: Enrollment[]; total: number }> => {
     const profile = await academicViewer(data.token);
+    await resolveAcademicYear(data.year);
     if (data.schoolId && !canSeeSchool(profile, data.schoolId))
       throw new Error("School access denied");
     let q = (await db())
@@ -140,6 +147,8 @@ export const promoteEnrollments = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const profile = await requireAdmin(data.token);
+    await resolveAcademicYear(data.source);
+    await resolveAcademicYear(data.target);
     const result = await (
       await db()
     ).rpc("academic_promote", {
@@ -272,4 +281,47 @@ export const nextPermanentStudentCode = createServerFn({ method: "POST" })
     ).rpc("academic_next_student_code", { p_school: data.schoolId });
     failed(result.error);
     return result.data as string;
+  });
+
+export type AcademicProgress = {
+  total: number;
+  years: AcademicYear[];
+  rows: {
+    id: string;
+    student_code: string;
+    name: string;
+    scores: {
+      academic_year: string;
+      exam_type: string;
+      percentage: number | null;
+      assessments: number;
+    }[];
+  }[];
+};
+export const academicProgressPage = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    token
+      .extend({
+        schoolId: z.string().uuid().optional(),
+        search: z.string().trim().max(200).default(""),
+        page: z.number().int().min(0).max(1000000).default(0),
+        size: z.number().int().min(1).max(100).default(50),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }): Promise<AcademicProgress> => {
+    const profile = await requirePermission(data.token, "exam_report", "view");
+    if (data.schoolId && !canSeeSchool(profile, data.schoolId))
+      throw new Error("School access denied");
+    const result = await (
+      await db()
+    ).rpc("academic_progress_page", {
+      p_school: data.schoolId ?? null,
+      p_search: data.search,
+      p_page: data.page,
+      p_size: data.size,
+      p_schools: profile.role === "admin" || profile.allSchools ? null : profile.schoolIds,
+    });
+    failed(result.error);
+    return result.data as AcademicProgress;
   });

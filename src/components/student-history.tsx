@@ -1,12 +1,21 @@
+import { getAcademicYear } from "@/lib/academic-year";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { studentAcademicHistory } from "@/lib/academic.functions";
 import { getAccessToken } from "@/lib/app-access";
 import { useAuth } from "@/lib/auth";
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
-export function StudentHistory({ studentId }: { studentId: string }) {
+export function StudentHistory({
+  studentId,
+  allYears = false,
+}: {
+  studentId: string;
+  allYears?: boolean;
+}) {
   const { can } = useAuth();
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string[]>(
+    allYears ? [] : [getAcademicYear()].filter((year): year is string => !!year),
+  );
   const history = useQuery({
     queryKey: ["student-history", studentId],
     queryFn: () => studentAcademicHistory({ data: { token: getAccessToken(), studentId } }),
