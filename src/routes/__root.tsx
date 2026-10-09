@@ -1,3 +1,5 @@
+import { AcademicYearBoundary } from "@/components/academic-year-select";
+import { resetAcademicYear } from "@/lib/academic-year";
 import { getAccessToken } from "@/lib/app-access";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -327,6 +329,7 @@ function RootComponent() {
       const reason = (event as CustomEvent<{ reason?: string }>).detail?.reason;
       if (reason === "login" || reason === "logout" || token !== previousToken) {
         previousToken = token;
+        resetAcademicYear();
         queryClient.clear();
       }
     };
@@ -356,15 +359,17 @@ function RootComponent() {
             <Outlet />
           </div>
         ) : (
-          <SidebarProvider key={yearRevision}>
-            <AppSidebar />
-            <SidebarInset className="min-h-screen bg-background text-foreground">
-              <Header />
-              <main className="flex-1">
-                <Outlet />
-              </main>
-            </SidebarInset>
-          </SidebarProvider>
+          <AcademicYearBoundary>
+            <SidebarProvider key={yearRevision}>
+              <AppSidebar />
+              <SidebarInset className="min-h-screen bg-background text-foreground">
+                <Header />
+                <main className="flex-1">
+                  <Outlet />
+                </main>
+              </SidebarInset>
+            </SidebarProvider>
+          </AcademicYearBoundary>
         )}
       </AuthGate>
       <Toaster position="top-right" richColors />

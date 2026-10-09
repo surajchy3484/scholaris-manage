@@ -604,6 +604,7 @@ export const listAssignmentContext = createServerFn({ method: "POST" })
     )
       .from("academic_years" as never)
       .select("id")
+      .eq("is_archived", false)
       .order("id", { ascending: false });
     if (yearError) throw new Error("Academic Year setup required");
     return {
