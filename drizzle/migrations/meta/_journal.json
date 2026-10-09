@@ -15,6 +15,13 @@
       "when": 1791277779485,
       "tag": "0001_school_clusters",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791520457762,
+      "tag": "0002_app_users_password_changed_at",
+      "breakpoints": true
     }
   ]
 }
