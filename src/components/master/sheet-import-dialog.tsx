@@ -1,3 +1,8 @@
+import {
+  readImportFiles,
+  type ImportSource,
+  type ImportFileSummary,
+} from "@/lib/multi-file-import";
 import { useState, type ReactNode } from "react";
 import { readWorkbook } from "@/lib/read-workbook";
 import FileSaver from "file-saver";
@@ -106,7 +111,9 @@ export function SheetImportDialog<T extends ParsedBase>({
   stats?: (rows: T[]) => ReactNode;
 }) {
   const [rows, setRows] = useState<T[]>([]);
-  const [fileName, setFileName] = useState("");
+  const [files, setFiles] = useState<ImportFileSummary[]>([]);
+  const [sources, setSources] = useState<ImportSource[]>([]);
+  const [readProgress, setReadProgress] = useState("");
   const [reading, setReading] = useState(false);
   const [done, setDone] = useState(0);
   const [summary, setSummary] = useState<string | null>(null);
@@ -131,7 +138,11 @@ export function SheetImportDialog<T extends ParsedBase>({
     const XLSX = await import("xlsx");
     const bad = rows.filter((r) => r.errors.length > 0);
     const data = bad.map((r) => {
-      const out: Record<string, string> = { Row: String(r._row) };
+      const source = sources[r._row - 2];
+      const out: Record<string, string> = {
+        File: source?.file ?? "",
+        Row: String(source?.row ?? r._row),
+      };
       for (const c of columns) out[c.label] = String(c.get(r) ?? "");
       out.Issues = r.errors.join("; ");
       return out;
@@ -144,11 +155,12 @@ export function SheetImportDialog<T extends ParsedBase>({
   };
 
   const close = (o: boolean) => {
-    if (run.isPending) return;
+    if (run.isPending || reading) return;
     if (!o) {
       setRows([]);
       setSummary(null);
-      setFileName("");
+      setFiles([]);
+      setSources([]);
       setDone(0);
     }
     onOpenChange(o);
@@ -168,33 +180,52 @@ export function SheetImportDialog<T extends ParsedBase>({
           <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border p-8 text-center transition hover:border-primary/60 hover:bg-muted/40">
             <Upload className="h-6 w-6 text-primary" />
             <span className="text-sm font-medium">
-              {fileName || "Choose an .xlsx, .xls or .csv file"}
+              {files.length
+                ? `${files.length} file(s) selected — choose files to replace`
+                : "Choose one or more .xlsx, .xls or .csv files"}
             </span>
-            {reading && <span className="text-xs text-muted-foreground">Reading file…</span>}
+            {reading && <span className="text-xs text-muted-foreground">{readProgress}</span>}
             <input
               type="file"
+              multiple
+              disabled={reading || run.isPending}
               accept=".xls,.xlsx,.csv"
               className="hidden"
               onChange={async (e) => {
-                const f = e.target.files?.[0];
-                if (!f) return;
+                const selected = Array.from(e.target.files ?? []);
+                e.target.value = "";
+                if (!selected.length) return;
                 setSummary(null);
-                setFileName(f.name);
+                setRows([]);
+                setFiles([]);
+                setSources([]);
+                setDone(0);
                 setReading(true);
                 await tick();
                 try {
-                  const raw = await readSheet(f);
-                  if (raw.length === 0) throw new Error("That file has no data rows");
-                  setRows(await parse(raw));
+                  const batch = await readImportFiles(selected, readSheet, setReadProgress);
+                  const parsed = await parse(batch.rows);
+                  setSources(batch.sources);
+                  setFiles(batch.summaries);
+                  setRows(parsed);
                 } catch (err) {
-                  setRows([]);
-                  toast.error(err instanceof Error ? err.message : "Could not read that file");
+                  toast.error(err instanceof Error ? err.message : "Could not read files");
                 } finally {
                   setReading(false);
                 }
               }}
             />
           </label>
+
+          {!!files.length && (
+            <ul className="max-h-28 overflow-auto text-xs">
+              {files.map((file, i) => (
+                <li key={i}>
+                  {file.name} · {file.rows.toLocaleString()} rows
+                </li>
+              ))}
+            </ul>
+          )}
 
           {sample && (
             <div className="flex justify-center">
@@ -249,6 +280,7 @@ export function SheetImportDialog<T extends ParsedBase>({
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-muted">
                     <tr>
+                      <th className="px-2 py-2 text-left font-semibold">File</th>
                       <th className="px-2 py-2 text-left font-semibold">Row</th>
                       {columns.map((c) => (
                         <th key={c.label} className="px-2 py-2 text-left font-semibold">
@@ -264,7 +296,8 @@ export function SheetImportDialog<T extends ParsedBase>({
                         key={r._row}
                         className={r.errors.length ? "bg-destructive/5" : "border-t border-border"}
                       >
-                        <td className="px-2 py-1.5">{r._row}</td>
+                        <td className="px-2 py-1.5">{sources[r._row - 2]?.file}</td>
+                        <td className="px-2 py-1.5">{sources[r._row - 2]?.row ?? r._row}</td>
                         {columns.map((c) => (
                           <td key={c.label} className="whitespace-nowrap px-2 py-1.5">
                             {c.get(r)}
@@ -293,10 +326,17 @@ export function SheetImportDialog<T extends ParsedBase>({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => close(false)} disabled={run.isPending}>
+          <Button
+            variant="outline"
+            onClick={() => close(false)}
+            disabled={run.isPending || reading}
+          >
             Close
           </Button>
-          <Button onClick={() => run.mutate()} disabled={valid.length === 0 || run.isPending}>
+          <Button
+            onClick={() => run.mutate()}
+            disabled={valid.length === 0 || run.isPending || reading || !!summary}
+          >
             {run.isPending
               ? `Importing… ${percent}%`
               : `Import ${valid.length.toLocaleString()} row(s)`}

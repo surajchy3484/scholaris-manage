@@ -1,3 +1,5 @@
+import { readImportFiles, type ImportSource } from "@/lib/multi-file-import";
+import { readWorkbook } from "@/lib/read-workbook";
 import { useState } from "react";
 import * as XLSX from "xlsx";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -66,73 +68,95 @@ export function ExamImportDialog({
 }) {
   const qc = useQueryClient();
   const [rows, setRows] = useState<ParsedRow[]>([]);
+  const [reading, setReading] = useState(false);
+  const [readProgress, setReadProgress] = useState("");
+  const [sources, setSources] = useState<ImportSource[]>([]);
+  const [fileNames, setFileNames] = useState<string[]>([]);
   const [summary, setSummary] = useState<string | null>(null);
 
-  const handleFile = async (file: File) => {
+  const handleFiles = async (files: File[]) => {
     setSummary(null);
-    const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: "array" });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
-    const seen = new Set<string>();
+    setRows([]);
+    setSources([]);
+    setFileNames([]);
+    setReading(true);
+    try {
+      const batch = await readImportFiles(files, readWorkbook, setReadProgress);
+      const raw = batch.rows;
+      const seenRolls = new Set<string>();
+      const seen = new Set<string>();
 
-    const parsed: ParsedRow[] = raw.map((r, i) => {
-      const get = (...keys: string[]) => {
-        for (const k of keys) {
-          const found = Object.keys(r).find((rk) => rk.trim().toLowerCase() === k);
-          if (found) return r[found];
+      const parsed: ParsedRow[] = raw.map((r, i) => {
+        const get = (...keys: string[]) => {
+          for (const k of keys) {
+            const found = Object.keys(r).find((rk) => rk.trim().toLowerCase() === k);
+            if (found) return r[found];
+          }
+          return "";
+        };
+        const errors: string[] = [];
+        const code = String(get("student id", "student code", "id") ?? "").trim();
+        const name = String(get("student name", "name") ?? "").trim();
+        const cls = String(get("class") ?? "").trim();
+        const division = String(get("division", "section") ?? "")
+          .trim()
+          .toUpperCase();
+        const roll = String(get("roll no", "roll number", "roll", "rollno") ?? "").trim();
+        const photo = String(get("photo", "photo url") ?? "").trim();
+
+        const att = cellNum(get("attendance", "attendance %"));
+        const ica = cellNum(get("ica score", "ica"));
+        const mca = cellNum(get("mca score", "mca"));
+        const fca = cellNum(get("fca score", "fca"));
+
+        if (!name) errors.push("Missing Student Name");
+        if (!cls) errors.push("Missing Class");
+        if (!division) errors.push("Missing Division");
+        if (!roll) errors.push("Missing Roll No");
+        const range = (v: number | null | "invalid", label: string) => {
+          if (v === "invalid") errors.push(`${label} is not a number`);
+          else if (v != null && (v < 0 || v > 100)) errors.push(`${label} must be 0–100`);
+        };
+        range(att, "Attendance");
+        range(ica, "ICA Score");
+        range(mca, "MCA Score");
+        range(fca, "FCA Score");
+        if (code) {
+          if (seen.has(code.toUpperCase())) errors.push("Duplicate Student ID in selected files");
+          seen.add(code.toUpperCase());
         }
-        return "";
-      };
-      const errors: string[] = [];
-      const code = String(get("student id", "student code", "id") ?? "").trim();
-      const name = String(get("student name", "name") ?? "").trim();
-      const cls = String(get("class") ?? "").trim();
-      const division = String(get("division", "section") ?? "")
-        .trim()
-        .toUpperCase();
-      const roll = String(get("roll no", "roll number", "roll", "rollno") ?? "").trim();
-      const photo = String(get("photo", "photo url") ?? "").trim();
 
-      const att = cellNum(get("attendance", "attendance %"));
-      const ica = cellNum(get("ica score", "ica"));
-      const mca = cellNum(get("mca score", "mca"));
-      const fca = cellNum(get("fca score", "fca"));
-
-      if (!name) errors.push("Missing Student Name");
-      if (!cls) errors.push("Missing Class");
-      if (!division) errors.push("Missing Division");
-      if (!roll) errors.push("Missing Roll No");
-      const range = (v: number | null | "invalid", label: string) => {
-        if (v === "invalid") errors.push(`${label} is not a number`);
-        else if (v != null && (v < 0 || v > 100)) errors.push(`${label} must be 0–100`);
-      };
-      range(att, "Attendance");
-      range(ica, "ICA Score");
-      range(mca, "MCA Score");
-      range(fca, "FCA Score");
-      if (code) {
-        if (seen.has(code)) errors.push("Duplicate Student ID in file");
-        seen.add(code);
-      }
-
-      return {
-        _row: i + 2,
-        student_code: code,
-        name,
-        class: cls,
-        division,
-        roll_number: roll,
-        attendance: att === "invalid" ? null : att,
-        photo_url: photo || null,
-        enrollment_date: cellDate(get("enrollment date", "enrolled")),
-        ica: ica === "invalid" ? null : ica,
-        mca: mca === "invalid" ? null : mca,
-        fca: fca === "invalid" ? null : fca,
-        errors,
-      };
-    });
-    setRows(parsed);
+        const rollKey = JSON.stringify([
+          cls.toUpperCase(),
+          division.toUpperCase(),
+          roll.toUpperCase(),
+        ]);
+        if (seenRolls.has(rollKey)) errors.push("Duplicate class/division/roll in selected files");
+        seenRolls.add(rollKey);
+        return {
+          _row: i + 2,
+          student_code: code,
+          name,
+          class: cls,
+          division,
+          roll_number: roll,
+          attendance: att === "invalid" ? null : att,
+          photo_url: photo || null,
+          enrollment_date: cellDate(get("enrollment date", "enrolled")),
+          ica: ica === "invalid" ? null : ica,
+          mca: mca === "invalid" ? null : mca,
+          fca: fca === "invalid" ? null : fca,
+          errors,
+        };
+      });
+      setRows(parsed);
+      setSources(batch.sources);
+      setFileNames(batch.summaries.map((file) => file.name));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not read files");
+    } finally {
+      setReading(false);
+    }
   };
 
   const valid = rows.filter((r) => r.errors.length === 0);
@@ -204,9 +228,11 @@ export function ExamImportDialog({
   });
 
   const close = (o: boolean) => {
-    if (doImport.isPending) return;
+    if (doImport.isPending || reading) return;
     if (!o) {
       setRows([]);
+      setSources([]);
+      setFileNames([]);
       setSummary(null);
     }
     onOpenChange(o);
@@ -227,18 +253,31 @@ export function ExamImportDialog({
         <div className="space-y-4 py-2">
           <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border p-8 text-center transition hover:border-primary/60 hover:bg-muted/40">
             <Upload className="h-6 w-6 text-primary" />
-            <span className="text-sm font-medium">Choose an .xls or .xlsx file</span>
+            <span className="text-sm font-medium">
+              Choose one or more .xls, .xlsx or .csv files
+            </span>
             <input
               type="file"
-              accept=".xls,.xlsx"
+              multiple
+              disabled={reading || doImport.isPending}
+              accept=".xls,.xlsx,.csv"
               className="hidden"
               onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleFile(f);
+                const files = Array.from(e.target.files ?? []);
+                e.target.value = "";
+                if (files.length) void handleFiles(files);
               }}
             />
           </label>
 
+          {reading && <p role="status">{readProgress}</p>}
+          {!!fileNames.length && (
+            <ul className="max-h-28 overflow-auto text-xs">
+              {fileNames.map((name, index) => (
+                <li key={index}>{name}</li>
+              ))}
+            </ul>
+          )}
           <div className="flex justify-center">
             <Button
               variant="ghost"
@@ -270,6 +309,7 @@ export function ExamImportDialog({
                   <thead className="sticky top-0 bg-muted">
                     <tr>
                       {[
+                        "File",
                         "Row",
                         "Student ID",
                         "Name",
@@ -289,12 +329,13 @@ export function ExamImportDialog({
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((r) => (
+                    {rows.slice(0, 400).map((r) => (
                       <tr
                         key={r._row}
                         className={r.errors.length ? "bg-destructive/5" : "border-t border-border"}
                       >
-                        <td className="px-2 py-1.5">{r._row}</td>
+                        <td className="px-2 py-1.5">{sources[r._row - 2]?.file}</td>
+                        <td className="px-2 py-1.5">{sources[r._row - 2]?.row ?? r._row}</td>
                         <td className="px-2 py-1.5 font-mono">{r.student_code || "auto"}</td>
                         <td className="px-2 py-1.5">{r.name}</td>
                         <td className="px-2 py-1.5">{r.class}</td>
@@ -313,6 +354,9 @@ export function ExamImportDialog({
             </>
           )}
 
+          {rows.length > 400 && (
+            <p className="text-xs">Showing the first 400 rows. All valid rows will be imported.</p>
+          )}
           {summary && (
             <div className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
               {summary}
@@ -321,12 +365,16 @@ export function ExamImportDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => close(false)} disabled={doImport.isPending}>
+          <Button
+            variant="outline"
+            onClick={() => close(false)}
+            disabled={doImport.isPending || reading}
+          >
             Close
           </Button>
           <Button
             onClick={() => doImport.mutate()}
-            disabled={valid.length === 0 || doImport.isPending}
+            disabled={valid.length === 0 || doImport.isPending || reading || !!summary}
           >
             {doImport.isPending ? "Importing..." : `Import ${valid.length} valid row(s)`}
           </Button>
