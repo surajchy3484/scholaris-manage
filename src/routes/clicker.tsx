@@ -217,12 +217,39 @@ async function linkStudents(
   ]);
   const existing = existingLists.flat();
   const seen = new Set<string>();
+  const rollOwners = new Map<string, string>();
+  for (const [schoolId, students] of lookup) {
+    for (const student of students) {
+      const key = [
+        schoolId,
+        normalizeMatch(student.class),
+        normalizeMatch(student.division),
+        normalizeMatch(student.roll_number),
+      ].join("|");
+      if (student.roll_number) rollOwners.set(key, student.id);
+    }
+  }
+  const keypadOwners = new Map<string, string>();
+  for (const record of existing) {
+    const key = `${record.assessment_id}|${normalizeMatch(record.keypad_id)}`;
+    if (record.keypad_id) keypadOwners.set(key, record.student_id ?? record.id);
+  }
   for (const row of rows) {
     if (!row.assessment_id || row.errors.length) {
       row._match ??= "unmatched";
       continue;
     }
     const school = byAid.get(row.assessment_id)?.school_id;
+    const rollKey =
+      school && row.class && row.section && row.roll_number
+        ? [
+            school,
+            normalizeMatch(row.class),
+            normalizeMatch(row.section),
+            normalizeMatch(row.roll_number),
+          ].join("|")
+        : null;
+    const keypadKey = `${row.assessment_id}|${normalizeMatch(row.keypad_id)}`;
     const studentId = resolveStudentId(row, school ? (lookup.get(school) ?? []) : []);
     if (!studentId) {
       if (school && row.student_name && row.class && row.section && row.roll_number) {
@@ -233,6 +260,19 @@ async function linkStudents(
           normalizeMatch(row.section),
           normalizeMatch(row.roll_number),
         ].join("|");
+        if (rollKey && rollOwners.has(rollKey)) {
+          row.errors.push(
+            `Roll number "${row.roll_number}" already exists in Class ${row.class} Section ${row.section}`,
+          );
+          row._match = "unmatched";
+          continue;
+        }
+        const keypadOwner = keypadOwners.get(keypadKey);
+        if (keypadOwner) {
+          row.errors.push(`Keypad ID "${row.keypad_id}" is already used in this assessment`);
+          row._match = "unmatched";
+          continue;
+        }
         if (seen.has(`create|${createKey}`)) {
           row.duplicate = true;
           row.errors.push("Duplicate new student details in the selected files");
@@ -240,6 +280,8 @@ async function linkStudents(
           continue;
         }
         seen.add(`create|${createKey}`);
+        if (rollKey) rollOwners.set(rollKey, `pending:${createKey}`);
+        keypadOwners.set(keypadKey, `pending:${createKey}`);
         row._match = "create";
         continue;
       }
@@ -252,6 +294,26 @@ async function linkStudents(
       continue;
     }
     row.student_id = studentId;
+    if (rollKey) {
+      const rollOwner = rollOwners.get(rollKey);
+      if (rollOwner && rollOwner !== studentId) {
+        row.errors.push(
+          `Roll number "${row.roll_number}" is already assigned in Class ${row.class} Section ${row.section}`,
+        );
+        row._match = "unmatched";
+        continue;
+      }
+      rollOwners.set(rollKey, studentId);
+    }
+    const keypadOwner = keypadOwners.get(keypadKey);
+    if (keypadOwner && keypadOwner !== studentId) {
+      row.errors.push(
+        `Keypad ID "${row.keypad_id}" is already used by another student in this assessment`,
+      );
+      row._match = "unmatched";
+      continue;
+    }
+    keypadOwners.set(keypadKey, studentId);
     const key = `${row.assessment_id}|${studentId}`;
     if (seen.has(key)) {
       row.duplicate = true;
