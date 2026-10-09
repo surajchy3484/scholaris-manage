@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
 /** `duplicate` rows are skipped on import but reported separately from errors. */
-export type ParsedBase = { _row: number; errors: string[]; duplicate?: boolean };
+export type ParsedBase = { _row: number; _file?: string; errors: string[]; duplicate?: boolean };
 
 /** Reads the first sheet of an .xls/.xlsx/.csv file into plain objects. */
 export async function readSheet(file: File): Promise<Record<string, unknown>[]> {
@@ -108,12 +108,14 @@ export function SheetImportDialog<T extends ParsedBase>({
   const [rows, setRows] = useState<T[]>([]);
   const [fileName, setFileName] = useState("");
   const [reading, setReading] = useState(false);
+  const [readingFile, setReadingFile] = useState("");
   const [done, setDone] = useState(0);
   const [summary, setSummary] = useState<string | null>(null);
 
   const valid = rows.filter((r) => r.errors.length === 0);
   const duplicates = rows.filter((r) => r.duplicate);
   const failed = rows.filter((r) => r.errors.length > 0 && !r.duplicate);
+  const showFiles = rows.some((r) => r._file);
 
   const run = useMutation({
     mutationFn: async () => {
