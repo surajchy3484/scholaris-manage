@@ -1,3 +1,4 @@
+import { readImportFiles, type ImportSource } from "@/lib/multi-file-import";
 import { getAcademicYear } from "@/lib/academic-year";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -82,31 +83,39 @@ export function ImportStudentsDialog({
   const [parsing, setParsing] = useState(false);
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [fileName, setFileName] = useState("");
+  const [sources, setSources] = useState<ImportSource[]>([]);
+  const [readProgress, setReadProgress] = useState("");
   const qc = useQueryClient();
 
   const reset = () => {
     setRows([]);
+    setSources([]);
     setFileName("");
   };
 
-  async function handleFile(file: File) {
-    setFileName(file.name);
+  async function handleFiles(files: File[]) {
+    reset();
     setParsing(true);
     try {
-      const parsed = await parseImportFile(file);
+      const batch = await readImportFiles(files, parseImportFile, setReadProgress);
+      const parsed = batch.rows.map((row, i) => ({ ...row, _row: i + 2 }));
+      setSources(batch.sources);
+      setFileName(files.map((file) => file.name).join(", "));
       // Detect duplicates within import
       const seen = new Map<string, number>();
       parsed.forEach((r, i) => {
         const key = `${r.class}|${r.division}|${r.roll_number}`.toLowerCase();
         if (seen.has(key)) {
-          r._errors.push(`Duplicate roll in file (row ${seen.get(key)! + 2})`);
+          const first = batch.sources[seen.get(key)!];
+          r._errors.push(`Duplicate roll in selected files (${first.file}, row ${first.row})`);
         } else {
           seen.set(key, i);
         }
       });
       setRows(parsed);
-    } catch {
-      toast.error("Could not parse file");
+    } catch (error) {
+      reset();
+      toast.error(error instanceof Error ? error.message : "Could not parse files");
     } finally {
       setParsing(false);
     }
@@ -128,7 +137,8 @@ export function ImportStudentsDialog({
             try {
               added += await importStudentBatch({
                 data: {
-                  token: getAccessToken(), academicYear: getAcademicYear(),
+                  token: getAccessToken(),
+                  academicYear: getAcademicYear(),
                   schoolId: school.id,
                   rows: batch.map(({ name, class: klass, division, roll_number }) => ({
                     name,
@@ -176,6 +186,7 @@ export function ImportStudentsDialog({
     <Dialog
       open={open}
       onOpenChange={(o) => {
+        if (parsing || importMut.isPending) return;
         onOpenChange(o);
         if (!o) reset();
       }}
@@ -184,8 +195,8 @@ export function ImportStudentsDialog({
         <DialogHeader>
           <DialogTitle>Import students</DialogTitle>
           <DialogDescription>
-            Upload an Excel (.xlsx, .xls) or CSV file with columns: Student Name, Class, Division,
-            Roll Number.
+            Select one or more Excel (.xlsx, .xls) or CSV files with columns: Student Name, Class,
+            Division, Roll Number.
           </DialogDescription>
         </DialogHeader>
 
@@ -195,7 +206,7 @@ export function ImportStudentsDialog({
             rows will be processed.
           </p>
         )}
-        {parsing && <p role="status">Reading spreadsheet…</p>}
+        {parsing && <p role="status">{readProgress}</p>}
         {importMut.isPending && (
           <p role="status">
             Processed {progress} of {rows.length} rows…
@@ -206,17 +217,19 @@ export function ImportStudentsDialog({
             <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-muted/40 p-10 transition-colors hover:border-primary hover:bg-accent/40">
               <Upload className="h-8 w-8 text-muted-foreground" />
               <div className="text-center">
-                <p className="font-medium">Click to choose a file</p>
+                <p className="font-medium">Click to choose files</p>
                 <p className="text-xs text-muted-foreground">.xlsx, .xls, or .csv</p>
               </div>
               <input
                 disabled={parsing || importMut.isPending}
                 type="file"
+                multiple
                 accept=".xlsx,.xls,.csv"
                 className="hidden"
                 onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleFile(f);
+                  const files = Array.from(e.target.files ?? []);
+                  e.target.value = "";
+                  if (files.length) void handleFiles(files);
                 }}
               />
             </label>
@@ -239,15 +252,22 @@ export function ImportStudentsDialog({
                   <AlertCircle className="h-3 w-3" /> {invalid} invalid
                 </Badge>
               )}
-              <Button variant="ghost" size="sm" onClick={reset} className="ml-auto">
-                Choose another file
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={reset}
+                disabled={parsing || importMut.isPending}
+                className="ml-auto"
+              >
+                Choose other files
               </Button>
             </div>
             <div className="max-h-80 overflow-auto rounded-lg border border-border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-10">#</TableHead>
+                    <TableHead>File</TableHead>
+                    <TableHead className="w-10">Row</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Class</TableHead>
                     <TableHead>Div</TableHead>
@@ -258,7 +278,10 @@ export function ImportStudentsDialog({
                 <TableBody>
                   {rows.slice(0, 100).map((r) => (
                     <TableRow key={r._row} className={r._errors.length ? "bg-destructive/5" : ""}>
-                      <TableCell className="text-xs text-muted-foreground">{r._row}</TableCell>
+                      <TableCell className="text-xs">{sources[r._row - 2]?.file}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {sources[r._row - 2]?.row ?? r._row}
+                      </TableCell>
                       <TableCell>
                         {r.name || <span className="text-muted-foreground">—</span>}
                       </TableCell>
@@ -281,12 +304,19 @@ export function ImportStudentsDialog({
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            disabled={parsing || importMut.isPending}
+            onClick={() => {
+              reset();
+              onOpenChange(false);
+            }}
+          >
             Cancel
           </Button>
           <Button
             onClick={() => importMut.mutate()}
-            disabled={rows.length === 0 || valid === 0 || importMut.isPending}
+            disabled={rows.length === 0 || valid === 0 || importMut.isPending || parsing}
           >
             {importMut.isPending ? "Importing..." : `Import ${valid} valid`}
           </Button>
