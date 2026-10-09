@@ -183,7 +183,21 @@ function resolveStudentId(row: ParsedClicker, students: StudentLookup[]) {
     if (section && normalizeMatch(student.division) !== section) return false;
     return true;
   });
-  return matches.length === 1 ? matches[0].id : null;
+  if (matches.length === 1) return matches[0].id;
+
+  // Roll Number is unique within a school/class/section. Use it as a safe
+  // fallback when the spreadsheet contains a different name spelling or
+  // punctuation from Student Master.
+  if (roll && cls && section) {
+    const rollMatches = students.filter(
+      (student) =>
+        normalizeMatch(student.roll_number) === roll &&
+        normalizeMatch(student.class) === cls &&
+        normalizeMatch(student.division) === section,
+    );
+    if (rollMatches.length === 1) return rollMatches[0].id;
+  }
+  return null;
 }
 
 /**
