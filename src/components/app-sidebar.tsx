@@ -174,10 +174,10 @@ export function AppSidebar() {
             <SidebarMenu>
               {can("dashboard") && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === "/"} tooltip="Dashboard">
+                  <SidebarMenuButton asChild isActive={pathname === "/"} tooltip="School Dashboard">
                     <Link to="/" onClick={close}>
                       <LayoutDashboard />
-                      <span>Dashboard</span>
+                      <span>School Dashboard</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
