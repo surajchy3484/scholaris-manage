@@ -75,7 +75,16 @@ export async function writeClicker(
       p_schools: profile.role === "admin" || profile.allSchools ? null : profile.schoolIds,
     } as never,
   );
-  if (error)
+  if (error) {
+    // Some hosted databases may have the table and service-role access but
+    // not the optional deletion RPC yet. The rows have already been loaded
+    // and school-authorized above, so use a narrowly scoped direct fallback
+    // rather than leaving the Delete action apparently successful/blocked.
+    if (mode === "delete" && ["PGRST202", "42883"].includes(error.code)) {
+      const direct = await db.from("clicker_records").delete().in("id", ids);
+      if (direct.error) throw new Error(direct.error.message);
+      return { ok: true, count: ids.length };
+    }
     throw new Error(
       ["PGRST202", "42883"].includes(error.code)
         ? mode === "delete"
@@ -83,5 +92,6 @@ export async function writeClicker(
           : "Apply the Universal Question Master migration before saving Clicker data. No rows were saved."
         : error.message,
     );
+  }
   return { ok: true, count: Number(data) };
 }
