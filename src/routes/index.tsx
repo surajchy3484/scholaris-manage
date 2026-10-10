@@ -1,3 +1,4 @@
+import { MainDashboard } from "@/components/main-dashboard";
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -34,10 +35,36 @@ export const Route = createFileRoute("/")({
   }),
   component: () => (
     <RequireModule module="dashboard">
-      <Dashboard />
+      <DashboardLanding />
     </RequireModule>
   ),
 });
+
+function DashboardLanding() {
+  const [view, setView] = useState<"main" | "schools">("main");
+  return (
+    <>
+      <nav aria-label="Dashboard sections" className="mx-auto flex max-w-7xl gap-2 px-4 pt-5">
+        <Button variant={view === "main" ? "default" : "outline"} onClick={() => setView("main")}>
+          Main Dashboard
+        </Button>
+        <Button
+          variant={view === "schools" ? "default" : "outline"}
+          onClick={() => setView("schools")}
+        >
+          School Dashboard
+        </Button>
+      </nav>
+      {view === "main" ? (
+        <div className="mx-auto max-w-7xl px-4 py-5">
+          <MainDashboard />
+        </div>
+      ) : (
+        <Dashboard />
+      )}
+    </>
+  );
+}
 
 type SchoolWithCount = School & { student_count: number };
 

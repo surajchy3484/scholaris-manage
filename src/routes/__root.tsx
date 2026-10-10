@@ -1,4 +1,4 @@
-import { AcademicYearBoundary } from "@/components/academic-year-select";
+import { AcademicYearSelect, AcademicYearBoundary } from "@/components/academic-year-select";
 import { resetAcademicYear } from "@/lib/academic-year";
 import { getAccessToken } from "@/lib/app-access";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -192,6 +192,21 @@ function Header() {
         </div>
         <BrandName className="font-display font-bold" />
       </Link>
+      {pathname === "/" && (
+        <>
+          <img
+            src="/reap-logo.png"
+            alt="REAP"
+            className="hidden h-10 w-16 object-contain sm:block"
+          />
+          <span className="hidden text-xs font-semibold xl:block">
+            Reach Education Action Program
+          </span>
+          <div className="ml-auto max-w-48">
+            <AcademicYearSelect />
+          </div>
+        </>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
