@@ -246,7 +246,7 @@ function Dashboard() {
 
       {/* Controls */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="font-display text-2xl font-bold">Your Schools</h1>
+        <h1 className="font-display text-2xl font-bold">School Dashboard</h1>
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
