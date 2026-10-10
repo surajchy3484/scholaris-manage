@@ -17,6 +17,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as OverallReportRouteImport } from './routes/overall-report'
 import { Route as QuestionsRouteImport } from './routes/questions'
+import { Route as SchoolDashboardRouteImport } from './routes/school-dashboard'
 import { Route as SessionStatusRouteImport } from './routes/session-status'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as UsersRouteImport } from './routes/users'
@@ -67,6 +68,11 @@ const OverallReportRoute = OverallReportRouteImport.update({
 const QuestionsRoute = QuestionsRouteImport.update({
   id: '/questions',
   path: '/questions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SchoolDashboardRoute = SchoolDashboardRouteImport.update({
+  id: '/school-dashboard',
+  path: '/school-dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SessionStatusRoute = SessionStatusRouteImport.update({
@@ -138,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/overall-report': typeof OverallReportRoute
   '/questions': typeof QuestionsRoute
+  '/school-dashboard': typeof SchoolDashboardRoute
   '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
   '/users': typeof UsersRoute
@@ -159,6 +166,7 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/overall-report': typeof OverallReportRoute
   '/questions': typeof QuestionsRoute
+  '/school-dashboard': typeof SchoolDashboardRoute
   '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
   '/users': typeof UsersRoute
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/overall-report': typeof OverallReportRoute
   '/questions': typeof QuestionsRoute
+  '/school-dashboard': typeof SchoolDashboardRoute
   '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
   '/users': typeof UsersRoute
@@ -204,6 +213,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/overall-report'
     | '/questions'
+    | '/school-dashboard'
     | '/session-status'
     | '/settings'
     | '/users'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/overall-report'
     | '/questions'
+    | '/school-dashboard'
     | '/session-status'
     | '/settings'
     | '/users'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/overall-report'
     | '/questions'
+    | '/school-dashboard'
     | '/session-status'
     | '/settings'
     | '/users'
@@ -268,6 +280,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   OverallReportRoute: typeof OverallReportRoute
   QuestionsRoute: typeof QuestionsRoute
+  SchoolDashboardRoute: typeof SchoolDashboardRoute
   SessionStatusRoute: typeof SessionStatusRoute
   SettingsRoute: typeof SettingsRoute
   UsersRoute: typeof UsersRoute
@@ -337,6 +350,13 @@ declare module '@tanstack/react-router' {
       path: '/questions'
       fullPath: '/questions'
       preLoaderRoute: typeof QuestionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/school-dashboard': {
+      id: '/school-dashboard'
+      path: '/school-dashboard'
+      fullPath: '/school-dashboard'
+      preLoaderRoute: typeof SchoolDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/session-status': {
@@ -428,6 +448,7 @@ const rootRouteChildren: RootRouteChildren = {
   McpRoute: McpRoute,
   OverallReportRoute: OverallReportRoute,
   QuestionsRoute: QuestionsRoute,
+  SchoolDashboardRoute: SchoolDashboardRoute,
   SessionStatusRoute: SessionStatusRoute,
   SettingsRoute: SettingsRoute,
   UsersRoute: UsersRoute,

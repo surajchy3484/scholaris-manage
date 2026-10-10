@@ -1,4 +1,4 @@
-import { AcademicYearSelect, AcademicYearBoundary } from "@/components/academic-year-select";
+import { AcademicYearLabel, AcademicYearBoundary } from "@/components/academic-year-select";
 import { resetAcademicYear } from "@/lib/academic-year";
 import { getAccessToken } from "@/lib/app-access";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -202,17 +202,15 @@ function Header() {
           <span className="hidden text-xs font-semibold xl:block">
             Reach Education Action Program
           </span>
-          <div className="ml-auto max-w-48">
-            <AcademicYearSelect />
-          </div>
         </>
       )}
+      <AcademicYearLabel />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
             aria-label={`Open profile for ${displayName}`}
-            className="ml-auto flex items-center gap-2 rounded-full p-1.5 pr-2 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="flex items-center gap-2 rounded-full p-1.5 pr-2 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <Avatar className="h-8 w-8 border border-primary/20">
               <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">

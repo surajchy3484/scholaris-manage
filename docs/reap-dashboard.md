@@ -2,7 +2,7 @@
 
 ## Scope
 
-The existing `/` route defaults to Main Dashboard. The School Dashboard tab retains all school CRUD, clusters, imports and navigation. Existing authentication, academic-year boundary, profile menu and Session Status screens remain. The supplied REAP logo is reused. No student, attendance, session, score, assignment or academic-year data is rewritten.
+The existing `/` route defaults to Main Dashboard. The separate `/school-dashboard` route retains all school CRUD, clusters, imports and navigation. Both dashboard links appear in the sidebar, with no dashboard tabs on the main screen. The header displays the selected academic year as plain text on the right beside the profile; the sidebar retains the year selector. Existing authentication, academic-year boundary, profile menu and Session Status screens remain. The supplied REAP logo is reused. No student, attendance, session, score, assignment or academic-year data is rewritten.
 
 ## Exact attendance rules
 
@@ -43,7 +43,7 @@ After reviewing the actual session records, use the database administration work
 
 ## Performance
 
-Roster/attendance aggregation happens in PostgreSQL. No student names or raw 50k-student roster crosses into the browser. Queries are year/school scoped and attendance is bounded to seven days. Sessions, statuses and targets use bounded concurrent pagination rather than the default 1,000-row cap. Browser queries are cached for 30 seconds and refreshed each minute; auth identity, year and all filters are in the cache key. Session charts scroll for long labels/lists. The database migration includes supporting indexes. Production-volume latency needs measurement against a staging copy before release.
+Roster/attendance aggregation normally happens in PostgreSQL. Before the optional dashboard migration is applied, an equivalent server-side compatibility path reads only the necessary year/school-scoped enrollment and seven-day attendance fields in pages. No student names or raw 50k-student roster crosses into the browser. Queries are year/school scoped and attendance is bounded to seven days. Sessions, statuses and targets use bounded concurrent pagination rather than the default 1,000-row cap. Browser queries are cached for 30 seconds and refreshed each minute; auth identity, year and all filters are in the cache key. Session charts scroll for long labels/lists. The database migration includes supporting indexes. Production-volume latency needs measurement against a staging copy before release.
 
 ## Migration and deployment
 
@@ -51,7 +51,7 @@ Roster/attendance aggregation happens in PostgreSQL. No student names or raw 50k
 2. Apply **only** `supabase/migrations/20261010200000_reap_dashboard.sql` in a transaction. Do not replay prior academic-year reset scripts. This creates a catalog, nullable FK, indexes and a read-only aggregation function. It does not modify any existing row.
 3. Run the fixture tests below. Reconcile a real school/week manually: present, absent, unmarked and expected by class/division, then sum student-days and compare the weighted percentage. Compare each unit's assignment rows, roster divisions, statuses and target audit. Verify both current and previous academic years.
 4. Test admin, a trainer limited to one school, a user with no assigned schools, and a dashboard-only user. Verify denied school/trainer inputs and missing module access. Test all filters, week rollover, empty weeks, a zero-completion activity and confirmed shared-activity mapping. Verify live UI on mobile and desktop.
-5. Deploy the review branch only after staging reconciliation. A missing RPC yields a setup error and a Retry action; it never silently falls back to sample/zero data. Existing School Dashboard remains accessible in its tab.
+5. Deploy the review branch only after staging reconciliation. A missing reporting RPC uses paginated, authorized reads of the existing enrollment and attendance tables, with the same calculations. A missing optional activity_id column uses existing session IDs. Permission, network and other query errors still surface; no sample data or fabricated zero totals are substituted. School Dashboard remains accessible through the sidebar.
 
 Tests executed in the development environment:
 
@@ -69,3 +69,9 @@ Tests executed in the development environment:
 2. Leave the additive database objects in place: the previous application ignores them. This is the safest rollback and preserves any confirmed mappings made after release.
 3. Optional cleanup, only after exporting `session_activities` and `(sessions.id, activity_id)` mappings and confirming no caller uses the RPC: drop the RPC, its dashboard-specific indexes, `sessions_activity_unit_fk`, the nullable `activity_id` column and catalog. Never drop or alter the source attendance, enrollment, session status, assignment target or academic-year tables.
 4. Recheck existing login, school management, attendance entry and Session Status workflows. A rollback does not require any historical data restoration because this migration never rewrites that data.
+
+## Follow-up: deployments without the dashboard migration
+
+The reporting RPC and optional shared-activity column are no longer prerequisites for loading the dashboard. Only named missing-object errors trigger compatibility reads; authorization failures, network errors and other database errors are not hidden. No writes or schema changes occur during a dashboard request. Applying the migration remains recommended for database-side aggregation and explicit shared-activity mappings.
+
+`node scripts/test-dashboard-compat.mjs` covers missing-function/column handling, genuine failure propagation, pagination above 1,000 records, date/year/school filters, missing marks, duplicate tie-breaking and skipping attendance reads without attendance permission. The isolated SQL test also compares the SQL and compatibility calculation results on the same fixture records.

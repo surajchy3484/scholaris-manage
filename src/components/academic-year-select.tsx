@@ -81,3 +81,19 @@ export function AcademicYearSelect() {
     </label>
   );
 }
+
+/** Header display only; the existing sidebar selector controls the year. */
+export function AcademicYearLabel() {
+  const years = useYears();
+  const selected = getAcademicYear();
+  const year = years.data?.find((y) => y.id === selected) ?? years.data?.find((y) => y.is_current);
+  return (
+    <div
+      className="ml-auto shrink-0 text-right text-xs leading-tight"
+      aria-label="Selected academic year"
+    >
+      <span className="block text-muted-foreground">Academic Year</span>
+      <span className="block font-semibold">{year?.name ?? selected ?? "—"}</span>
+    </div>
+  );
+}

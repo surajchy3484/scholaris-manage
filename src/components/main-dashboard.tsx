@@ -304,9 +304,7 @@ export function MainDashboard() {
             Reach Education Action Program
           </p>
           <h1 className="mt-1 text-3xl font-bold">Main Dashboard</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Attendance and STEM delivery · Academic Year {year}
-          </p>
+          <p className="mt-1 text-sm text-slate-500">Attendance and STEM delivery</p>
         </div>
         <Button variant="outline" onClick={() => void query.refetch()} disabled={query.isFetching}>
           <RefreshCw className={query.isFetching ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
