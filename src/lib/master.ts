@@ -168,9 +168,13 @@ export async function deleteRowsByIds(
   chunk = 200,
 ): Promise<number> {
   const token = getAccessToken();
-  for (let i = 0; i < ids.length; i += chunk) {
+  // Clicker deletion also recalculates rankings and synchronized results.
+  // Keep each transaction short so a large selection cannot hit the hosted
+  // database statement timeout while holding the Clicker table lock.
+  const batchSize = table === "clicker_records" ? Math.min(chunk, 25) : chunk;
+  for (let i = 0; i < ids.length; i += batchSize) {
     await deleteMasterRows({
-      data: { token, academicYear: getAcademicYear(), table, ids: ids.slice(i, i + chunk) },
+      data: { token, academicYear: getAcademicYear(), table, ids: ids.slice(i, i + batchSize) },
     });
   }
   return ids.length;
