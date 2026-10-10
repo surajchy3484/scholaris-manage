@@ -1,5 +1,6 @@
 // Run with PGLITE_MODULE pointing to an installed @electric-sql/pglite dist/index.js.
 import assert from "node:assert/strict";
+import ts from "typescript";
 import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 const { PGlite } = await import(
@@ -62,6 +63,30 @@ async function get(
   ).rows[0].result;
 }
 let r = await get();
+const compatCode = ts.transpileModule(await readFile("src/lib/dashboard-compat.ts", "utf8"), {
+  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+}).outputText;
+const { aggregateDashboardAttendance } = await import(
+  `data:text/javascript;base64,${Buffer.from(compatCode).toString("base64")}`
+);
+const sameRoster = (
+  await db.query("SELECT * FROM student_enrollments WHERE academic_year='2026' AND school_id=$1", [
+    uuid(101),
+  ])
+).rows;
+const sameMarks = (
+  await db.query(
+    "SELECT id,student_id,school_id,date::text,status,created_at::text FROM attendance WHERE academic_year='2026' AND school_id=$1 AND date BETWEEN '2026-10-05' AND '2026-10-11'",
+    [uuid(101)],
+  )
+).rows;
+const compatibility = aggregateDashboardAttendance(sameRoster, sameMarks);
+assert.deepEqual(compatibility.attendance, r.attendance);
+assert.deepEqual(
+  compatibility.cohorts.sort((a, b) => a.class.localeCompare(b.class)),
+  r.cohorts.sort((a, b) => a.class.localeCompare(b.class)),
+);
+
 assert.equal(r.cohorts.length, 2);
 assert.equal(r.attendance.length, 2);
 assert.equal(r.attendance[0].present, 1);

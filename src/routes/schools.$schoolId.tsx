@@ -435,7 +435,7 @@ function SchoolDetail() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2">
-        <Link to="/">
+        <Link to="/school-dashboard">
           <ArrowLeft className="h-4 w-4" />
           All schools
         </Link>

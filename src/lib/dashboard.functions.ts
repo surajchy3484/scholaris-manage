@@ -1,3 +1,7 @@
+import { loadDashboardAttendance } from "./dashboard-data.server";
+import { missingDashboardFeature, withDashboardFallback } from "./dashboard-compat";
+export type { AttendanceMetric } from "./dashboard-compat";
+import type { AttendanceMetric } from "./dashboard-compat";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { adminDb, requirePermission } from "./app-access.server";
@@ -15,15 +19,6 @@ const date = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .refine((v) => !Number.isNaN(Date.parse(v)));
-export type AttendanceMetric = {
-  school_id: string;
-  class: string;
-  division: string;
-  date: string;
-  present: number;
-  expected: number;
-  recorded: number;
-};
 type School = { id: string; name: string; cluster_name: string | null };
 type AssignmentTarget = {
   id: string;
@@ -118,30 +113,27 @@ export const getMainDashboard = createServerFn({ method: "POST" })
     if (ids.length) {
       // Aggregate roster and marks in PostgreSQL; no student names or raw roster sent to browser.
       const raw = await adminDb();
-      const { data: aggregate, error } = await raw.rpc(
-        "reap_dashboard_attendance" as never,
-        {
-          p_year: year,
-          p_schools: ids,
-          p_start: data.week,
-          p_end: end.toISOString().slice(0, 10),
-          p_class: data.class ?? null,
-          p_division: data.division ?? null,
-        } as never,
-      );
-      if (error)
-        throw new Error(
-          "Dashboard database setup required or query failed. Apply the REAP dashboard migration and retry.",
-        );
-      const result = aggregate as unknown as { cohorts: Cohort[]; attendance: AttendanceMetric[] };
+      const result = await loadDashboardAttendance(raw, {
+        year,
+        schoolIds: ids,
+        start: data.week,
+        end: end.toISOString().slice(0, 10),
+        class: data.class,
+        division: data.division,
+        includeAttendance: attendanceAllowed,
+      });
       cohorts = result.cohorts;
       if (attendanceAllowed) attendance = result.attendance;
       if (sessionsAllowed) {
-        [sessions, statuses, targets] = await Promise.all([
+        const readSessions = (withActivity: boolean) =>
           fetchAllRows<SessionRow>((from, to) => {
             let q = db
               .from("sessions")
-              .select("id,activity_id,school_id,unit,class,session_name,topic")
+              .select(
+                withActivity
+                  ? "id,activity_id,school_id,unit,class,session_name,topic"
+                  : "id,school_id,unit,class,session_name,topic",
+              )
               .in("school_id", ids)
               .order("id");
             if (data.unit) q = q.eq("unit", data.unit);
@@ -150,7 +142,13 @@ export const getMainDashboard = createServerFn({ method: "POST" })
               data: SessionRow[] | null;
               error: unknown;
             }>;
-          }),
+          });
+        [sessions, statuses, targets] = await Promise.all([
+          withDashboardFallback(
+            () => readSessions(true),
+            () => readSessions(false),
+            (error) => missingDashboardFeature(error, "activity_id", ["42703", "PGRST204"]),
+          ),
           fetchAllRows<StatusRow>((from, to) => {
             let q = db
               .from("session_division_status")

@@ -11,6 +11,7 @@ import {
   GraduationCap,
   HelpCircle,
   LayoutDashboard,
+  School,
   LogOut,
   Moon,
   MousePointerClick,
@@ -55,11 +56,11 @@ const SCHOLARS_ITEMS = [
     match: (p: string) => p.startsWith("/academic-years"),
   },
   {
-    to: "/",
+    to: "/school-dashboard",
     label: "Student Management",
     icon: Users,
     module: "students" as AppModule,
-    match: (p: string) => p === "/" || p.startsWith("/schools"),
+    match: (p: string) => p.startsWith("/schools/"),
   },
   {
     to: "/exam-report",
@@ -178,6 +179,21 @@ export function AppSidebar() {
                     <Link to="/" onClick={close}>
                       <LayoutDashboard />
                       <span>Main Dashboard</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+
+              {can("dashboard") && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === "/school-dashboard"}
+                    tooltip="School Dashboard"
+                  >
+                    <Link to="/school-dashboard" onClick={close}>
+                      <School />
+                      <span>School Dashboard</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
