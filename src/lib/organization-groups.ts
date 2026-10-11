@@ -1,3 +1,5 @@
+// Organization-wide centre total confirmed by the user; distinct from cluster-group counts.
+export const TOTAL_REAP_CENTRES = 6;
 /** User-defined organizational structure; Kalwa Centre is not a sixth cluster. */
 export const REAP_CLUSTERS = [
   "Shahapur Cluster",
@@ -41,9 +43,7 @@ export function isCentreGroup(name: string) {
 
 export function countGroups(names: Iterable<string>) {
   const groups = new Set(
-    [...names]
-      .map((name) => name.trim())
-      .filter((name) => !!name && name !== "Other / Unassigned"),
+    [...names].map((name) => name.trim()).filter((name) => !!name && name !== "Other / Unassigned"),
   );
   const list = [...groups];
   return {

@@ -1,3 +1,4 @@
+import { TOTAL_REAP_CENTRES } from "@/lib/organization-groups";
 import { useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -391,9 +392,9 @@ export function MainDashboard() {
                 `Of ${d.kpis.totalClusters} organizational clusters · selected scope`,
               ],
               [
-                "REAP Centres",
-                d.kpis.centres,
-                `Of ${d.kpis.totalCentres} centre${d.kpis.totalCentres === 1 ? "" : "s"} · separate from clusters`,
+                "Total REAP Centres",
+                TOTAL_REAP_CENTRES,
+                "Organization-wide · separate from clusters",
               ],
               ["Enrolled Students", d.kpis.students, "Selected academic-year roster"],
               [
