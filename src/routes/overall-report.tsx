@@ -32,7 +32,7 @@ import {
   avg,
   buildClassReports,
   buildSchoolReports,
-  fetchExamData,
+  examDataQueryOptions,
   performanceStatus,
   type StudentReport,
 } from "@/lib/exam";
@@ -185,12 +185,7 @@ function OverallReport() {
   const [studentPreviewOpen, setStudentPreviewOpen] = useState(false);
   const [search, setSearch] = useState("");
   const { data, isLoading, error } = useQuery({
-    queryKey: ["exam-data", getAcademicYear()],
-    queryFn: fetchExamData,
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchInterval: 30_000,
-    gcTime: 30 * 60_000,
+    ...examDataQueryOptions(),
   });
 
   const schools = data?.schools ?? [];
@@ -203,9 +198,7 @@ function OverallReport() {
     queryKey: ["overall-report-activity", getAcademicYear()],
     queryFn: () =>
       overallReportActivity({ data: { token: getAccessToken(), academicYear: getAcademicYear() } }),
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchInterval: 30_000,
+    staleTime: 60_000,
   });
   const classes = useMemo(
     () =>

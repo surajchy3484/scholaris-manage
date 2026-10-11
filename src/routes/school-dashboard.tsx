@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { AddSchoolDialog } from "@/components/add-school-dialog";
 import { AddClusterDialog } from "@/components/add-cluster-dialog";
-import { fetchAllRows } from "@/lib/fetch-all";
+import { schoolDashboardQueryOptions } from "@/lib/school-dashboard-data";
 import { SchoolCard } from "@/components/school-card";
 import { RequireModule } from "@/components/require-module";
 import { readLocalClusters, readLocalSchoolClusters } from "@/lib/clusters";
@@ -46,26 +46,10 @@ export const Route = createFileRoute("/school-dashboard")({
   ),
 });
 
-type SchoolWithCount = School & { student_count: number };
+import type { SchoolWithCount } from "@/lib/school-dashboard-data";
 
 const DEFAULT_CLUSTERS = ORGANIZATION_GROUPS;
 const displayCluster = schoolOrganizationGroup;
-
-async function fetchSchools(): Promise<SchoolWithCount[]> {
-  // Embedded counts aggregate inside PostgreSQL; student rows never cross the network.
-  const schools = await fetchAllRows<School & { students: { count: number }[] }>((from, to) =>
-    supabase
-      .from("schools")
-      .select("*,students(count)")
-      .order("created_at", { ascending: false })
-      .order("id")
-      .range(from, to),
-  );
-  return schools.map(({ students, ...school }) => ({
-    ...school,
-    student_count: students[0]?.count ?? 0,
-  }));
-}
 
 function Dashboard() {
   const { canSeeSchool, can, isAdmin, ready } = useAuth();
@@ -77,10 +61,9 @@ function Dashboard() {
   const [sort, setSort] = useState<"newest" | "name" | "students">("newest");
   const qc = useQueryClient();
 
-  const { data: allSchools = [], isLoading: loadingSchools } = useQuery({
-    queryKey: ["schools"],
-    queryFn: fetchSchools,
-  });
+  const { data: allSchools = [], isLoading: loadingSchools } = useQuery(
+    schoolDashboardQueryOptions(),
+  );
   const { data: savedClusters = [] } = useQuery({
     queryKey: ["clusters"],
     queryFn: async () => {

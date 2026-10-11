@@ -1,3 +1,4 @@
+import { createQueryRefreshQueue } from "@/lib/query-refresh";
 import { AcademicYearLabel, AcademicYearBoundary } from "@/components/academic-year-select";
 import { resetAcademicYear } from "@/lib/academic-year";
 import { getAccessToken } from "@/lib/app-access";
@@ -300,6 +301,7 @@ function RootComponent() {
   useEffect(() => {
     if (!ready || !isAuthed) return;
 
+    const refreshQueue = createQueryRefreshQueue(queryClient);
     const tables = [
       "app_users",
       "assessments",
@@ -307,6 +309,9 @@ function RootComponent() {
       "clicker_records",
       "exam_scores",
       "questions",
+      "question_bank",
+      "exam_types",
+      "question_bank_migration_issues",
       "school_clusters",
       "school_divisions",
       "schools",
@@ -315,13 +320,14 @@ function RootComponent() {
       "students",
       "student_enrollments",
       "academic_years",
+      "assessment_results",
+      "session_assignment_targets",
+      "class_session_plans",
     ] as const;
     const channel = tables.reduce(
       (current, table) =>
-        current.on(
-          "postgres_changes",
-          { event: "*", schema: "public", table },
-          () => void queryClient.invalidateQueries(),
+        current.on("postgres_changes", { event: "*", schema: "public", table }, () =>
+          refreshQueue.enqueue(table),
         ),
       supabase.channel("scholaris-shared-data"),
     );
@@ -329,9 +335,15 @@ function RootComponent() {
 
     // Realtime may be unavailable on older deployments, so keep a quiet
     // fallback that refreshes active queries for other users' changes.
-    const fallback = window.setInterval(() => void queryClient.invalidateQueries(), 60_000);
+    const fallback = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      // Refresh visible data without invalidating every inactive sidebar page or
+      // cancelling requests already in flight during an import.
+      void queryClient.refetchQueries({ type: "active" }, { cancelRefetch: false });
+    }, 60_000);
     return () => {
       window.clearInterval(fallback);
+      refreshQueue.dispose();
       void supabase.removeChannel(channel);
     };
   }, [isAuthed, ready, queryClient]);
