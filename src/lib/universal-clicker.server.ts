@@ -50,21 +50,19 @@ export async function writeClicker(
       ].filter((v): v is string => typeof v === "string"),
     ),
   ];
-  if (mode !== "delete") {
-    const assessments = assessmentIds.length
-      ? await fetchAllRows((from, to) =>
-          db
-            .from("assessments")
-            .select("assessment_id,school_id")
-            .in("assessment_id", assessmentIds)
-            .order("id")
-            .range(from, to),
-        )
-      : [];
-    if (assessments.some((a) => !a.school_id || !canSeeSchool(profile, a.school_id)))
-      throw new Error("School access denied");
-    if (assessments.length !== assessmentIds.length) throw new Error("Unknown assessment");
-  }
+  const assessments = assessmentIds.length
+    ? await fetchAllRows((from, to) =>
+        db
+          .from("assessments")
+          .select("assessment_id,school_id")
+          .in("assessment_id", assessmentIds)
+          .order("id")
+          .range(from, to),
+      )
+    : [];
+  if (assessments.some((a) => !a.school_id || !canSeeSchool(profile, a.school_id)))
+    throw new Error("School access denied");
+  if (assessments.length !== assessmentIds.length) throw new Error("Unknown assessment");
   const { data, error } = await db.rpc(
     "universal_clicker_write" as never,
     {
@@ -76,20 +74,9 @@ export async function writeClicker(
     } as never,
   );
   if (error) {
-    // Some hosted databases may have the table and service-role access but
-    // not the optional deletion RPC yet. The rows have already been loaded
-    // and school-authorized above, so use a narrowly scoped direct fallback
-    // rather than leaving the Delete action apparently successful/blocked.
-    if (mode === "delete" && ["PGRST202", "42883"].includes(error.code)) {
-      const direct = await db.from("clicker_records").delete().in("id", ids);
-      if (direct.error) throw new Error(direct.error.message);
-      return { ok: true, count: ids.length };
-    }
     throw new Error(
       ["PGRST202", "42883"].includes(error.code)
-        ? mode === "delete"
-          ? "Clicker deletion is not installed in the database. Apply 20260927180000_clicker_delete_recovery.sql in the hosting database SQL editor, then retry. No rows were deleted."
-          : "Apply the Universal Question Master migration before saving Clicker data. No rows were saved."
+        ? "Apply the Universal Question Master migration before saving Clicker data. No rows were saved."
         : error.message,
     );
   }

@@ -11,6 +11,8 @@ import { Plus, Search, School as SchoolIcon, ArrowUpDown, Users } from "lucide-r
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/academic-data";
+import { getAccessToken } from "@/lib/app-access";
+import { listClusters } from "@/lib/school.functions";
 import { useAuth } from "@/lib/auth";
 import type { School } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -28,7 +30,7 @@ import { AddClusterDialog } from "@/components/add-cluster-dialog";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { SchoolCard } from "@/components/school-card";
 import { RequireModule } from "@/components/require-module";
-import { isMissingClustersTable, readLocalClusters, readLocalSchoolClusters } from "@/lib/clusters";
+import { readLocalClusters, readLocalSchoolClusters } from "@/lib/clusters";
 
 export const Route = createFileRoute("/school-dashboard")({
   head: () => ({
@@ -82,14 +84,14 @@ function Dashboard() {
   const { data: savedClusters = [] } = useQuery({
     queryKey: ["clusters"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("school_clusters").select("name").order("name");
-      if (error) {
-        if (isMissingClustersTable(error)) return readLocalClusters();
-        throw error;
+      try {
+        const { clusters } = await listClusters({ data: { token: getAccessToken() } });
+        return [...clusters, ...readLocalClusters()];
+      } catch {
+        return readLocalClusters();
       }
-      return [...data.map((row) => row.name), ...readLocalClusters()];
     },
-    enabled: ready && canAddSchool,
+    enabled: ready,
     staleTime: 5 * 60_000,
   });
 
@@ -143,7 +145,10 @@ function Dashboard() {
     groups.set(cluster, [...(groups.get(cluster) ?? []), school]);
     return groups;
   }, new Map<string, SchoolWithCount[]>());
-  const clusterOrder = [...ORGANIZATION_GROUPS, "Other / Unassigned"];
+  const extraClusters = Array.from(new Set(savedClusters.map(normalizeOrganizationGroup))).filter(
+    (name) => !ORGANIZATION_GROUPS.some((group) => group.toLowerCase() === name.toLowerCase()),
+  );
+  const clusterOrder = [...ORGANIZATION_GROUPS, ...extraClusters, "Other / Unassigned"];
   const orderedClusters = [...grouped.keys()].sort((a, b) => {
     const ai = clusterOrder.indexOf(a);
     const bi = clusterOrder.indexOf(b);

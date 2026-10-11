@@ -13,8 +13,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/academic-data";
-import { isMissingClustersTable, saveLocalCluster } from "@/lib/clusters";
+import { getAccessToken } from "@/lib/app-access";
+import { saveCluster } from "@/lib/school.functions";
 
 export function AddClusterDialog({
   open,
@@ -30,15 +30,7 @@ export function AddClusterDialog({
     mutationFn: async () => {
       const clusterName = name.trim();
       if (!clusterName) throw new Error("Cluster name is required.");
-      const { error } = await supabase.from("school_clusters").insert({ name: clusterName });
-      if (error) {
-        if (error.code === "23505") throw new Error("That cluster already exists.");
-        if (isMissingClustersTable(error)) {
-          saveLocalCluster(clusterName);
-          return;
-        }
-        throw error;
-      }
+      await saveCluster({ data: { token: getAccessToken(), name: clusterName } });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["clusters"] });
