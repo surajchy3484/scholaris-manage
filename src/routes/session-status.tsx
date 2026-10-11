@@ -152,18 +152,14 @@ function SessionStatusPage() {
   const schoolsQuery = useQuery({
     queryKey: ["session-schools", accessKey],
     queryFn: fetchSessionSchools,
-    staleTime: 0,
-    refetchOnWindowFocus: "always",
-    refetchInterval: 30_000,
+    staleTime: 60_000,
   });
 
   const rosterQuery = useQuery({
     queryKey: ["session-roster", schoolId, accessKey],
     queryFn: () => fetchSessionRoster(schoolId!),
     enabled: !!schoolId,
-    staleTime: 0,
-    refetchOnWindowFocus: "always",
-    refetchInterval: 30_000,
+    staleTime: 60_000,
   });
   const pairs = useMemo(() => rosterQuery.data ?? [], [rosterQuery.data]);
   const classOptions = useMemo(() => [...new Set(pairs.map((p) => p.class))], [pairs]);

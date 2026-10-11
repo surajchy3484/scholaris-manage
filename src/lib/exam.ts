@@ -288,3 +288,8 @@ export async function deleteScoresForStudentIds(studentIds: string[]) {
 
 export const CLASS_OPTIONS = Array.from({ length: 12 }, (_, i) => String(i + 1));
 export const DIVISION_OPTIONS = ["A", "B", "C", "D"];
+
+/** Shared cache across Reports and Overall Report; year changes remain isolated. */
+export function examDataQueryOptions() {
+  return { queryKey: ["exam-data", getAcademicYear()], queryFn: fetchExamData, staleTime: 60_000 };
+}

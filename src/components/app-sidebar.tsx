@@ -1,5 +1,6 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { AcademicYearSelect } from "@/components/academic-year-select";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, type SyntheticEvent } from "react";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import {
   BarChart3,
@@ -105,6 +106,28 @@ const SCHOLARS_ITEMS = [
  * state remembered in localStorage and the active route highlighted.
  */
 export function AppSidebar() {
+  const queryClient = useQueryClient();
+  const warmTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const cancelWarm = () => {
+    if (warmTimer.current !== undefined) clearTimeout(warmTimer.current);
+  };
+  useEffect(
+    () => () => {
+      if (warmTimer.current !== undefined) clearTimeout(warmTimer.current);
+    },
+    [],
+  );
+  const warm = (event: SyntheticEvent) => {
+    cancelWarm();
+    const anchor = event.target instanceof Element ? event.target.closest("a") : null;
+    const path = anchor?.getAttribute("href");
+    if (!path) return;
+    warmTimer.current = setTimeout(() => {
+      void import("@/lib/navigation-prefetch")
+        .then(({ prefetchSidebarData }) => prefetchSidebarData(queryClient, path))
+        .catch(() => {});
+    }, 100);
+  };
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const router = useRouter();
   const { theme, toggle } = useTheme();
@@ -167,7 +190,7 @@ export function AppSidebar() {
         </Link>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent onPointerOver={warm} onFocusCapture={warm} onPointerLeave={cancelWarm}>
         <AcademicYearSelect />
         <SidebarGroup>
           <SidebarGroupLabel>Overview</SidebarGroupLabel>

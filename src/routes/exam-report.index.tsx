@@ -46,7 +46,7 @@ import {
   avg,
   buildSchoolReports,
   distributionBucket,
-  fetchExamData,
+  examDataQueryOptions,
   round1,
   type PerfStatus,
 } from "@/lib/exam";
@@ -80,7 +80,7 @@ function ExamReportDashboard() {
   const navigate = useNavigate();
   const [selected, setSelected] = useState("all");
 
-  const { data, isLoading } = useQuery({ queryKey: ["exam-data"], queryFn: fetchExamData });
+  const { data, isLoading } = useQuery(examDataQueryOptions());
 
   const reports = useMemo(() => (data ? buildSchoolReports(data) : []), [data]);
 

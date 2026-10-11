@@ -268,7 +268,6 @@ export function MainDashboard() {
     queryFn: () => getMainDashboard({ data: { ...filters, token: getAccessToken() } }),
     enabled: ready,
     staleTime: 30_000,
-    refetchInterval: 60_000,
     retry: false,
   });
   const d = query.data;
