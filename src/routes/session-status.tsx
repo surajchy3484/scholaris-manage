@@ -1,3 +1,4 @@
+import { refreshSessionQueries } from "@/lib/query-refresh";
 import { getAcademicYear, setAcademicYear as selectGlobalYear } from "@/lib/academic-year";
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
@@ -225,11 +226,7 @@ function SessionStatusPage() {
 
   const summary = unitProgress(rows);
 
-  const refresh = async () => {
-    await qc.invalidateQueries({ queryKey: ["division-sessions", schoolId, unit, klass] });
-    await qc.invalidateQueries({ queryKey: ["session-roster", schoolId] });
-    await qc.invalidateQueries({ queryKey: ["session-unit-counts", schoolId, accessKey] });
-  };
+  const refresh = () => refreshSessionQueries(qc);
 
   const setStatus = useMutation({
     mutationFn: ({ ids, status }: { ids: string[]; status: SessionStatus }) =>
@@ -954,7 +951,7 @@ function AssignmentPlanner() {
               status: row.status ?? "pending",
             })),
           });
-          await qc.invalidateQueries({ queryKey: ["session-schools"] });
+          await refreshSessionQueries(qc);
           return `${importMode === "update" ? `Updated ${result.updated} existing session(s) and imported ${result.imported} new session(s)` : `Imported ${result.imported} session(s)`} into ${result.schools} eligible school(s). ${result.skipped} existing duplicate(s) skipped.`;
         }}
       />

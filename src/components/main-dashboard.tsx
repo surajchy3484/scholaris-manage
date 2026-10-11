@@ -6,6 +6,7 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -131,12 +132,22 @@ function AttendanceBars({
   );
 }
 function SessionChart({ rows, select }: { rows: SessionMetric[]; select: (id: string) => void }) {
+  const completed = rows.reduce((total, row) => total + row.completed, 0);
+  const planned = rows.reduce((total, row) => total + row.planned, 0);
   if (!rows.length)
     return (
       <p className="py-16 text-center text-sm text-slate-500">No sessions match these filters.</p>
     );
   return (
     <>
+      <p className="mb-3 text-sm text-slate-600" aria-live="polite">
+        <strong className="text-green-700">{completed} completed</strong> / {planned} planned
+        {" · "}
+        {planned ? pct(percentage(completed, planned)) : "Not Planned"}
+        <span className="mt-1 block text-xs">
+          From Session Status: one delivery per session, school and division.
+        </span>
+      </p>
       <div className="overflow-x-auto">
         <div style={{ height: 280, minWidth: Math.max(320, rows.length * 65) }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -177,7 +188,14 @@ function SessionChart({ rows, select }: { rows: SessionMetric[]; select: (id: st
                 name="Completed"
                 fill="#16a34a"
                 onClick={(r) => select(r.id)}
-              />
+              >
+                <LabelList
+                  dataKey="completed"
+                  position="inside"
+                  fill="#fff"
+                  formatter={(value: unknown) => (Number(value) > 0 ? String(value) : "")}
+                />
+              </Bar>
               <Bar
                 dataKey="pending"
                 stackId="delivery"
@@ -264,6 +282,8 @@ export function MainDashboard() {
     to: to || undefined,
   };
   const query = useQuery({
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryKey: ["main-dashboard", profile?.userId ?? authSession?.user, filters],
     queryFn: () => getMainDashboard({ data: { ...filters, token: getAccessToken() } }),
     enabled: ready,

@@ -79,3 +79,9 @@ The reporting RPC and optional shared-activity column are no longer prerequisite
 ## Organization grouping correction
 
 The organization has five clusters: Shahapur, Kalwa, Chembur, Manmad and Palghar. Kalwa Centre is a separate REAP Centre, not a sixth cluster. Dashboard cards count recognized clusters and REAP centres separately within the authorized, filtered school scope. The group selector and school headings use the same classification. Legacy Kalwa Center/Centers/Centre/Centres labels display as “Kalwa Centre (REAP Centre)”; stored school assignments and records are not rewritten. Existing school location corrections are retained. Unknown groups stay visible but are not counted as an additional recognized cluster.
+
+## Dynamic status updates
+
+Successful status changes, session edits/deletions and workbook imports invalidate the Main Dashboard and session/report caches immediately, without depending on Supabase Realtime. Returning to Main Dashboard or focusing its tab also rechecks the saved values; cached content remains visible while fetching. Each unit graph shows completed/planned delivery totals, percentage and labels on green completed bars. Marking a delivery Pending removes it from completed totals. Existing academic-year, permission and filter scopes still apply.
+
+No database migration is required for this refresh change. Roll back by reverting its merge commit; saved session statuses are not changed or deleted. Automated tests verify cache refresh and complete-to-pending calculations. Production totals must be checked in the authenticated app against Session Status using the same school, class, division and academic year.
