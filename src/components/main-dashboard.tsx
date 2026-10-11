@@ -293,7 +293,7 @@ export function MainDashboard() {
       ...sumAttendance(d.attendance.filter((r) => r.school_id === s.id)),
     })) ?? [];
   const weekly = sumAttendance(d?.attendance ?? []);
-  const centres = [...new Set(d?.schools.map((s) => s.cluster_name || "Unassigned") ?? [])].sort();
+  const centres = [...new Set(d?.schools.map((s) => s.group_name) ?? [])].sort();
   const classes = [...new Set(d?.cohorts.map((c) => c.class) ?? [])].sort();
   const divisions = [...new Set(d?.cohorts.map((c) => c.division || "__blank__") ?? [])].sort();
   return (
@@ -313,7 +313,7 @@ export function MainDashboard() {
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Filter
-          label="Centres"
+          label="Clusters / REAP Centres"
           value={centre}
           onChange={(v) => {
             setCentre(v);
@@ -334,7 +334,7 @@ export function MainDashboard() {
             setSession("");
           }}
           options={(d?.schools ?? [])
-            .filter((s) => !centre || (s.cluster_name || "Unassigned") === centre)
+            .filter((s) => !centre || s.group_name === centre)
             .map((s) => ({ id: s.id, name: s.name }))}
         />
         <Filter
@@ -383,9 +383,10 @@ export function MainDashboard() {
         </p>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              ["Active Centres", d.kpis.centres, "Assigned school clusters"],
+              ["Clusters", d.kpis.clusters, "Of 5 organizational clusters · selected scope"],
+              ["REAP Centres", d.kpis.centres, "Kalwa Centre · separate from clusters"],
               ["Enrolled Students", d.kpis.students, "Selected academic-year roster"],
               [
                 "Sessions Completed",
