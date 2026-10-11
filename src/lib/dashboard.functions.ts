@@ -78,6 +78,17 @@ export const getMainDashboard = createServerFn({ method: "POST" })
       return q.range(from, to);
     });
     const schools = rawSchools.map((s) => ({ ...s, group_name: schoolOrganizationGroup(s) }));
+    // Totals stay dynamic: saved clusters plus every group present on visible schools.
+    const { data: clusterRows, error: clusterError } = await db
+      .from("school_clusters")
+      .select("name");
+    const savedClusterNames = clusterError
+      ? []
+      : (clusterRows ?? []).map((row) => row.name as string).filter(Boolean);
+    const totalGroups = countGroups([
+      ...schools.map((s) => s.group_name),
+      ...savedClusterNames.map(normalizeOrganizationGroup),
+    ]);
     let trainers: Trainer[] = [];
     if (sessionsAllowed && profile.role === "admin") {
       trainers = await fetchAllRows<Trainer>((from, to) =>
@@ -231,6 +242,8 @@ export const getMainDashboard = createServerFn({ method: "POST" })
       })),
       kpis: {
         ...countOrganizationGroups(selected),
+        totalClusters: totalGroups.clusters,
+        totalCentres: totalGroups.centres,
         students: cohorts.reduce((n, c) => n + Number(c.students), 0),
         completed: metrics.reduce((n, s) => n + s.completed, 0),
       },
