@@ -103,7 +103,7 @@ export function ClassSessionCoverage({
   };
   return (
     <section
-      className="space-y-4 rounded-xl border bg-white p-4 text-slate-900 sm:p-6"
+      className="space-y-4 rounded-xl border bg-card p-4 text-foreground sm:p-6"
       aria-label="Class-wise Session Completion"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -113,7 +113,7 @@ export function ClassSessionCoverage({
               ? "Topic coverage for ICA / MCA / FCA"
               : "Session-wise Completion"}
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-muted-foreground">
             One common session per class and unit · Academic year {d?.year ?? year}
           </p>
         </div>
@@ -126,7 +126,7 @@ export function ClassSessionCoverage({
         </Button>
       </div>
       <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 font-semibold text-green-800">
+        <label className="flex flex-col gap-1 font-semibold text-green-800 dark:text-green-300">
           Class
           <select
             className={selectStyle + " border-green-600"}
@@ -202,7 +202,7 @@ export function ClassSessionCoverage({
       </div>
       {settingsOpen && (
         <form
-          className="flex flex-wrap items-end gap-3 rounded-lg bg-slate-50 p-3"
+          className="flex flex-wrap items-end gap-3 rounded-lg bg-background p-3"
           onSubmit={(e) => {
             e.preventDefault();
             save.mutate();
@@ -239,18 +239,18 @@ export function ClassSessionCoverage({
           </Button>
         </form>
       )}
-      <p className="text-xs text-slate-600">
+      <p className="text-xs text-muted-foreground">
         Green: schools completed · Blue: not completed · Grey: not recorded. Each school counts
         once. All roster divisions must be Complete for a school to count as completed. Cancelled
         assignments are excluded. These filters apply to this section; use the school filter inside
         a session’s details.
       </p>
-      <p className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">
+      <p className="rounded-lg bg-blue-50 dark:bg-blue-950/40 p-3 text-sm text-blue-900 dark:text-blue-200">
         High coverage can guide ICA, MCA or FCA topic selection. It measures topic delivery, not
         student mastery. No assessment is created automatically.
       </p>
       {query.error && (
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="text-red-700 dark:text-red-300">
           {query.error.message}
         </p>
       )}
@@ -275,7 +275,9 @@ export function ClassSessionCoverage({
                         type="button"
                         className={
                           "block w-full rounded-lg border p-3 text-left hover:border-blue-500 focus-visible:outline-blue-600 " +
-                          (high ? "border-green-300 bg-green-50" : "")
+                          (high
+                            ? "border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-950/40"
+                            : "")
                         }
                         onClick={() => {
                           setSession(r.id);
@@ -286,7 +288,7 @@ export function ClassSessionCoverage({
                           {r.session_name}
                         </span>
                         {r.topic && r.topic !== r.session_name && (
-                          <span className="block break-words text-xs text-slate-600">
+                          <span className="block break-words text-xs text-muted-foreground">
                             {r.topic}
                           </span>
                         )}
@@ -295,7 +297,7 @@ export function ClassSessionCoverage({
                           {percent === null ? "N/A" : `${Number(percent.toFixed(1))}%`}
                         </span>
                         <span
-                          className="my-2 flex h-4 overflow-hidden rounded bg-slate-100"
+                          className="my-2 flex h-4 overflow-hidden rounded bg-muted"
                           role="img"
                           aria-label={`${r.completed} completed, ${r.pending} not completed, ${r.not_recorded} not recorded`}
                         >
@@ -305,7 +307,7 @@ export function ClassSessionCoverage({
                             style={{ width: `${r.eligible ? (r.pending / r.eligible) * 100 : 0}%` }}
                           />
                           <span
-                            className="bg-slate-300"
+                            className="bg-slate-300 dark:bg-slate-500"
                             style={{
                               width: `${r.eligible ? (r.not_recorded / r.eligible) * 100 : 0}%`,
                             }}
@@ -315,17 +317,17 @@ export function ClassSessionCoverage({
                           {label}
                           {r.not_recorded > 0 ? ` · Not Recorded: ${r.not_recorded} schools` : ""}
                         </span>
-                        <span className="block text-xs text-slate-500">
+                        <span className="block text-xs text-muted-foreground">
                           Not completed: {r.pending} · Not recorded: {r.not_recorded}
                         </span>
-                        <span className="mt-1 block break-all text-[10px] text-slate-500">
+                        <span className="mt-1 block break-all text-[10px] text-muted-foreground">
                           Session ID: {r.id}
                         </span>
                       </button>
                     );
                   })}
                 {!rows.some((r) => r.unit === unit) && (
-                  <p className="py-8 text-sm text-slate-500">
+                  <p className="py-8 text-sm text-muted-foreground">
                     No sessions match this class and coverage filter.
                   </p>
                 )}

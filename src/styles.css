@@ -65,6 +65,7 @@
 }
 
 :root {
+  color-scheme: light;
   --radius: 1rem;
   --theme-hue: 265;
 
@@ -120,6 +121,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   /* Dark charcoal with blue undertone — never pure black */
   --background: oklch(0.22 0.03 265);
   --foreground: oklch(0.96 0.012 265);
