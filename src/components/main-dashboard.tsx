@@ -1,3 +1,4 @@
+import { ClassSessionCoverage } from "@/components/class-session-coverage";
 import { TOTAL_REAP_CENTRES } from "@/lib/organization-groups";
 import { useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -6,7 +7,6 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
-  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -16,13 +16,7 @@ import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { getMainDashboard, type AttendanceMetric } from "@/lib/dashboard.functions";
 import { getAccessToken } from "@/lib/app-access";
 import { getAcademicYear } from "@/lib/academic-year";
-import {
-  addDays,
-  indiaToday,
-  percentage,
-  weekStart,
-  type SessionMetric,
-} from "@/lib/dashboard-analytics";
+import { addDays, indiaToday, percentage, weekStart } from "@/lib/dashboard-analytics";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
@@ -129,122 +123,6 @@ function AttendanceBars({
         </BarChart>
       </ResponsiveContainer>
     </div>
-  );
-}
-function SessionChart({ rows, select }: { rows: SessionMetric[]; select: (id: string) => void }) {
-  const completed = rows.reduce((total, row) => total + row.completed, 0);
-  const planned = rows.reduce((total, row) => total + row.planned, 0);
-  if (!rows.length)
-    return (
-      <p className="py-16 text-center text-sm text-slate-500">No sessions match these filters.</p>
-    );
-  return (
-    <>
-      <p className="mb-3 text-sm text-slate-600" aria-live="polite">
-        <strong className="text-green-700">{completed} completed</strong> / {planned} planned
-        {" · "}
-        {planned ? pct(percentage(completed, planned)) : "Not Planned"}
-        <span className="mt-1 block text-xs">
-          From Session Status: one delivery per session, school and division.
-        </span>
-      </p>
-      <div className="overflow-x-auto">
-        <div style={{ height: 280, minWidth: Math.max(320, rows.length * 65) }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={rows} accessibilityLayer margin={{ bottom: 25, right: 15 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="name"
-                interval={0}
-                tick={{ fontSize: 10 }}
-                tickFormatter={(v) => (v.length > 15 ? `${v.slice(0, 13)}…` : v)}
-                angle={-20}
-                textAnchor="end"
-                height={60}
-              />
-              <YAxis allowDecimals={false} width={35} />
-              <Tooltip
-                content={({ active, payload }) => {
-                  const r = payload?.[0]?.payload as SessionMetric | undefined;
-                  return active && r ? (
-                    <div className="max-w-xs rounded-lg border bg-white p-3 text-xs shadow-lg">
-                      <strong>{r.name}</strong>
-                      <p className="break-all">ID: {r.id}</p>
-                      <p>
-                        {r.completed} completed / {r.planned} planned · {pct(r.percentage)}
-                      </p>
-                      <p>
-                        {r.pending} remaining · {r.schools} schools
-                      </p>
-                      <p>{r.status}</p>
-                    </div>
-                  ) : null;
-                }}
-              />
-              <Legend />
-              <Bar
-                dataKey="completed"
-                stackId="delivery"
-                name="Completed"
-                fill="#16a34a"
-                onClick={(r) => select(r.id)}
-              >
-                <LabelList
-                  dataKey="completed"
-                  position="inside"
-                  fill="#fff"
-                  formatter={(value: unknown) => (Number(value) > 0 ? String(value) : "")}
-                />
-              </Bar>
-              <Bar
-                dataKey="pending"
-                stackId="delivery"
-                name="Remaining plan"
-                fill="#bfdbfe"
-                onClick={(r) => select(r.id)}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-      <div className="max-h-72 overflow-auto">
-        <table className="w-full text-left text-xs">
-          <thead>
-            <tr className="border-b text-slate-500">
-              <th className="py-2">Session / ID</th>
-              <th>Plan</th>
-              <th>Done</th>
-              <th>Remaining</th>
-              <th>Schools</th>
-              <th>Completion</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-b border-slate-100">
-                <td className="max-w-48 py-3 pr-2">
-                  <button
-                    className="text-left font-medium text-blue-700 hover:underline"
-                    onClick={() => select(r.id)}
-                  >
-                    {r.name}
-                  </button>
-                  <span className="block break-all text-[10px] text-slate-400">{r.id}</span>
-                </td>
-                <td>{r.planned}</td>
-                <td>{r.completed}</td>
-                <td>{r.pending}</td>
-                <td>{r.schools}</td>
-                <td>
-                  <strong>{pct(r.percentage)}</strong>
-                  <span className="block">{r.status}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
   );
 }
 export function MainDashboard() {
@@ -683,23 +561,7 @@ export function MainDashboard() {
                   </table>
                 </div>
               </Panel>
-              <div>
-                <h2 className="mb-2 text-xl font-semibold">Session-wise Completion</h2>
-                <p className="mb-4 text-xs text-slate-500">
-                  Green: completed · Light blue: remaining plan. Frequent = 75–99.9%; less conducted
-                  = above 0–74.9%. Overdue/missed dates are not recorded in the existing system.
-                </p>
-                <div className="grid gap-5 lg:grid-cols-2">
-                  {units.map((u) => (
-                    <Panel key={u} title={`${u.replace("-", " ")} — Session-wise Completion`}>
-                      <SessionChart
-                        rows={d.metrics.filter((s) => s.unit === u)}
-                        select={setSession}
-                      />
-                    </Panel>
-                  ))}
-                </div>
-              </div>
+              <ClassSessionCoverage />
               <Panel title="Trainer-wise Session Completion">
                 <p className="mb-3 text-xs text-slate-500">
                   Based on current school assignments, not who last edited a status. Shared schools
@@ -793,17 +655,17 @@ export function MainDashboard() {
                   status. No roster means Not Planned.
                 </p>
                 <p className="mt-2">
-                  Legacy sessions without a confirmed shared activity ID remain separate; matching
-                  names are never merged. {d.metrics.filter((s) => s.unmapped).length} displayed
-                  session records await optional activity mapping. Mapped activities retain their
-                  separate school/class/division deliveries.
+                  The KPI, unit delivery table and trainer table retain their existing delivery
+                  counts. Class-wise Session Completion uses the shared class catalogue and counts
+                  each eligible school once, with its own class, centre and trainer filters.
                 </p>
                 <p className="mt-2">
-                  Date filters refer to status update timestamps in UTC, not delivery dates. With a
-                  date filter, remaining plan includes completions outside the selected period.
-                  Status updates are snapshots, so this is not a historical as-of report. Centres
-                  use stored school clusters; no centre-active flag, coordinator role, trainer
-                  delivery assignment or profile photo field exists in the current schema.
+                  The delivery-table date filters refer to status update timestamps in UTC, not
+                  delivery dates. With a date filter, remaining plan includes completions outside
+                  the selected period. Status updates are snapshots, so this is not a historical
+                  as-of report. Centres use stored school clusters; no centre-active flag,
+                  coordinator role, trainer delivery assignment or profile photo field exists in the
+                  current schema.
                 </p>
               </details>
             </>

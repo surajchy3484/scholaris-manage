@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 
 const reports = ["exam-data", "visual-analytics-source", "student-history", "academic-progress"];
 const sessionQueries = [
+  "class-session-coverage",
   "session-schools",
   "session-roster",
   "session-unit-counts",
@@ -36,6 +37,9 @@ const tableQueries: Record<string, string[]> = {
   school_divisions: ["main-dashboard", ...rosterQueries],
   sessions: ["main-dashboard", ...sessionQueries],
   session_division_status: ["main-dashboard", ...sessionQueries],
+  session_catalogue: ["class-session-coverage"],
+  session_coverage_settings: ["class-session-coverage"],
+  session_school_assignments: ["class-session-coverage"],
   session_assignment_targets: ["main-dashboard", ...sessionQueries],
   class_session_plans: ["main-dashboard", ...sessionQueries],
   assessments: [
