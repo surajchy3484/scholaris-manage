@@ -11,6 +11,8 @@ import { Plus, Search, School as SchoolIcon, ArrowUpDown, Users } from "lucide-r
 import { toast } from "sonner";
 
 import { supabase } from "@/lib/academic-data";
+import { getAccessToken } from "@/lib/app-access";
+import { listClusters } from "@/lib/school.functions";
 import { useAuth } from "@/lib/auth";
 import type { School } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -28,7 +30,7 @@ import { AddClusterDialog } from "@/components/add-cluster-dialog";
 import { fetchAllRows } from "@/lib/fetch-all";
 import { SchoolCard } from "@/components/school-card";
 import { RequireModule } from "@/components/require-module";
-import { isMissingClustersTable, readLocalClusters, readLocalSchoolClusters } from "@/lib/clusters";
+import { readLocalClusters, readLocalSchoolClusters } from "@/lib/clusters";
 
 export const Route = createFileRoute("/school-dashboard")({
   head: () => ({
