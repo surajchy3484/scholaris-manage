@@ -1,3 +1,4 @@
+import { schoolOrganizationGroup, countOrganizationGroups } from "./organization-groups";
 import { loadDashboardAttendance } from "./dashboard-data.server";
 import { missingDashboardFeature, withDashboardFallback } from "./dashboard-compat";
 export type { AttendanceMetric } from "./dashboard-compat";
@@ -19,7 +20,7 @@ const date = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .refine((v) => !Number.isNaN(Date.parse(v)));
-type School = { id: string; name: string; cluster_name: string | null };
+type School = { id: string; name: string; location: string; cluster_name: string | null };
 type AssignmentTarget = {
   id: string;
   school_id: string;
@@ -62,8 +63,8 @@ export const getMainDashboard = createServerFn({ method: "POST" })
     const db = await academicDb(year);
     const attendanceAllowed = can(profile, "attendance", "view");
     const sessionsAllowed = can(profile, "session_status", "view");
-    const schools = await fetchAllRows<School>((from, to) => {
-      let q = db.from("schools").select("id,name,cluster_name").order("id");
+    const rawSchools = await fetchAllRows<School>((from, to) => {
+      let q = db.from("schools").select("id,name,location,cluster_name").order("id");
       if (profile.role !== "admin" && !profile.allSchools)
         q = q.in(
           "id",
@@ -71,6 +72,7 @@ export const getMainDashboard = createServerFn({ method: "POST" })
         );
       return q.range(from, to);
     });
+    const schools = rawSchools.map((s) => ({ ...s, group_name: schoolOrganizationGroup(s) }));
     let trainers: Trainer[] = [];
     if (sessionsAllowed && profile.role === "admin") {
       trainers = await fetchAllRows<Trainer>((from, to) =>
@@ -99,7 +101,7 @@ export const getMainDashboard = createServerFn({ method: "POST" })
     const selected = schools.filter(
       (s) =>
         (!data.school || s.id === data.school) &&
-        (!data.centre || (s.cluster_name || "Unassigned") === data.centre) &&
+        (!data.centre || s.group_name === data.centre) &&
         (!trainer || trainer.all_schools || trainer.school_ids.includes(s.id)),
     );
     const ids = selected.map((s) => s.id);
@@ -223,7 +225,7 @@ export const getMainDashboard = createServerFn({ method: "POST" })
         unit: s.unit,
       })),
       kpis: {
-        centres: new Set(selected.map((s) => s.cluster_name).filter(Boolean)).size,
+        ...countOrganizationGroups(selected),
         students: cohorts.reduce((n, c) => n + Number(c.students), 0),
         completed: metrics.reduce((n, s) => n + s.completed, 0),
       },

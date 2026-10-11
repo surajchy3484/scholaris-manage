@@ -1,3 +1,8 @@
+import {
+  ORGANIZATION_GROUPS,
+  normalizeOrganizationGroup,
+  schoolOrganizationGroup,
+} from "@/lib/organization-groups";
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -41,37 +46,8 @@ export const Route = createFileRoute("/school-dashboard")({
 
 type SchoolWithCount = School & { student_count: number };
 
-const DEFAULT_CLUSTERS = [
-  "Kalwa Cluster",
-  "Kalwa Centers",
-  "Chembur Cluster",
-  "Shahapur Cluster",
-  "Palghar Cluster",
-  "Manmad Cluster",
-];
-
-function displayCluster(school: School) {
-  const value = `${school.name} ${school.location}`.toLowerCase();
-  // These locations are part of the requested Palghar grouping. Apply the
-  // location rule before a stale/legacy cluster value so existing records are
-  // displayed consistently on every device.
-  if (["talasari", "uplat", "nagari", "ashagad"].some((name) => value.includes(name)))
-    return "Palghar Cluster";
-  if (value.includes("manmad")) return "Manmad Cluster";
-  if (school.cluster_name?.trim()) return school.cluster_name.trim();
-  if (value.includes("center") && value.includes("kalwa")) return "Kalwa Centers";
-  if (value.includes("kalwa")) return "Kalwa Cluster";
-  if (value.includes("chembur") || value.includes("govandi") || value.includes("mankhurd"))
-    return "Chembur Cluster";
-  if (
-    value.includes("shahapur") ||
-    value.includes("bamne") ||
-    value.includes("dhasai") ||
-    value.includes("khadavali")
-  )
-    return "Shahapur Cluster";
-  return "Other / Unassigned";
-}
+const DEFAULT_CLUSTERS = ORGANIZATION_GROUPS;
+const displayCluster = schoolOrganizationGroup;
 
 async function fetchSchools(): Promise<SchoolWithCount[]> {
   // Embedded counts aggregate inside PostgreSQL; student rows never cross the network.
@@ -157,7 +133,7 @@ function Dashboard() {
   const clusterOptions = Array.from(
     new Map(
       [...DEFAULT_CLUSTERS, ...savedClusters, ...allSchools.map((s) => s.cluster_name ?? "")]
-        .map((value) => value.trim())
+        .map(normalizeOrganizationGroup)
         .filter(Boolean)
         .map((value) => [value.toLowerCase(), value] as const),
     ).values(),
@@ -167,15 +143,7 @@ function Dashboard() {
     groups.set(cluster, [...(groups.get(cluster) ?? []), school]);
     return groups;
   }, new Map<string, SchoolWithCount[]>());
-  const clusterOrder = [
-    "Kalwa Cluster",
-    "Kalwa Centers",
-    "Chembur Cluster",
-    "Shahapur Cluster",
-    "Palghar Cluster",
-    "Manmad Cluster",
-    "Other / Unassigned",
-  ];
+  const clusterOrder = [...ORGANIZATION_GROUPS, "Other / Unassigned"];
   const orderedClusters = [...grouped.keys()].sort((a, b) => {
     const ai = clusterOrder.indexOf(a);
     const bi = clusterOrder.indexOf(b);
@@ -304,7 +272,7 @@ function Dashboard() {
                 <div>
                   <h2 className="font-display text-xl font-bold text-primary">{cluster}</h2>
                   <p className="text-xs text-muted-foreground">
-                    {grouped.get(cluster)?.length ?? 0} school(s) in this cluster
+                    {grouped.get(cluster)?.length ?? 0} school(s) in this group
                   </p>
                 </div>
               </div>

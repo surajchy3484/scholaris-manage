@@ -39,7 +39,7 @@ After reviewing the actual session records, use the database administration work
 - `dashboard:view` is required on the server. Attendance is returned only with `attendance:view`; session/trainer details only with `session_status:view`.
 - Scope is intersected with existing `school_ids` / `all_schools`, centre (stored `schools.cluster_name`), school and trainer assignments. A supplied unauthorized school or trainer is rejected. Only admins can select other active trainers. User permissions are reloaded server-side per request.
 - Trainers are associated through current `app_users.school_ids`; there is no separate trainer-to-delivery assignment or historical trainer roster. `updated_by` is deliberately NOT interpreted as delivery ownership. Shared schools can appear in several trainer rows; trainer totals must not be added together.
-- There is no coordinator role, centre-active flag, staff photo/designation field or notification feed in this repository. Existing profile initials/name/role and menu are preserved. The dashboard does not invent personal photos, notification counts or additional permissions. “Active Centres” counts distinct stored clusters in the selected school scope.
+- There is no coordinator role, centre-active flag, staff photo/designation field or notification feed in this repository. Existing profile initials/name/role and menu are preserved. The dashboard does not invent personal photos, notification counts or additional permissions. “Clusters” and “REAP Centres” count their respective recognized groups in the selected school scope.
 
 ## Performance
 
@@ -75,3 +75,7 @@ Tests executed in the development environment:
 The reporting RPC and optional shared-activity column are no longer prerequisites for loading the dashboard. Only named missing-object errors trigger compatibility reads; authorization failures, network errors and other database errors are not hidden. No writes or schema changes occur during a dashboard request. Applying the migration remains recommended for database-side aggregation and explicit shared-activity mappings.
 
 `node scripts/test-dashboard-compat.mjs` covers missing-function/column handling, genuine failure propagation, pagination above 1,000 records, date/year/school filters, missing marks, duplicate tie-breaking and skipping attendance reads without attendance permission. The isolated SQL test also compares the SQL and compatibility calculation results on the same fixture records.
+
+## Organization grouping correction
+
+The organization has five clusters: Shahapur, Kalwa, Chembur, Manmad and Palghar. Kalwa Centre is a separate REAP Centre, not a sixth cluster. Dashboard cards count recognized clusters and REAP centres separately within the authorized, filtered school scope. The group selector and school headings use the same classification. Legacy Kalwa Center/Centers/Centre/Centres labels display as “Kalwa Centre (REAP Centre)”; stored school assignments and records are not rewritten. Existing school location corrections are retained. Unknown groups stay visible but are not counted as an additional recognized cluster.
