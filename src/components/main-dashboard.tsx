@@ -31,8 +31,8 @@ const statuses = [
 const pct = (n: number | null) => (n === null ? "—" : `${n}%`);
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="mb-4 text-lg font-semibold text-slate-900">{title}</h2>
+    <section className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <h2 className="mb-4 text-lg font-semibold text-foreground">{title}</h2>
       {children}
     </section>
   );
@@ -49,10 +49,10 @@ function Filter({
   options: { id: string; name: string }[];
 }) {
   return (
-    <label className="grid gap-1 text-xs font-medium text-slate-600">
+    <label className="grid gap-1 text-xs font-medium text-muted-foreground">
       {label}
       <select
-        className="min-w-0 rounded-lg border border-slate-200 bg-white p-2.5 text-sm text-slate-900"
+        className="min-w-0 rounded-lg border border-border bg-card p-2.5 text-sm text-foreground"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -90,21 +90,32 @@ function AttendanceBars({
           margin={{ left: horizontal ? 10 : 0, right: 20, bottom: 10 }}
           accessibilityLayer
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
           <XAxis
             type={horizontal ? "number" : "category"}
             dataKey={horizontal ? undefined : "name"}
-            tick={{ fontSize: 11 }}
+            tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+            stroke="var(--border)"
             allowDecimals={false}
           />
           <YAxis
             type={horizontal ? "category" : "number"}
             dataKey={horizontal ? "name" : undefined}
             width={horizontal ? 165 : 40}
-            tick={{ fontSize: 11 }}
+            tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+            stroke="var(--border)"
             allowDecimals={false}
           />
-          <Tooltip />
+          <Tooltip
+            contentStyle={{
+              background: "var(--popover)",
+              borderColor: "var(--border)",
+              color: "var(--popover-foreground)",
+              borderRadius: 8,
+            }}
+            labelStyle={{ color: "var(--popover-foreground)" }}
+            cursor={{ fill: "var(--muted)", fillOpacity: 0.5 }}
+          />
           <Legend />
           <Bar
             dataKey="present"
@@ -195,14 +206,14 @@ export function MainDashboard() {
   const classes = [...new Set(d?.cohorts.map((c) => c.class) ?? [])].sort();
   const divisions = [...new Set(d?.cohorts.map((c) => c.division || "__blank__") ?? [])].sort();
   return (
-    <div className="space-y-6 rounded-2xl bg-slate-50 p-4 text-slate-900 sm:p-6">
+    <div className="space-y-6 rounded-2xl bg-background p-4 text-foreground sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-green-700">
+          <p className="text-xs font-semibold uppercase tracking-widest text-green-700 dark:text-green-400">
             Reach Education Action Program
           </p>
           <h1 className="mt-1 text-3xl font-bold">Main Dashboard</h1>
-          <p className="mt-1 text-sm text-slate-500">Attendance and STEM delivery</p>
+          <p className="mt-1 text-sm text-muted-foreground">Attendance and STEM delivery</p>
         </div>
         <Button variant="outline" onClick={() => void query.refetch()} disabled={query.isFetching}>
           <RefreshCw className={query.isFetching ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
@@ -252,7 +263,10 @@ export function MainDashboard() {
         />
       </div>
       {query.error ? (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+        >
           {query.error.message}{" "}
           <button className="underline" onClick={() => void query.refetch()}>
             Retry
@@ -300,12 +314,15 @@ export function MainDashboard() {
                 "School / class / division deliveries",
               ],
             ].map(([label, value, note]) => (
-              <div key={label} className="rounded-2xl border border-green-100 bg-white p-5">
-                <p className="text-sm text-slate-500">{label}</p>
-                <p className="my-2 text-4xl font-bold text-green-700">
+              <div
+                key={label}
+                className="rounded-2xl border border-green-100 dark:border-green-900 bg-card p-5"
+              >
+                <p className="text-sm text-muted-foreground">{label}</p>
+                <p className="my-2 text-4xl font-bold text-green-700 dark:text-green-400">
                   {typeof value === "number" ? value.toLocaleString() : value}
                 </p>
-                <p className="text-xs text-slate-400">{note}</p>
+                <p className="text-xs text-muted-foreground">{note}</p>
               </div>
             ))}
           </div>
@@ -327,7 +344,7 @@ export function MainDashboard() {
                     type="date"
                     value={week}
                     onChange={(e) => e.target.value && setChosenWeek(weekStart(e.target.value))}
-                    className="rounded-lg border bg-white p-2"
+                    className="rounded-lg border bg-card p-2"
                   />
                 </label>
                 <Button
@@ -349,17 +366,16 @@ export function MainDashboard() {
               </div>
               <div className="grid gap-5 xl:grid-cols-2">
                 <Panel title="Weekly School Attendance">
-                  <p className="mb-3 text-sm text-slate-500">
+                  <p className="mb-3 text-sm text-muted-foreground">
                     Weekly weighted attendance:{" "}
-                    <strong className="text-green-700">{pct(weekly.percentage)}</strong>
+                    <strong className="text-green-700 dark:text-green-400">
+                      {pct(weekly.percentage)}
+                    </strong>
                   </p>
                   <AttendanceBars rows={daily} />
                   <div className="grid gap-1 text-xs">
                     {daily.map((r) => (
-                      <div
-                        key={r.id}
-                        className="flex justify-between border-b border-slate-100 py-1"
-                      >
+                      <div key={r.id} className="flex justify-between border-b border-border py-1">
                         <span>{r.name}</span>
                         <span>
                           {r.hasRecords
@@ -381,7 +397,7 @@ export function MainDashboard() {
                           setClass("");
                           setDivision("");
                         }}
-                        className="flex w-full justify-between gap-3 border-b border-slate-100 py-2 text-left text-xs hover:text-blue-600"
+                        className="flex w-full justify-between gap-3 border-b border-border py-2 text-left text-xs hover:text-blue-600 dark:hover:text-blue-300"
                       >
                         <span>{s.name}</span>
                         <span>
@@ -436,7 +452,7 @@ export function MainDashboard() {
                   </div>
                 </Panel>
               )}
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Expected = year-roster students in class/division cohorts with attendance marks that
                 day. Missing cohorts and days are excluded, not treated as absent. Weekly totals are
                 student-days. The database has no school calendar or daily enrollment history; this
@@ -493,7 +509,7 @@ export function MainDashboard() {
                       setFrom(e.target.value);
                       if (to && e.target.value > to) setTo("");
                     }}
-                    className="rounded-lg border bg-white p-2"
+                    className="rounded-lg border bg-card p-2"
                   />
                 </label>
                 <label className="grid gap-1 text-xs">
@@ -503,7 +519,7 @@ export function MainDashboard() {
                     value={to}
                     min={from}
                     onChange={(e) => setTo(e.target.value)}
-                    className="rounded-lg border bg-white p-2"
+                    className="rounded-lg border bg-card p-2"
                   />
                 </label>
                 <Button
@@ -528,7 +544,7 @@ export function MainDashboard() {
                 <div className="overflow-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
-                      <tr className="text-slate-500">
+                      <tr className="text-muted-foreground">
                         <th>Unit</th>
                         <th>Activities / records</th>
                         <th>Planned deliveries</th>
@@ -563,7 +579,7 @@ export function MainDashboard() {
               </Panel>
               <ClassSessionCoverage />
               <Panel title="Trainer-wise Session Completion">
-                <p className="mb-3 text-xs text-slate-500">
+                <p className="mb-3 text-xs text-muted-foreground">
                   Based on current school assignments, not who last edited a status. Shared schools
                   may appear for multiple trainers; these rows are not additive.
                 </p>
@@ -584,7 +600,7 @@ export function MainDashboard() {
                           <tr key={t.id} className="border-t">
                             <td className="py-3">
                               <button
-                                className="text-blue-700 hover:underline"
+                                className="text-blue-700 dark:text-blue-300 hover:underline"
                                 onClick={() => setTrainer(t.id)}
                               >
                                 {t.name}
@@ -600,13 +616,13 @@ export function MainDashboard() {
                     </tbody>
                   </table>
                   {!d.trainerMetrics.length && (
-                    <p className="py-5 text-slate-500">
+                    <p className="py-5 text-muted-foreground">
                       No active trainers in the authorized scope.
                     </p>
                   )}
                 </div>
               </Panel>
-              <details className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs text-slate-600">
+              <details className="rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 p-4 text-xs text-muted-foreground">
                 <summary className="cursor-pointer font-semibold">
                   Calculation rules and data coverage
                 </summary>
