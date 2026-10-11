@@ -1,3 +1,4 @@
+import { AssessmentCoverageReference } from "@/components/class-session-coverage";
 import { getAcademicYear } from "@/lib/academic-year";
 import { useMasterPage } from "@/hooks/use-master-page";
 import { useMemo, useState } from "react";
@@ -204,6 +205,7 @@ function AssessmentsPage() {
         </p>
       )}
       <main className="mx-auto max-w-7xl space-y-4 px-3 py-6 sm:px-6">
+        <AssessmentCoverageReference />
         <header className="min-w-0">
           <h1 className="font-display text-2xl font-bold sm:text-3xl">Assessment Master</h1>
           <p className="text-sm text-muted-foreground">

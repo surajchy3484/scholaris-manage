@@ -322,6 +322,9 @@ function RootComponent() {
       "academic_years",
       "assessment_results",
       "session_assignment_targets",
+      "session_catalogue",
+      "session_school_assignments",
+      "session_coverage_settings",
       "class_session_plans",
     ] as const;
     const channel = tables.reduce(

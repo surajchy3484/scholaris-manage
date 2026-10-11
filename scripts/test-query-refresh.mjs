@@ -107,3 +107,9 @@ await refreshSessionQueries(statusClient);
 assert.equal((await readDashboard()).completed, 0, "Mark Pending removes the completed delivery");
 statusClient.clear();
 console.log("Session save refresh test passed without Realtime, including reverting to pending.");
+
+assert(queryAffectedByTables(["class-session-coverage"], new Set(["session_division_status"])));
+assert(queryAffectedByTables(["class-session-coverage"], new Set(["session_catalogue"])));
+assert(queryAffectedByTables(["class-session-coverage"], new Set(["session_school_assignments"])));
+assert(queryAffectedByTables(["class-session-coverage"], new Set(["student_enrollments"])));
+assert(queryAffectedByTables(["class-session-coverage"], new Set(["session_coverage_settings"])));
