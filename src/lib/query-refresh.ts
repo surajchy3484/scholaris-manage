@@ -97,3 +97,10 @@ export function createQueryRefreshQueue(client: QueryClient, delay = 250) {
     },
   };
 }
+
+/** Invalidate immediately after a successful session write, even without Realtime. */
+export function refreshSessionQueries(client: QueryClient) {
+  return client.invalidateQueries({
+    predicate: (query) => queryAffectedByTables(query.queryKey, new Set(["sessions"])),
+  });
+}

@@ -7,7 +7,7 @@ const compile = async (path) =>
     compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
   }).outputText;
 const url = (code) => `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`;
-const { createQueryRefreshQueue, queryAffectedByTables } = await import(
+const { createQueryRefreshQueue, queryAffectedByTables, refreshSessionQueries } = await import(
   url(await compile("src/lib/query-refresh.ts"))
 );
 assert(queryAffectedByTables(["exam-data", "2026"], new Set(["attendance"])));
@@ -90,3 +90,20 @@ delete globalThis.__pageCall;
 console.log(
   "Passed: 1,000 events → 1 affected refresh, unrelated caches retained, cleanup, account/year broad invalidation, and sidebar-prefetch/page request reuse.",
 );
+
+// A successful status save must invalidate the inactive dashboard without Realtime.
+const statusClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000 } } });
+const dashboardKey = ["main-dashboard", "trainer", { academicYear: "2026" }];
+statusClient.setQueryData(dashboardKey, { completed: 0 });
+statusClient.setQueryData(["schools", "2026"], []);
+await refreshSessionQueries(statusClient);
+assert.equal(statusClient.getQueryState(dashboardKey).isInvalidated, true);
+assert.equal(statusClient.getQueryState(["schools", "2026"]).isInvalidated, false);
+let savedCompleted = 1;
+const readDashboard = () => statusClient.fetchQuery({ queryKey: dashboardKey, queryFn: async () => ({ completed: savedCompleted }) });
+assert.equal((await readDashboard()).completed, 1);
+savedCompleted = 0;
+await refreshSessionQueries(statusClient);
+assert.equal((await readDashboard()).completed, 0, "Mark Pending removes the completed delivery");
+statusClient.clear();
+console.log("Session save refresh test passed without Realtime, including reverting to pending.");
