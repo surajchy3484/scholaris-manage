@@ -385,8 +385,16 @@ export function MainDashboard() {
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              ["Clusters", d.kpis.clusters, "Of 5 organizational clusters · selected scope"],
-              ["REAP Centres", d.kpis.centres, "Kalwa Centre · separate from clusters"],
+              [
+                "Clusters",
+                d.kpis.clusters,
+                `Of ${d.kpis.totalClusters} organizational clusters · selected scope`,
+              ],
+              [
+                "REAP Centres",
+                d.kpis.centres,
+                `Of ${d.kpis.totalCentres} centre${d.kpis.totalCentres === 1 ? "" : "s"} · separate from clusters`,
+              ],
               ["Enrolled Students", d.kpis.students, "Selected academic-year roster"],
               [
                 "Sessions Completed",

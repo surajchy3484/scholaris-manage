@@ -89,7 +89,7 @@ function Dashboard() {
       }
       return [...data.map((row) => row.name), ...readLocalClusters()];
     },
-    enabled: ready && canAddSchool,
+    enabled: ready,
     staleTime: 5 * 60_000,
   });
 
@@ -143,7 +143,10 @@ function Dashboard() {
     groups.set(cluster, [...(groups.get(cluster) ?? []), school]);
     return groups;
   }, new Map<string, SchoolWithCount[]>());
-  const clusterOrder = [...ORGANIZATION_GROUPS, "Other / Unassigned"];
+  const extraClusters = Array.from(new Set(savedClusters.map(normalizeOrganizationGroup))).filter(
+    (name) => !ORGANIZATION_GROUPS.some((group) => group.toLowerCase() === name.toLowerCase()),
+  );
+  const clusterOrder = [...ORGANIZATION_GROUPS, ...extraClusters, "Other / Unassigned"];
   const orderedClusters = [...grouped.keys()].sort((a, b) => {
     const ai = clusterOrder.indexOf(a);
     const bi = clusterOrder.indexOf(b);
