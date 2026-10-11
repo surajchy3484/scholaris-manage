@@ -34,10 +34,24 @@ export function schoolOrganizationGroup(school: {
     return "Shahapur Cluster";
   return "Other / Unassigned";
 }
-export function countOrganizationGroups(schools: { group_name: string }[]) {
-  const groups = new Set(schools.map((s) => s.group_name));
+/** Groups whose name identifies them as centres (not clusters). */
+export function isCentreGroup(name: string) {
+  return /cent(?:er|re)/.test(name.toLowerCase());
+}
+
+export function countGroups(names: Iterable<string>) {
+  const groups = new Set(
+    [...names]
+      .map((name) => name.trim())
+      .filter((name) => !!name && name !== "Other / Unassigned"),
+  );
+  const list = [...groups];
   return {
-    clusters: REAP_CLUSTERS.filter((name) => groups.has(name)).length,
-    centres: groups.has(REAP_CENTRE) ? 1 : 0,
+    clusters: list.filter((name) => !isCentreGroup(name)).length,
+    centres: list.filter((name) => isCentreGroup(name)).length,
   };
+}
+
+export function countOrganizationGroups(schools: { group_name: string }[]) {
+  return countGroups(schools.map((s) => s.group_name));
 }

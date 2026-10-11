@@ -1,4 +1,9 @@
-import { schoolOrganizationGroup, countOrganizationGroups } from "./organization-groups";
+import {
+  countGroups,
+  countOrganizationGroups,
+  normalizeOrganizationGroup,
+  schoolOrganizationGroup,
+} from "./organization-groups";
 import { loadDashboardAttendance } from "./dashboard-data.server";
 import { missingDashboardFeature, withDashboardFallback } from "./dashboard-compat";
 export type { AttendanceMetric } from "./dashboard-compat";
