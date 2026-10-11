@@ -84,12 +84,12 @@ function Dashboard() {
   const { data: savedClusters = [] } = useQuery({
     queryKey: ["clusters"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("school_clusters").select("name").order("name");
-      if (error) {
-        if (isMissingClustersTable(error)) return readLocalClusters();
-        throw error;
+      try {
+        const { clusters } = await listClusters({ data: { token: getAccessToken() } });
+        return [...clusters, ...readLocalClusters()];
+      } catch {
+        return readLocalClusters();
       }
-      return [...data.map((row) => row.name), ...readLocalClusters()];
     },
     enabled: ready,
     staleTime: 5 * 60_000,
