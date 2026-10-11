@@ -42,3 +42,8 @@ await getSessionCoverage({data:{...input,trainer}});assert.deepEqual(rpcCalls.at
 await assert.rejects(()=>saveCoverageThresholds({data:{token:'valid',almost_all:40,partial:50}}));
 await saveCoverageThresholds({data:{token:'valid',academicYear:'2025',almost_all:90,partial:60}});assert.deepEqual(writes.at(-1),{academic_year:'2025',almost_all:90,partial:60});
 console.log('Passed server access tests: dashboard/assessment/session permissions, trainer and centre scope, empty allowlist, admin scope and threshold writes.');
+
+await getSessionCoverage({data:{...input,school:b}});assert.deepEqual(rpcCalls.at(-1).p_schools,[b]);
+profile={...profile,role:'trainer',schoolIds:[a],permissions:{dashboard:['view'],session_status:['view']}};
+await getSessionCoverage({data:{...input,school:b}});assert.deepEqual(rpcCalls.at(-1).p_schools,[], 'School filter cannot expand trainer access');
+console.log('Shared school filter and restricted-school scope passed.');

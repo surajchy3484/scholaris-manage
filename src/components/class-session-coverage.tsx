@@ -23,24 +23,47 @@ const dateText = (date: string | null) =>
   date ? new Date(date).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "—";
 export function ClassSessionCoverage({
   context = "dashboard",
+  dashboard,
 }: {
   context?: "dashboard" | "assessments";
+  dashboard?: {
+    klass: string;
+    centre: string;
+    trainer: string;
+    school: string;
+    unit: string;
+    revision: string;
+    setClass: (value: string) => void;
+    setCentre: (value: string) => void;
+    setTrainer: (value: string) => void;
+    onFilterChange: () => void;
+    refresh: () => Promise<void>;
+  };
 }) {
   const { profile, can, ready } = useAuth();
   const qc = useQueryClient();
-  const [klass, setKlass] = useState<(typeof COVERAGE_CLASSES)[number]>("5");
-  const [centre, setCentre] = useState("");
-  const [trainer, setTrainer] = useState("");
+  const [localClass, setLocalClass] = useState<(typeof COVERAGE_CLASSES)[number]>("5");
+  const [localCentre, setLocalCentre] = useState("");
+  const [localTrainer, setLocalTrainer] = useState("");
   const [category, setCategory] = useState("");
   const [session, setSession] = useState<string | undefined>();
   const [school, setSchool] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [almostAll, setAlmostAll] = useState("80");
   const [partial, setPartial] = useState("50");
+  const klass = dashboard?.klass ?? localClass;
+  const centre = dashboard?.centre ?? localCentre;
+  const trainer = dashboard?.trainer ?? localTrainer;
+  const setKlass = (v: string) =>
+    dashboard ? dashboard.setClass(v) : setLocalClass(v as typeof localClass);
+  const setCentre = (v: string) => (dashboard ? dashboard.setCentre(v) : setLocalCentre(v));
+  const setTrainer = (v: string) => (dashboard ? dashboard.setTrainer(v) : setLocalTrainer(v));
+  const supportedClass = COVERAGE_CLASSES.some((c) => c === klass);
   const year = getAcademicYear();
   const filters = {
     academicYear: year,
-    class: klass,
+    class: (supportedClass ? klass : "5") as (typeof COVERAGE_CLASSES)[number],
+    school: dashboard?.school || undefined,
     centre: centre || undefined,
     trainer: trainer || undefined,
     context,
@@ -54,18 +77,18 @@ export function ClassSessionCoverage({
   ];
   const allowed = can("session_status", "view") && can(context, "view");
   const query = useQuery({
-    queryKey: ["class-session-coverage", scope, filters],
+    queryKey: ["class-session-coverage", scope, filters, dashboard?.revision],
     queryFn: () => getSessionCoverage({ data: { ...filters, token: getAccessToken() } }),
-    enabled: ready && allowed,
-    staleTime: 30_000,
+    enabled: ready && allowed && supportedClass,
+    staleTime: 0,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
     retry: false,
   });
   const details = useQuery({
-    queryKey: ["class-session-coverage", scope, filters, session],
+    queryKey: ["class-session-coverage", scope, filters, dashboard?.revision, session],
     queryFn: () => getSessionCoverage({ data: { ...filters, session, token: getAccessToken() } }),
-    enabled: ready && allowed && !!session,
+    enabled: ready && allowed && supportedClass && !!session,
     staleTime: 0,
     retry: false,
   });
@@ -87,13 +110,14 @@ export function ClassSessionCoverage({
     onError: (e: Error) => toast.error(e.message),
   });
   if (!allowed) return null;
-  const d = query.data;
+  const d = supportedClass ? query.data : undefined;
   const rows = (d?.metrics ?? []).filter(
     (r) =>
-      !category ||
-      (category === "Not Recorded"
-        ? r.not_recorded > 0
-        : coverageCategory(r, d?.thresholds) === category),
+      (!dashboard?.unit || r.unit === dashboard.unit) &&
+      (!category ||
+        (category === "Not Recorded"
+          ? r.not_recorded > 0
+          : coverageCategory(r, d?.thresholds) === category)),
   );
   const selected = d?.metrics.find((r) => r.id === session);
   const changeClass = (value: string) => {
@@ -120,7 +144,11 @@ export function ClassSessionCoverage({
         <Button
           variant="outline"
           disabled={query.isFetching}
-          onClick={() => void qc.invalidateQueries({ queryKey: ["class-session-coverage"] })}
+          onClick={() =>
+            void (dashboard
+              ? dashboard.refresh()
+              : qc.invalidateQueries({ queryKey: ["class-session-coverage"] }))
+          }
         >
           {query.isFetching ? "Updating…" : "Refresh"}
         </Button>
@@ -133,6 +161,7 @@ export function ClassSessionCoverage({
             value={klass}
             onChange={(e) => changeClass(e.target.value)}
           >
+            {dashboard && <option value="">Select a class</option>}
             {COVERAGE_CLASSES.map((c) => (
               <option key={c} value={c}>
                 Class {c}
@@ -179,7 +208,10 @@ export function ClassSessionCoverage({
           <select
             className={selectStyle}
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              dashboard?.onFilterChange();
+            }}
           >
             <option value="">All topics</option>
             {categories.map((c) => (
@@ -242,8 +274,8 @@ export function ClassSessionCoverage({
       <p className="text-xs text-muted-foreground">
         Green: schools completed · Blue: not completed · Grey: not recorded. Each school counts
         once. All roster divisions must be Complete for a school to count as completed. Cancelled
-        assignments are excluded. These filters apply to this section; use the school filter inside
-        a session’s details.
+        assignments are excluded. Dashboard class, centre, school and trainer selections apply here
+        too. The school filter inside the details panel only filters that panel.
       </p>
       <p className="rounded-lg bg-blue-50 dark:bg-blue-950/40 p-3 text-sm text-blue-900 dark:text-blue-200">
         High coverage can guide ICA, MCA or FCA topic selection. It measures topic delivery, not
@@ -254,7 +286,8 @@ export function ClassSessionCoverage({
           {query.error.message}
         </p>
       )}
-      {query.isPending && <p role="status">Loading class session coverage…</p>}
+      {!supportedClass && <p>Select Class 5–9 to view the common session catalogue.</p>}
+      {supportedClass && query.isPending && <p role="status">Loading class session coverage…</p>}
       {d && (
         <div className="grid gap-5 lg:grid-cols-2">
           {units.map((unit) => (
