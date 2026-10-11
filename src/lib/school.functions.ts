@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { adminDb, requireAdmin } from "./app-access.server";
+import { adminDb, requireAdmin, requirePermission } from "./app-access.server";
 
 const divisionSchema = z.object({
   class: z.string().trim().max(100),
@@ -51,5 +51,32 @@ export const updateSchool = createServerFn({ method: "POST" })
       );
       if (insertError) throw new Error("Unable to update school divisions.");
     }
+    return { ok: true };
+  });
+
+export const listClusters = createServerFn({ method: "POST" })
+  .validator((data: unknown) => z.object({ token: z.string().min(1) }).parse(data))
+  .handler(async ({ data }) => {
+    await requirePermission(data.token, "dashboard", "view");
+    const db = await adminDb();
+    const { data: rows, error } = await db.from("school_clusters").select("name").order("name");
+    if (error) return { clusters: [] as string[] };
+    return { clusters: (rows ?? []).map((row) => row.name).filter(Boolean) as string[] };
+  });
+
+export const saveCluster = createServerFn({ method: "POST" })
+  .validator((data: unknown) =>
+    z.object({ token: z.string().min(1), name: z.string().trim().min(1).max(200) }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    await requireAdmin(data.token);
+    const db = await adminDb();
+    const { data: rows } = await db.from("school_clusters").select("name");
+    const duplicate = (rows ?? []).some(
+      (row) => row.name.trim().toLowerCase() === data.name.toLowerCase(),
+    );
+    if (duplicate) throw new Error("That cluster already exists.");
+    const { error } = await db.from("school_clusters").insert({ name: data.name });
+    if (error) throw new Error("Unable to save the cluster.");
     return { ok: true };
   });
