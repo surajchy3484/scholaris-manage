@@ -133,8 +133,8 @@ function escapeHtml(value: unknown) {
 
 function reportShell(title: string, body: string) {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
-  @page{size:A4;margin:11mm}body{font-family:Arial,sans-serif;color:#172033;font-size:11px;line-height:1.4;background:#f7f9fc}.report-frame{border:2px solid #173b71;border-radius:16px;padding:18px;background:#fff;box-shadow:inset 0 0 0 5px #eef2ff}.brand{display:flex;align-items:center;gap:14px;border:1px solid #c7d2fe;border-left:7px solid #e22f39;border-radius:12px;padding:10px 14px;background:linear-gradient(110deg,#eef2ff,#fff7ed);position:relative}.brand:after{content:"";position:absolute;left:0;right:0;bottom:-5px;height:3px;border-radius:4px;background:linear-gradient(90deg,#173b71,#7c3aed,#10b981,#f59e0b,#e22f39)}h1{font-size:22px;margin:0 0 3px;color:#173b71}h2{font-size:15px;border:1px solid #c7d2fe;border-left:6px solid #7c3aed;border-radius:8px;padding:7px 10px;margin:20px 0 8px;color:#173b71;background:linear-gradient(90deg,#eef2ff,#fff)}.reap-logo{width:150px;height:58px;object-fit:contain;object-position:left center}.logo{width:58px;height:58px;border:2px solid #173b71;border-radius:50%;display:grid;place-items:center;color:#e22f39;font-size:16px;font-weight:800}.muted{color:#667085}.meta{margin:10px 0 16px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 18px}.field{border:1px solid #dbe4f0;border-left:4px solid #06b6d4;border-radius:7px;padding:7px 9px;background:#fbfdff}.field b{display:inline-block;min-width:120px;color:#173b71}.summary{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.stat{border:1px solid #c7d2fe;border-top:4px solid #7c3aed;border-radius:9px;padding:10px;text-align:center;background:#fafaff}.stat:nth-child(2){border-top-color:#06b6d4}.stat:nth-child(3){border-top-color:#10b981}.stat:nth-child(4){border-top-color:#f59e0b}.stat:nth-child(5){border-top-color:#e22f39}.stat b{display:block;font-size:17px;color:#173b71}table{width:100%;border-collapse:separate;border-spacing:0;margin:9px 0 16px;border:1px solid #b8c5d9;border-radius:9px;overflow:hidden}th{background:linear-gradient(100deg,#173b71,#4f46e5);color:white;text-align:left}th,td{border-right:1px solid #d8e0ec;border-bottom:1px solid #d8e0ec;padding:7px}th:last-child,td:last-child{border-right:0}tr:last-child td{border-bottom:0}tr:nth-child(even){background:#f7f9fc}.right{text-align:right}.footer{margin-top:20px;border-top:1px solid #d8dee9;padding-top:10px;color:#667085;font-size:10px}.signature{border:1px dashed #94a3b8;border-radius:9px;min-height:60px;padding:10px;background:#fffdf5}
-  </style></head><body><div class="report-frame"><div class="brand"><img class="reap-logo" src="/reap-logo.png" alt="REAP logo"><div><h1>STUDENT PERFORMANCE REPORT</h1><div class="muted">SchoolRise · Student Learning &amp; Performance Management System</div></div></div>${body}<div class="footer">This is a computer-generated report. Academic Year: ${escapeHtml(getAcademicYear() ?? "Current")} · REAP / SchoolRise</div></div></body></html>`;
+  @page{size:A4;margin:11mm}body{font-family:Arial,sans-serif;color:#172033;font-size:11px;line-height:1.4;background:#f7f9fc}.report-frame{border:2px solid #173b71;border-radius:16px;padding:18px;background:#fff;box-shadow:inset 0 0 0 5px #eef2ff}.brand{display:flex;align-items:center;gap:14px;border:1px solid #c7d2fe;border-left:7px solid #e22f39;border-radius:12px;padding:10px 14px;background:linear-gradient(110deg,#eef2ff,#fff7ed);position:relative}.brand:after{content:"";position:absolute;left:0;right:0;bottom:-5px;height:3px;border-radius:4px;background:linear-gradient(90deg,#173b71,#7c3aed,#10b981,#f59e0b,#e22f39)}h1{font-size:22px;margin:0 0 3px;color:#173b71}h2{font-size:15px;border:1px solid #c7d2fe;border-left:6px solid #7c3aed;border-radius:8px;padding:7px 10px;margin:20px 0 8px;color:#173b71;background:linear-gradient(90deg,#eef2ff,#fff)}.reap-logo{width:66px;height:66px;border-radius:50%;object-fit:cover;object-position:center}.logo{width:58px;height:58px;border:2px solid #173b71;border-radius:50%;display:grid;place-items:center;color:#e22f39;font-size:16px;font-weight:800}.muted{color:#667085}.meta{margin:10px 0 16px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 18px}.field{border:1px solid #dbe4f0;border-left:4px solid #06b6d4;border-radius:7px;padding:7px 9px;background:#fbfdff}.field b{display:inline-block;min-width:120px;color:#173b71}.summary{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.stat{border:1px solid #c7d2fe;border-top:4px solid #7c3aed;border-radius:9px;padding:10px;text-align:center;background:#fafaff}.stat:nth-child(2){border-top-color:#06b6d4}.stat:nth-child(3){border-top-color:#10b981}.stat:nth-child(4){border-top-color:#f59e0b}.stat:nth-child(5){border-top-color:#e22f39}.stat b{display:block;font-size:17px;color:#173b71}table{width:100%;border-collapse:separate;border-spacing:0;margin:9px 0 16px;border:1px solid #b8c5d9;border-radius:9px;overflow:hidden}th{background:linear-gradient(100deg,#173b71,#4f46e5);color:white;text-align:left}th,td{border-right:1px solid #d8e0ec;border-bottom:1px solid #d8e0ec;padding:7px}th:last-child,td:last-child{border-right:0}tr:last-child td{border-bottom:0}tr:nth-child(even){background:#f7f9fc}.right{text-align:right}.footer{margin-top:20px;border-top:1px solid #d8dee9;padding-top:10px;color:#667085;font-size:10px}.signature{border:1px dashed #94a3b8;border-radius:9px;min-height:60px;padding:10px;background:#fffdf5}
+  </style></head><body><div class="report-frame"><div class="brand"><img class="reap-logo" src="/reap-logo-circle.png" alt="REAP logo"><div><h1>STUDENT PERFORMANCE REPORT</h1><div class="muted">SchoolRise · Student Learning &amp; Performance Management System</div></div></div>${body}<div class="footer">This is a computer-generated report. Academic Year: ${escapeHtml(getAcademicYear() ?? "Current")} · REAP / SchoolRise</div></div></body></html>`;
 }
 
 function downloadWord(filename: string, html: string) {
@@ -328,7 +328,7 @@ function OverallReport() {
       (mode === "overall" || mode === "school"
         ? `<h2>Schools</h2>${table(schoolTableHeaders, schoolTableRows)}`
         : "") + body,
-    ).replace('src="/reap-logo.png"', `src="${window.location.origin}/reap-logo.png"`);
+    ).replace('src="/reap-logo-circle.png"', `src="${window.location.origin}/reap-logo-circle.png"`);
   };
 
   if (isLoading) return <div className="mx-auto max-w-7xl px-4 py-12">Loading reports…</div>;
@@ -343,9 +343,11 @@ function OverallReport() {
     <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">
       <header>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-primary bg-primary/5 text-xs font-extrabold text-destructive">
-            REAP
-          </div>
+          <img
+            src="/reap-logo-circle.png"
+            alt="REAP"
+            className="h-12 w-12 shrink-0 rounded-full object-cover"
+          />
           <div>
             <h1 className="font-display text-3xl font-bold">Overall Report</h1>
             <p className="text-sm text-muted-foreground">
@@ -711,9 +713,9 @@ function StudentPreview({
     <Card className="relative overflow-hidden rounded-2xl border-2 border-primary/40 bg-gradient-to-br from-card via-card to-primary/5 p-6 shadow-elegant before:absolute before:inset-2 before:rounded-xl before:border before:border-primary/15">
       <div className="relative z-10 flex items-start gap-3 rounded-xl border border-primary/20 border-b-4 border-b-destructive bg-gradient-to-r from-primary/5 via-card to-warm/10 p-4 pb-4">
         <img
-          src="/reap-logo.png"
+          src="/reap-logo-circle.png"
           alt="REAP logo"
-          className="h-14 w-28 object-contain object-left"
+          className="h-14 w-14 shrink-0 rounded-full object-cover"
         />
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-2xl font-bold">STUDENT PERFORMANCE MARKSHEET</h2>

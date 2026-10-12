@@ -123,6 +123,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", type: "image/png", href: "/favicon.png" },
       { rel: "apple-touch-icon", href: "/icon-192.png" },
       { rel: "stylesheet", href: appCss },
 
@@ -196,9 +197,9 @@ function Header() {
       {pathname === "/" && (
         <>
           <img
-            src="/reap-logo.png"
+            src="/reap-logo-circle.png"
             alt="REAP"
-            className="hidden h-10 w-16 object-contain sm:block"
+            className="hidden h-10 w-10 rounded-full object-cover sm:block"
           />
           <span className="hidden text-xs font-semibold xl:block">
             Reach Education Action Program
