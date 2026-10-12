@@ -26,6 +26,8 @@ export const getSessionCoverage = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => input.parse(v))
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, data.context, "view");
+    if (data.context === "dashboard" && profile.role !== "admin")
+      throw new Error("Main Dashboard is available to administrators only");
     if (!can(profile, "session_status", "view"))
       throw new Error("Session Status access is required to review topic coverage.");
     const year = await resolveAcademicYear(data.academicYear);

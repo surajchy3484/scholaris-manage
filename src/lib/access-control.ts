@@ -29,7 +29,7 @@ export type AppAction = (typeof ACTIONS)[number];
 export type Permissions = Partial<Record<AppModule, AppAction[]>>;
 
 export const MODULE_LABELS: Record<AppModule, string> = {
-  dashboard: "Dashboard",
+  dashboard: "School Dashboard",
   schools: "Schools",
   students: "Student Management",
   attendance: "Attendance",
@@ -44,10 +44,10 @@ export const MODULE_LABELS: Record<AppModule, string> = {
 
 /** Landing route for each module, used by menus and the access guard. */
 export const MODULE_ROUTES: Record<AppModule, string> = {
-  dashboard: "/",
-  schools: "/",
-  students: "/",
-  attendance: "/",
+  dashboard: "/school-dashboard",
+  schools: "/school-dashboard",
+  students: "/school-dashboard",
+  attendance: "/school-dashboard",
   exam_report: "/exam-report",
   assessments: "/assessments",
   questions: "/questions",
