@@ -76,16 +76,25 @@ function AttendanceBars({
   rows,
   horizontal = false,
   onSchool,
+  maxHeight,
 }: {
   rows: { name: string; present: number; expected: number; id?: string }[];
   horizontal?: boolean;
   onSchool?: (id: string) => void;
+  maxHeight?: number;
 }) {
+  const inner = Math.max(220, horizontal ? rows.length * 46 : 280);
+  const short = (s: string) => (s.length > 26 ? `${s.slice(0, 25)}…` : s);
+  const chartData = rows.map((r) => ({ ...r, fullName: r.name, name: short(r.name) }));
   return (
-    <div style={{ height: horizontal ? Math.max(220, rows.length * 55) : 280 }}>
-      <ResponsiveContainer width="100%" height="100%">
+    <div
+      className={maxHeight ? "scrollbar-thin overflow-auto pr-1" : undefined}
+      style={maxHeight ? { maxHeight } : undefined}
+    >
+      <div style={{ height: inner }}>
+        <ResponsiveContainer width="100%" height="100%">
         <BarChart
-          data={rows}
+          data={chartData}
           layout={horizontal ? "vertical" : "horizontal"}
           margin={{ left: horizontal ? 10 : 0, right: 20, bottom: 10 }}
           accessibilityLayer
@@ -114,6 +123,11 @@ function AttendanceBars({
               borderRadius: 8,
             }}
             labelStyle={{ color: "var(--popover-foreground)" }}
+            labelFormatter={(value, payload) => {
+              const full = (payload as { payload?: { fullName?: string } }[] | undefined)?.[0]
+                ?.payload?.fullName;
+              return full ?? value;
+            }}
             cursor={{ fill: "var(--muted)", fillOpacity: 0.5 }}
           />
           <Legend />
@@ -132,7 +146,8 @@ function AttendanceBars({
             onClick={(r) => r.id && onSchool?.(r.id)}
           />
         </BarChart>
-      </ResponsiveContainer>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
@@ -387,8 +402,16 @@ export function MainDashboard() {
                   </div>
                 </Panel>
                 <Panel title="School-wise Weekly Attendance">
-                  <AttendanceBars rows={schoolRows} horizontal onSchool={setSchool} />
-                  <div className="max-h-64 overflow-auto">
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    {schoolRows.length} schools · scroll inside the chart to see all
+                  </p>
+                  <AttendanceBars
+                    rows={schoolRows}
+                    horizontal
+                    onSchool={setSchool}
+                    maxHeight={300}
+                  />
+                  <div className="mt-3 max-h-48 overflow-auto">
                     {schoolRows.map((s) => (
                       <button
                         key={s.id}
