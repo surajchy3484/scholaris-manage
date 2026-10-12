@@ -76,14 +76,21 @@ function AttendanceBars({
   rows,
   horizontal = false,
   onSchool,
+  maxHeight,
 }: {
   rows: { name: string; present: number; expected: number; id?: string }[];
   horizontal?: boolean;
   onSchool?: (id: string) => void;
+  maxHeight?: number;
 }) {
+  const inner = Math.max(220, horizontal ? rows.length * 46 : 280);
   return (
-    <div style={{ height: horizontal ? Math.max(220, rows.length * 55) : 280 }}>
-      <ResponsiveContainer width="100%" height="100%">
+    <div
+      className={maxHeight ? "overflow-auto pr-1" : undefined}
+      style={maxHeight ? { maxHeight } : undefined}
+    >
+      <div style={{ height: inner }}>
+        <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={rows}
           layout={horizontal ? "vertical" : "horizontal"}
