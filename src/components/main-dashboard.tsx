@@ -170,7 +170,7 @@ export function MainDashboard() {
   const [centre, setCentre] = useState(""),
     [school, setSchool] = useState(""),
     [trainer, setTrainer] = useState(""),
-    [klass, setClass] = useState("5"),
+    [klass, setClass] = useState(""),
     [division, setDivision] = useState(""),
     [unit, setUnit] = useState(""),
     [session, setSession] = useState(""),
@@ -565,7 +565,7 @@ export function MainDashboard() {
                   variant="outline"
                   onClick={() => {
                     setCentre("");
-                    setClass("5");
+                    setClass("");
                     setSchool("");
                     setDivision("");
                     setTrainer("");
