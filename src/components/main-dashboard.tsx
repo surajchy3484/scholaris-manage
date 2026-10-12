@@ -395,8 +395,16 @@ export function MainDashboard() {
                   </div>
                 </Panel>
                 <Panel title="School-wise Weekly Attendance">
-                  <AttendanceBars rows={schoolRows} horizontal onSchool={setSchool} />
-                  <div className="max-h-64 overflow-auto">
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    {schoolRows.length} schools · scroll inside the chart to see all
+                  </p>
+                  <AttendanceBars
+                    rows={schoolRows}
+                    horizontal
+                    onSchool={setSchool}
+                    maxHeight={300}
+                  />
+                  <div className="mt-3 max-h-48 overflow-auto">
                     {schoolRows.map((s) => (
                       <button
                         key={s.id}
