@@ -139,7 +139,8 @@ function AttendanceBars({
             onClick={(r) => r.id && onSchool?.(r.id)}
           />
         </BarChart>
-      </ResponsiveContainer>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
