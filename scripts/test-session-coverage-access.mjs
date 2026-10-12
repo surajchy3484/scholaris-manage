@@ -28,13 +28,15 @@ const modules={
 };
 for(const [specifier,target] of Object.entries(modules))code=code.replaceAll(JSON.stringify(specifier),JSON.stringify(target));
 const {getSessionCoverage,saveCoverageThresholds}=await import(url(code));
-const input={token:'valid',class:'5',academicYear:'2026'};
+const input={token:'valid',class:'5',academicYear:'2026',context:'assessments'};
+await assert.rejects(()=>getSessionCoverage({data:{...input,context:'dashboard'}}), /administrators only/);
+assert.equal(rpcCalls.length,0,'Non-admin dashboard blocked before database access');
 let result=await getSessionCoverage({data:input});assert.deepEqual(rpcCalls.at(-1).p_schools,[a]);assert.equal(result.schools.length,1);
 await getSessionCoverage({data:{...input,centre:'Manmad Cluster'}});assert.deepEqual(rpcCalls.at(-1).p_schools,[]);
 await assert.rejects(()=>getSessionCoverage({data:{...input,trainer:b}}));
 await assert.rejects(()=>getSessionCoverage({data:{...input,token:'bad'}}));
 const count=rpcCalls.length;profile.permissions.session_status=[];await assert.rejects(()=>getSessionCoverage({data:input}));assert.equal(rpcCalls.length,count,'No database coverage query without session permission');
-profile.permissions.session_status=['view'];profile.permissions.assessments=[];await assert.rejects(()=>getSessionCoverage({data:{...input,context:'assessments'}}));
+profile.permissions.session_status=['view'];profile.permissions.assessments=[];await assert.rejects(()=>getSessionCoverage({data:{...input,context:'assessments'}}));profile.permissions.assessments=['view'];
 await assert.rejects(()=>saveCoverageThresholds({data:{token:'valid',almost_all:80,partial:50}}));assert.equal(writes.length,0);
 profile={...profile,schoolIds:[]};await getSessionCoverage({data:input});assert.deepEqual(rpcCalls.at(-1).p_schools,[],'Empty assignment never grants organization scope');
 profile={...profile,role:'admin'};result=await getSessionCoverage({data:{...input,context:'assessments'}});assert.equal(result.schools.length,2);
@@ -44,6 +46,6 @@ await saveCoverageThresholds({data:{token:'valid',academicYear:'2025',almost_all
 console.log('Passed server access tests: dashboard/assessment/session permissions, trainer and centre scope, empty allowlist, admin scope and threshold writes.');
 
 await getSessionCoverage({data:{...input,school:b}});assert.deepEqual(rpcCalls.at(-1).p_schools,[b]);
-profile={...profile,role:'trainer',schoolIds:[a],permissions:{dashboard:['view'],session_status:['view']}};
+profile={...profile,role:'trainer',schoolIds:[a],permissions:{dashboard:['view'],session_status:['view'],assessments:['view']}};
 await getSessionCoverage({data:{...input,school:b}});assert.deepEqual(rpcCalls.at(-1).p_schools,[], 'School filter cannot expand trainer access');
 console.log('Shared school filter and restricted-school scope passed.');
