@@ -9,16 +9,16 @@ export const Route = createFileRoute("/")({
 });
 
 function DashboardEntry() {
-  const { ready, isAuthed, profile, can } = useAuth();
+  const { ready, isAuthed, can } = useAuth();
   if (!ready || !isAuthed) return null;
-  if (profile?.role !== "admin") {
+  if (!can("main_dashboard")) {
     if (can("dashboard")) return <Navigate to="/school-dashboard" replace />;
-    const fallback = MODULES.find(m => !["dashboard", "schools", "students", "attendance"].includes(m) && can(m));
+    const fallback = MODULES.find(m => !["main_dashboard", "dashboard", "schools", "students", "attendance"].includes(m) && can(m));
     if (fallback) return <Navigate to={MODULE_ROUTES[fallback]} replace />;
     return <p className="p-8 text-muted-foreground">No accessible page is assigned. Please contact your administrator.</p>;
   }
   return (
-    <RequireModule module="dashboard">
+    <RequireModule module="main_dashboard">
       <div className="mx-auto max-w-7xl px-4 py-5">
         <MainDashboard />
       </div>

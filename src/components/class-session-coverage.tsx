@@ -77,8 +77,7 @@ export function ClassSessionCoverage({
   ];
   const allowed =
     can("session_status", "view") &&
-    can(context, "view") &&
-    (context !== "dashboard" || profile?.role === "admin");
+    can(context === "dashboard" ? "main_dashboard" : "assessments", "view");
   const query = useQuery({
     queryKey: ["class-session-coverage", scope, filters, dashboard?.revision],
     queryFn: () => getSessionCoverage({ data: { ...filters, token: getAccessToken() } }),

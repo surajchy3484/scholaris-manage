@@ -462,6 +462,7 @@ function UsersPage() {
                             {ACTIONS.map((a) => (
                               <td key={a} className="p-2 text-center">
                                 <Checkbox
+                                  disabled={m === "main_dashboard" && a !== "view"}
                                   checked={(form.permissions[m] ?? []).includes(a)}
                                   onCheckedChange={() => togglePerm(m, a)}
                                   aria-label={`${MODULE_LABELS[m]} ${ACTION_LABELS[a]}`}

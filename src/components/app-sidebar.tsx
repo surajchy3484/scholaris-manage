@@ -134,7 +134,7 @@ export function AppSidebar() {
   const { setOpenMobile, isMobile } = useSidebar();
   const { installed, canInstall, isIos, promptInstall } = usePwaInstall();
   const [scholarsOpen, setScholarsOpen] = useState(true);
-  const { can, profile } = useAuth();
+  const { can } = useAuth();
   const scholarsItems = SCHOLARS_ITEMS.filter((i) => can(i.module));
 
   useEffect(() => {
@@ -196,7 +196,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Overview</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {profile?.role === "admin" && (
+              {can("main_dashboard") && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={pathname === "/"} tooltip="Main Dashboard">
                     <Link to="/" onClick={close}>

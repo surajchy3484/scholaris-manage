@@ -8,6 +8,7 @@
 export type AppRole = "admin" | "trainer";
 
 export const MODULES = [
+  "main_dashboard",
   "dashboard",
   "schools",
   "students",
@@ -29,6 +30,7 @@ export type AppAction = (typeof ACTIONS)[number];
 export type Permissions = Partial<Record<AppModule, AppAction[]>>;
 
 export const MODULE_LABELS: Record<AppModule, string> = {
+  main_dashboard: "Main Dashboard",
   dashboard: "School Dashboard",
   schools: "Schools",
   students: "Student Management",
@@ -44,6 +46,7 @@ export const MODULE_LABELS: Record<AppModule, string> = {
 
 /** Landing route for each module, used by menus and the access guard. */
 export const MODULE_ROUTES: Record<AppModule, string> = {
+  main_dashboard: "/",
   dashboard: "/school-dashboard",
   schools: "/school-dashboard",
   students: "/school-dashboard",
@@ -120,7 +123,8 @@ export function sanitizePermissions(input: unknown): Permissions {
     const actions = value.filter((a): a is AppAction =>
       (ACTIONS as readonly string[]).includes(a as string),
     );
-    if (actions.length) out[key as AppModule] = actions;
+    const supported = key === "main_dashboard" ? actions.filter((a) => a === "view") : actions;
+    if (supported.length) out[key as AppModule] = supported;
   }
   return out;
 }
