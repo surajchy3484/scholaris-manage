@@ -84,15 +84,17 @@ function AttendanceBars({
   maxHeight?: number;
 }) {
   const inner = Math.max(220, horizontal ? rows.length * 46 : 280);
+  const short = (s: string) => (s.length > 26 ? `${s.slice(0, 25)}…` : s);
+  const chartData = rows.map((r) => ({ ...r, fullName: r.name, name: short(r.name) }));
   return (
     <div
-      className={maxHeight ? "overflow-auto pr-1" : undefined}
+      className={maxHeight ? "scrollbar-thin overflow-auto pr-1" : undefined}
       style={maxHeight ? { maxHeight } : undefined}
     >
       <div style={{ height: inner }}>
         <ResponsiveContainer width="100%" height="100%">
         <BarChart
-          data={rows}
+          data={chartData}
           layout={horizontal ? "vertical" : "horizontal"}
           margin={{ left: horizontal ? 10 : 0, right: 20, bottom: 10 }}
           accessibilityLayer
