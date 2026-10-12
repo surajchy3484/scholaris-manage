@@ -123,6 +123,11 @@ function AttendanceBars({
               borderRadius: 8,
             }}
             labelStyle={{ color: "var(--popover-foreground)" }}
+            labelFormatter={(value, payload) => {
+              const full = (payload as { payload?: { fullName?: string } }[] | undefined)?.[0]
+                ?.payload?.fullName;
+              return full ?? value;
+            }}
             cursor={{ fill: "var(--muted)", fillOpacity: 0.5 }}
           />
           <Legend />
