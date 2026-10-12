@@ -29,7 +29,7 @@ const modules={
 for(const [specifier,target] of Object.entries(modules))code=code.replaceAll(JSON.stringify(specifier),JSON.stringify(target));
 const {getSessionCoverage,saveCoverageThresholds}=await import(url(code));
 const input={token:'valid',class:'5',academicYear:'2026',context:'assessments'};
-await assert.rejects(()=>getSessionCoverage({data:{...input,context:'dashboard'}}), /administrators only/);
+await assert.rejects(()=>getSessionCoverage({data:{...input,context:'dashboard'}}), /denied/);
 assert.equal(rpcCalls.length,0,'Non-admin dashboard blocked before database access');
 let result=await getSessionCoverage({data:input});assert.deepEqual(rpcCalls.at(-1).p_schools,[a]);assert.equal(result.schools.length,1);
 await getSessionCoverage({data:{...input,centre:'Manmad Cluster'}});assert.deepEqual(rpcCalls.at(-1).p_schools,[]);
@@ -49,3 +49,10 @@ await getSessionCoverage({data:{...input,school:b}});assert.deepEqual(rpcCalls.a
 profile={...profile,role:'trainer',schoolIds:[a],permissions:{dashboard:['view'],session_status:['view'],assessments:['view']}};
 await getSessionCoverage({data:{...input,school:b}});assert.deepEqual(rpcCalls.at(-1).p_schools,[], 'School filter cannot expand trainer access');
 console.log('Shared school filter and restricted-school scope passed.');
+
+profile.permissions.main_dashboard=['view'];
+await getSessionCoverage({data:{...input,context:'dashboard'}});
+assert.deepEqual(rpcCalls.at(-1).p_schools,[a], 'Granted dashboard retains assigned-school scope');
+profile.permissions.main_dashboard=[];
+await assert.rejects(()=>getSessionCoverage({data:{...input,context:'dashboard'}}));
+console.log('Explicit Main Dashboard grant and revocation passed.');

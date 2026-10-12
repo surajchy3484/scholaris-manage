@@ -63,9 +63,7 @@ export const getMainDashboard = createServerFn({ method: "POST" })
       .parse(value),
   )
   .handler(async ({ data }) => {
-    const profile = await requirePermission(data.token, "dashboard", "view");
-    if (profile.role !== "admin")
-      throw new Error("Main Dashboard is available to administrators only");
+    const profile = await requirePermission(data.token, "main_dashboard", "view");
     const year = await resolveAcademicYear(data.academicYear);
     const db = await academicDb(year);
     const attendanceAllowed = can(profile, "attendance", "view");
