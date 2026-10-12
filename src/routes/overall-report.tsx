@@ -343,9 +343,11 @@ function OverallReport() {
     <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">
       <header>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-primary bg-primary/5 text-xs font-extrabold text-destructive">
-            REAP
-          </div>
+          <img
+            src="/reap-logo-circle.png"
+            alt="REAP"
+            className="h-12 w-12 shrink-0 rounded-full object-cover"
+          />
           <div>
             <h1 className="font-display text-3xl font-bold">Overall Report</h1>
             <p className="text-sm text-muted-foreground">
@@ -711,9 +713,9 @@ function StudentPreview({
     <Card className="relative overflow-hidden rounded-2xl border-2 border-primary/40 bg-gradient-to-br from-card via-card to-primary/5 p-6 shadow-elegant before:absolute before:inset-2 before:rounded-xl before:border before:border-primary/15">
       <div className="relative z-10 flex items-start gap-3 rounded-xl border border-primary/20 border-b-4 border-b-destructive bg-gradient-to-r from-primary/5 via-card to-warm/10 p-4 pb-4">
         <img
-          src="/reap-logo.png"
+          src="/reap-logo-circle.png"
           alt="REAP logo"
-          className="h-14 w-28 object-contain object-left"
+          className="h-14 w-14 shrink-0 rounded-full object-cover"
         />
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-2xl font-bold">STUDENT PERFORMANCE MARKSHEET</h2>
