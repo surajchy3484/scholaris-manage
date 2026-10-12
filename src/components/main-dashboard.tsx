@@ -76,63 +76,78 @@ function AttendanceBars({
   rows,
   horizontal = false,
   onSchool,
+  maxHeight,
 }: {
   rows: { name: string; present: number; expected: number; id?: string }[];
   horizontal?: boolean;
   onSchool?: (id: string) => void;
+  maxHeight?: number;
 }) {
+  const inner = Math.max(220, horizontal ? rows.length * 46 : 280);
+  const short = (s: string) => (s.length > 26 ? `${s.slice(0, 25)}…` : s);
+  const chartData = rows.map((r) => ({ ...r, fullName: r.name, name: short(r.name) }));
   return (
-    <div style={{ height: horizontal ? Math.max(220, rows.length * 55) : 280 }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={rows}
-          layout={horizontal ? "vertical" : "horizontal"}
-          margin={{ left: horizontal ? 10 : 0, right: 20, bottom: 10 }}
-          accessibilityLayer
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-          <XAxis
-            type={horizontal ? "number" : "category"}
-            dataKey={horizontal ? undefined : "name"}
-            tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-            stroke="var(--border)"
-            allowDecimals={false}
-          />
-          <YAxis
-            type={horizontal ? "category" : "number"}
-            dataKey={horizontal ? "name" : undefined}
-            width={horizontal ? 165 : 40}
-            tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-            stroke="var(--border)"
-            allowDecimals={false}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "var(--popover)",
-              borderColor: "var(--border)",
-              color: "var(--popover-foreground)",
-              borderRadius: 8,
-            }}
-            labelStyle={{ color: "var(--popover-foreground)" }}
-            cursor={{ fill: "var(--muted)", fillOpacity: 0.5 }}
-          />
-          <Legend />
-          <Bar
-            dataKey="present"
-            name="Students present"
-            fill="#16a34a"
-            radius={[3, 3, 3, 3]}
-            onClick={(r) => r.id && onSchool?.(r.id)}
-          />
-          <Bar
-            dataKey="expected"
-            name="Expected (recorded cohorts)"
-            fill="#3b82f6"
-            radius={[3, 3, 3, 3]}
-            onClick={(r) => r.id && onSchool?.(r.id)}
-          />
-        </BarChart>
-      </ResponsiveContainer>
+    <div
+      className={maxHeight ? "scrollbar-thin overflow-auto pr-1" : undefined}
+      style={maxHeight ? { maxHeight } : undefined}
+    >
+      <div style={{ height: inner }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={chartData}
+            layout={horizontal ? "vertical" : "horizontal"}
+            margin={{ left: horizontal ? 10 : 0, right: 20, bottom: 10 }}
+            accessibilityLayer
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis
+              type={horizontal ? "number" : "category"}
+              dataKey={horizontal ? undefined : "name"}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+              stroke="var(--border)"
+              allowDecimals={false}
+            />
+            <YAxis
+              type={horizontal ? "category" : "number"}
+              dataKey={horizontal ? "name" : undefined}
+              width={horizontal ? 165 : 40}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+              stroke="var(--border)"
+              allowDecimals={false}
+            />
+            <Tooltip
+              contentStyle={{
+                background: "var(--popover)",
+                borderColor: "var(--border)",
+                color: "var(--popover-foreground)",
+                borderRadius: 8,
+              }}
+              labelStyle={{ color: "var(--popover-foreground)" }}
+              labelFormatter={(value, payload) => {
+                const full = (payload as { payload?: { fullName?: string } }[] | undefined)?.[0]
+                  ?.payload?.fullName;
+                return full ?? value;
+              }}
+              cursor={{ fill: "var(--muted)", fillOpacity: 0.5 }}
+            />
+            <Legend />
+            <Bar
+              dataKey="present"
+              name="Students present"
+              fill="#16a34a"
+              radius={[3, 3, 3, 3]}
+              onClick={(r) => r.id && onSchool?.(r.id)}
+            />
+            <Bar
+              dataKey="expected"
+              name="Expected (recorded cohorts)"
+              fill="#3b82f6"
+              radius={[3, 3, 3, 3]}
+              onClick={(r) => r.id && onSchool?.(r.id)}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
@@ -402,6 +417,9 @@ export function MainDashboard() {
                   </div>
                 </Panel>
                 <Panel title="School-wise Weekly Attendance">
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    {schoolRows.length} schools · scroll inside the chart to see all
+                  </p>
                   <div
                     className="h-[280px] overflow-y-auto overscroll-contain"
                     tabIndex={0}
@@ -410,7 +428,7 @@ export function MainDashboard() {
                   >
                     <AttendanceBars rows={schoolRows} horizontal onSchool={setSchool} />
                   </div>
-                  <div className="max-h-64 overflow-auto">
+                  <div className="mt-3 max-h-48 overflow-auto">
                     {schoolRows.map((s) => (
                       <button
                         key={s.id}
