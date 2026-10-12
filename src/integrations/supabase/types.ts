@@ -961,6 +961,73 @@ export type Database = {
           },
         ]
       }
+      session_catalogue: {
+        Row: {
+          academic_year: string
+          class: string
+          id: string
+          name_key: string | null
+          session_name: string
+          topic: string
+          topic_key: string | null
+          unit: string
+        }
+        Insert: {
+          academic_year: string
+          class: string
+          id?: string
+          name_key?: string | null
+          session_name: string
+          topic?: string
+          topic_key?: string | null
+          unit: string
+        }
+        Update: {
+          academic_year?: string
+          class?: string
+          id?: string
+          name_key?: string | null
+          session_name?: string
+          topic?: string
+          topic_key?: string | null
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_catalogue_academic_year_fkey"
+            columns: ["academic_year"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_coverage_settings: {
+        Row: {
+          academic_year: string
+          almost_all: number
+          partial: number
+        }
+        Insert: {
+          academic_year: string
+          almost_all?: number
+          partial?: number
+        }
+        Update: {
+          academic_year?: string
+          almost_all?: number
+          partial?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_coverage_settings_academic_year_fkey"
+            columns: ["academic_year"]
+            isOneToOne: true
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_division_status: {
         Row: {
           academic_year: string | null
@@ -1018,10 +1085,47 @@ export type Database = {
           },
         ]
       }
+      session_school_assignments: {
+        Row: {
+          catalogue_id: string
+          school_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          catalogue_id: string
+          school_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          catalogue_id?: string
+          school_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_school_assignments_catalogue_id_fkey"
+            columns: ["catalogue_id"]
+            isOneToOne: false
+            referencedRelation: "session_catalogue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_school_assignments_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
           academic_year: string
           assignment_type: string
+          catalogue_id: string | null
           class: string
           class_plan_id: string | null
           created_at: string
@@ -1036,6 +1140,7 @@ export type Database = {
         Insert: {
           academic_year: string
           assignment_type?: string
+          catalogue_id?: string | null
           class?: string
           class_plan_id?: string | null
           created_at?: string
@@ -1050,6 +1155,7 @@ export type Database = {
         Update: {
           academic_year?: string
           assignment_type?: string
+          catalogue_id?: string | null
           class?: string
           class_plan_id?: string | null
           created_at?: string
@@ -1062,6 +1168,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sessions_catalogue_id_fkey"
+            columns: ["catalogue_id"]
+            isOneToOne: false
+            referencedRelation: "session_catalogue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_catalogue_scope_fk"
+            columns: ["catalogue_id", "academic_year", "class", "unit"]
+            isOneToOne: false
+            referencedRelation: "session_catalogue"
+            referencedColumns: ["id", "academic_year", "class", "unit"]
+          },
           {
             foreignKeyName: "sessions_class_plan_fk"
             columns: ["class_plan_id"]
@@ -1286,6 +1406,15 @@ export type Database = {
         Returns: Json
       }
       question_class: { Args: { value: string }; Returns: string }
+      reap_class_session_coverage: {
+        Args: {
+          p_class: string
+          p_schools: string[]
+          p_session?: string
+          p_year: string
+        }
+        Returns: Json
+      }
       school_drive_acquire: {
         Args: { p_lease: string; p_school: string }
         Returns: Json
