@@ -17,6 +17,7 @@ const input = z.object({
   academicYear: z.string().optional(),
   class: z.enum(["5", "6", "7", "8", "9"]),
   centre: z.string().optional(),
+  school: z.string().uuid().optional(),
   trainer: z.string().uuid().optional(),
   session: z.string().uuid().optional(),
   context: z.enum(["dashboard", "assessments"]).default("dashboard"),
@@ -76,6 +77,7 @@ export const getSessionCoverage = createServerFn({ method: "POST" })
     const visible = schools.map((s) => ({ ...s, centre: schoolOrganizationGroup(s) }));
     const selected = visible.filter(
       (s) =>
+        (!data.school || s.id === data.school) &&
         (!data.centre || s.centre === data.centre) &&
         (!trainer || trainer.all_schools || trainer.school_ids.includes(s.id)),
     );

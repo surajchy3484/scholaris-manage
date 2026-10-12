@@ -1,7 +1,7 @@
 import { ClassSessionCoverage } from "@/components/class-session-coverage";
 import { TOTAL_REAP_CENTRES } from "@/lib/organization-groups";
 import { useEffect, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bar,
   BarChart,
@@ -93,59 +93,59 @@ function AttendanceBars({
     >
       <div style={{ height: inner }}>
         <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={chartData}
-          layout={horizontal ? "vertical" : "horizontal"}
-          margin={{ left: horizontal ? 10 : 0, right: 20, bottom: 10 }}
-          accessibilityLayer
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-          <XAxis
-            type={horizontal ? "number" : "category"}
-            dataKey={horizontal ? undefined : "name"}
-            tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-            stroke="var(--border)"
-            allowDecimals={false}
-          />
-          <YAxis
-            type={horizontal ? "category" : "number"}
-            dataKey={horizontal ? "name" : undefined}
-            width={horizontal ? 165 : 40}
-            tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-            stroke="var(--border)"
-            allowDecimals={false}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "var(--popover)",
-              borderColor: "var(--border)",
-              color: "var(--popover-foreground)",
-              borderRadius: 8,
-            }}
-            labelStyle={{ color: "var(--popover-foreground)" }}
-            labelFormatter={(value, payload) => {
-              const full = (payload as { payload?: { fullName?: string } }[] | undefined)?.[0]
-                ?.payload?.fullName;
-              return full ?? value;
-            }}
-            cursor={{ fill: "var(--muted)", fillOpacity: 0.5 }}
-          />
-          <Legend />
-          <Bar
-            dataKey="present"
-            name="Students present"
-            fill="#16a34a"
-            radius={[3, 3, 3, 3]}
-            onClick={(r) => r.id && onSchool?.(r.id)}
-          />
-          <Bar
-            dataKey="expected"
-            name="Expected (recorded cohorts)"
-            fill="#3b82f6"
-            radius={[3, 3, 3, 3]}
-            onClick={(r) => r.id && onSchool?.(r.id)}
-          />
-        </BarChart>
+          <BarChart
+            data={chartData}
+            layout={horizontal ? "vertical" : "horizontal"}
+            margin={{ left: horizontal ? 10 : 0, right: 20, bottom: 10 }}
+            accessibilityLayer
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis
+              type={horizontal ? "number" : "category"}
+              dataKey={horizontal ? undefined : "name"}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+              stroke="var(--border)"
+              allowDecimals={false}
+            />
+            <YAxis
+              type={horizontal ? "category" : "number"}
+              dataKey={horizontal ? "name" : undefined}
+              width={horizontal ? 165 : 40}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+              stroke="var(--border)"
+              allowDecimals={false}
+            />
+            <Tooltip
+              contentStyle={{
+                background: "var(--popover)",
+                borderColor: "var(--border)",
+                color: "var(--popover-foreground)",
+                borderRadius: 8,
+              }}
+              labelStyle={{ color: "var(--popover-foreground)" }}
+              labelFormatter={(value, payload) => {
+                const full = (payload as { payload?: { fullName?: string } }[] | undefined)?.[0]
+                  ?.payload?.fullName;
+                return full ?? value;
+              }}
+              cursor={{ fill: "var(--muted)", fillOpacity: 0.5 }}
+            />
+            <Legend />
+            <Bar
+              dataKey="present"
+              name="Students present"
+              fill="#16a34a"
+              radius={[3, 3, 3, 3]}
+              onClick={(r) => r.id && onSchool?.(r.id)}
+            />
+            <Bar
+              dataKey="expected"
+              name="Expected (recorded cohorts)"
+              fill="#3b82f6"
+              radius={[3, 3, 3, 3]}
+              onClick={(r) => r.id && onSchool?.(r.id)}
+            />
+          </BarChart>
         </ResponsiveContainer>
       </div>
     </div>
@@ -153,6 +153,13 @@ function AttendanceBars({
 }
 export function MainDashboard() {
   const { ready, profile, session: authSession } = useAuth();
+  const qc = useQueryClient();
+  const [coverageRevision, setCoverageRevision] = useState(0);
+  const refreshDashboard = () =>
+    qc.invalidateQueries({
+      predicate: (q) =>
+        ["main-dashboard", "class-session-coverage"].includes(String(q.queryKey[0])),
+    });
   const [today, setToday] = useState(indiaToday);
   const [chosenWeek, setChosenWeek] = useState("");
   const week = chosenWeek || weekStart(today);
@@ -163,7 +170,7 @@ export function MainDashboard() {
   const [centre, setCentre] = useState(""),
     [school, setSchool] = useState(""),
     [trainer, setTrainer] = useState(""),
-    [klass, setClass] = useState(""),
+    [klass, setClass] = useState("5"),
     [division, setDivision] = useState(""),
     [unit, setUnit] = useState(""),
     [session, setSession] = useState(""),
@@ -188,10 +195,12 @@ export function MainDashboard() {
   const query = useQuery({
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
-    queryKey: ["main-dashboard", profile?.userId ?? authSession?.user, filters],
+    queryKey: ["main-dashboard", profile?.userId ?? authSession?.user, filters, coverageRevision],
     queryFn: () => getMainDashboard({ data: { ...filters, token: getAccessToken() } }),
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === (profile?.userId ?? authSession?.user) ? previous : undefined,
     enabled: ready,
-    staleTime: 30_000,
+    staleTime: 0,
     retry: false,
   });
   const d = query.data;
@@ -218,10 +227,15 @@ export function MainDashboard() {
     })) ?? [];
   const weekly = sumAttendance(d?.attendance ?? []);
   const centres = [...new Set(d?.schools.map((s) => s.group_name) ?? [])].sort();
-  const classes = [...new Set(d?.cohorts.map((c) => c.class) ?? [])].sort();
+  const classes = [
+    ...new Set(["5", "6", "7", "8", "9", ...(d?.cohorts.map((c) => c.class) ?? [])]),
+  ].sort();
   const divisions = [...new Set(d?.cohorts.map((c) => c.division || "__blank__") ?? [])].sort();
   return (
-    <div className="space-y-6 rounded-2xl bg-background p-4 text-foreground sm:p-6">
+    <div
+      aria-busy={query.isFetching}
+      className="space-y-6 rounded-2xl bg-background p-4 text-foreground sm:p-6"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-green-700 dark:text-green-400">
@@ -230,7 +244,11 @@ export function MainDashboard() {
           <h1 className="mt-1 text-3xl font-bold">Main Dashboard</h1>
           <p className="mt-1 text-sm text-muted-foreground">Attendance and STEM delivery</p>
         </div>
-        <Button variant="outline" onClick={() => void query.refetch()} disabled={query.isFetching}>
+        <Button
+          variant="outline"
+          onClick={() => void refreshDashboard()}
+          disabled={query.isFetching}
+        >
           <RefreshCw className={query.isFetching ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
           Refresh
         </Button>
@@ -242,7 +260,6 @@ export function MainDashboard() {
           onChange={(v) => {
             setCentre(v);
             setSchool("");
-            setClass("");
             setDivision("");
             setSession("");
           }}
@@ -253,7 +270,6 @@ export function MainDashboard() {
           value={school}
           onChange={(v) => {
             setSchool(v);
-            setClass("");
             setDivision("");
             setSession("");
           }}
@@ -283,7 +299,7 @@ export function MainDashboard() {
           className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
         >
           {query.error.message}{" "}
-          <button className="underline" onClick={() => void query.refetch()}>
+          <button className="underline" onClick={() => void refreshDashboard()}>
             Retry
           </button>
           <button
@@ -292,7 +308,6 @@ export function MainDashboard() {
               setCentre("");
               setSchool("");
               setTrainer("");
-              setClass("");
               setDivision("");
               setUnit("");
               setSession("");
@@ -405,19 +420,20 @@ export function MainDashboard() {
                   <p className="mb-2 text-xs text-muted-foreground">
                     {schoolRows.length} schools · scroll inside the chart to see all
                   </p>
-                  <AttendanceBars
-                    rows={schoolRows}
-                    horizontal
-                    onSchool={setSchool}
-                    maxHeight={300}
-                  />
+                  <div
+                    className="h-[280px] overflow-y-auto overscroll-contain"
+                    tabIndex={0}
+                    role="region"
+                    aria-label="School attendance chart; scroll to see all schools"
+                  >
+                    <AttendanceBars rows={schoolRows} horizontal onSchool={setSchool} />
+                  </div>
                   <div className="mt-3 max-h-48 overflow-auto">
                     {schoolRows.map((s) => (
                       <button
                         key={s.id}
                         onClick={() => {
                           setSchool(s.id);
-                          setClass("");
                           setDivision("");
                         }}
                         className="flex w-full justify-between gap-3 border-b border-border py-2 text-left text-xs hover:text-blue-600 dark:hover:text-blue-300"
@@ -549,8 +565,8 @@ export function MainDashboard() {
                   variant="outline"
                   onClick={() => {
                     setCentre("");
+                    setClass("5");
                     setSchool("");
-                    setClass("");
                     setDivision("");
                     setTrainer("");
                     setUnit("");
@@ -600,7 +616,33 @@ export function MainDashboard() {
                   </table>
                 </div>
               </Panel>
-              <ClassSessionCoverage />
+              <ClassSessionCoverage
+                dashboard={{
+                  klass,
+                  centre,
+                  trainer,
+                  school,
+                  unit,
+                  revision: JSON.stringify(filters),
+                  setClass: (value) => {
+                    setClass(value);
+                    setDivision("");
+                    setSession("");
+                  },
+                  setCentre: (value) => {
+                    setCentre(value);
+                    setSchool("");
+                    setDivision("");
+                    setSession("");
+                  },
+                  setTrainer: (value) => {
+                    setTrainer(value);
+                    setSession("");
+                  },
+                  onFilterChange: () => setCoverageRevision((value) => value + 1),
+                  refresh: refreshDashboard,
+                }}
+              />
               <Panel title="Trainer-wise Session Completion">
                 <p className="mb-3 text-xs text-muted-foreground">
                   Based on current school assignments, not who last edited a status. Shared schools
@@ -696,7 +738,8 @@ export function MainDashboard() {
                 <p className="mt-2">
                   The KPI, unit delivery table and trainer table retain their existing delivery
                   counts. Class-wise Session Completion uses the shared class catalogue and counts
-                  each eligible school once, with its own class, centre and trainer filters.
+                  each eligible school once, using the shared class, centre, school and trainer
+                  filters.
                 </p>
                 <p className="mt-2">
                   The delivery-table date filters refer to status update timestamps in UTC, not
