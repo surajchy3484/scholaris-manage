@@ -90,7 +90,11 @@ export const insertMasterRows = createServerFn({ method: "POST" })
     if (data.table === "clicker_records")
       return writeClicker(profile, "insert", data.rows, [], {}, data.academicYear);
     const db = await academicDb(data.academicYear);
-    if (data.rows.some((r) => !r.school_id || !canSeeSchool(profile, String(r.school_id))))
+    // Administrators may file assessments without a school (universal sets);
+    // everyone else must stay inside their authorized schools.
+    if (profile.role !== "admin" && data.rows.some((r) => !r.school_id))
+      throw new Error("School access denied");
+    if (data.rows.some((r) => r.school_id && !canSeeSchool(profile, String(r.school_id))))
       throw new Error("School access denied");
     const { error } = await db.from(data.table).insert(data.rows.map(assessmentValues) as never);
     if (error) throw new Error(error.code === "23505" ? "DUPLICATE" : error.message);

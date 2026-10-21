@@ -1,7 +1,12 @@
 import { getAcademicYear } from "@/lib/academic-year";
 import { listQuestionSetVersions } from "@/lib/academic.functions";
 import { getAccessToken } from "@/lib/app-access";
-import { fetchExamTypes } from "@/lib/question-bank";
+import {
+  fetchBankQuestions,
+  fetchExamTypes,
+  normalizeClass,
+  normalizeExam,
+} from "@/lib/question-bank";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -93,6 +98,14 @@ export function AssessmentDialog({
     setPassMarks(String(assessment?.passing_marks ?? 0));
     setStatus(assessment?.status ?? "Draft");
   }, [open, assessment, defaultCode]);
+
+  // Question Master link: the universal answer key for the chosen exam type + class.
+  const bankKey = `${normalizeExam(examType)}|${normalizeClass(cls)}`;
+  const bank = useQuery({
+    queryKey: ["assessment-bank-link", bankKey],
+    queryFn: () => fetchBankQuestions(...bankKey.split("|")),
+    enabled: open && normalizeClass(cls) !== "",
+  });
 
   const save = useMutation({
     mutationFn: async () => {
@@ -232,8 +245,8 @@ export function AssessmentDialog({
               {versions.data
                 ?.filter(
                   (v) =>
-                    v.exam_type === examType &&
-                    v.class === cls.trim().replace(/^class\s*/i, "") &&
+                    v.exam_type === normalizeExam(examType) &&
+                    v.class === normalizeClass(cls) &&
                     (!v.academic_year || v.academic_year === year),
                 )
                 .map((v) => (
@@ -242,6 +255,19 @@ export function AssessmentDialog({
                   </option>
                 ))}
             </select>
+            {!version && normalizeClass(cls) !== "" && (
+              <p
+                className={
+                  (bank.data?.length ?? 0) > 0
+                    ? "text-xs text-muted-foreground"
+                    : "text-xs text-destructive"
+                }
+              >
+                {(bank.data?.length ?? 0) > 0
+                  ? `Linked to Question Master: ${normalizeExam(examType)} · Class ${normalizeClass(cls)} — ${bank.data?.length} question(s) will be used.`
+                  : `No Question Master answer key for ${normalizeExam(examType)} · Class ${normalizeClass(cls)} yet. Add questions in Question Master.`}
+              </p>
+            )}
           </Field>
           <Field label="Subject">
             <Input
