@@ -336,6 +336,30 @@ assert.equal(
 console.log(
   "PASS: migration, promotion, duplicate rejection, permanent identity, transfer, year filters, school scope, original key snapshots, named versions, session history and role denial",
 );
+// Assessment ID corrections preserve the saved evaluation and all dependent links.
+await db.exec(await fs.readFile("supabase/migrations/20261021120000_assessment_code_rename.sql", "utf8"));
+await db.exec("CREATE UNIQUE INDEX IF NOT EXISTS test_assessment_code_unique ON assessments(assessment_id)");
+const linked = async (table, code) => (await db.query(`SELECT to_jsonb(t)-'assessment_id'-'updated_at' value FROM ${table} t WHERE assessment_id=$1 ORDER BY id`, [code])).rows;
+const beforeClicker = await linked("clicker_records", "Y26");
+const beforeResults = await linked("assessment_results", "Y26");
+assert(beforeClicker.length > 0 && beforeResults.length > 0);
+const beforeAssessment = await linked("assessments", "Y26");
+await db.exec("UPDATE assessments SET assessment_id='ASM-0120' WHERE assessment_id='Y26'");
+assert.deepEqual(await linked("clicker_records", "ASM-0120"), beforeClicker);
+assert.deepEqual(await linked("assessment_results", "ASM-0120"), beforeResults);
+assert.deepEqual(await linked("assessments", "ASM-0120"), beforeAssessment);
+assert.equal((await linked("clicker_records", "Y26")).length, 0);
+await assert.rejects(() => db.exec("UPDATE assessments SET assessment_id='VERSION' WHERE assessment_id='ASM-0120'"), /unique|already has linked records/);
+await assert.rejects(() => db.exec("UPDATE assessments SET assessment_id='' WHERE assessment_id='ASM-0120'"), /required/);
+await assert.rejects(() => db.exec("UPDATE assessments SET class='9' WHERE assessment_id='ASM-0120'"), /context is preserved/);
+await assert.rejects(() => db.exec("UPDATE clicker_records SET assessment_id='VERSION' WHERE assessment_id='ASM-0120'"));
+assert.deepEqual(await linked("clicker_records", "ASM-0120"), beforeClicker);
+await db.exec("UPDATE assessments SET name='Corrected name', status='Active' WHERE assessment_id='ASM-0120'");
+assert.equal((await one("SELECT name FROM assessments WHERE assessment_id='ASM-0120'")).name, "Corrected name");
+// Keep the remaining historical-year tests on their original assessment labels.
+await db.exec("UPDATE assessments SET assessment_id='Y26' WHERE assessment_id='ASM-0120'");
+console.log("PASS: evaluated assessment rename, preserved scores/snapshots/results, duplicate and blank ID rollback, protected context, descriptive edits");
+
 if (process.env.TEST_CURRENT_YEAR_BASELINE === "1") {
   const baseline = await fs.readFile(
     "supabase/migrations/20261006110000_current_year_baseline.sql",
