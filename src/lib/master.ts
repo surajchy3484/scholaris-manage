@@ -151,14 +151,14 @@ export async function updateRowsByIds(
   }
 }
 
-/** Next free assessment code, e.g. ASM-0007. */
+/** Next free assessment code, e.g. ASM-0007. Keeps the plain ASM-0001 format. */
 export function nextAssessmentCode(existing: Assessment[]): string {
   let max = 0;
   for (const a of existing) {
     const m = /(\d+)\s*$/.exec(a.assessment_id ?? "");
     if (m) max = Math.max(max, Number(m[1]));
   }
-  return `ASM-${getAcademicYear() ?? "YEAR"}-${String(max + 1).padStart(4, "0")}`;
+  return `ASM-${String(max + 1).padStart(4, "0")}`;
 }
 
 /** Deletes rows in chunks so bulk selections never exceed request limits. */

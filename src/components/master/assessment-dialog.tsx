@@ -1,7 +1,12 @@
 import { getAcademicYear } from "@/lib/academic-year";
 import { listQuestionSetVersions } from "@/lib/academic.functions";
 import { getAccessToken } from "@/lib/app-access";
-import { fetchExamTypes } from "@/lib/question-bank";
+import {
+  fetchBankQuestions,
+  fetchExamTypes,
+  normalizeClass,
+  normalizeExam,
+} from "@/lib/question-bank";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
