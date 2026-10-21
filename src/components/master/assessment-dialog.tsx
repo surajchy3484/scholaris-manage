@@ -99,6 +99,14 @@ export function AssessmentDialog({
     setStatus(assessment?.status ?? "Draft");
   }, [open, assessment, defaultCode]);
 
+  // Question Master link: the universal answer key for the chosen exam type + class.
+  const bankKey = `${normalizeExam(examType)}|${normalizeClass(cls)}`;
+  const bank = useQuery({
+    queryKey: ["assessment-bank-link", bankKey],
+    queryFn: () => fetchBankQuestions(...bankKey.split("|")),
+    enabled: open && normalizeClass(cls) !== "",
+  });
+
   const save = useMutation({
     mutationFn: async () => {
       const school = schools.find((s) => s.id === schoolId);
