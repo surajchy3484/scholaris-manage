@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { getAcademicYear } from "@/lib/academic-year";
 import { useQuery } from "@tanstack/react-query";
 import { fetchAssessments, fetchClickerRecords, fetchQuestions } from "@/lib/master";
 import { fetchDivisionSessions, UNITS } from "@/lib/sessions";
@@ -15,7 +16,7 @@ import type { StudentReport } from "@/lib/exam";
 
 type Props = {
   students: StudentReport[];
-  schools: { id: string; name: string; code: string }[];
+  schools: { id: string; name: string; code: string; location?: string | null }[];
   schoolId: string;
   schoolName: string;
   classKey: string;
@@ -121,7 +122,11 @@ export function useVisualAnalytics(props: Props) {
     !(effectiveClass !== "all" && sessions.isFetching) &&
     (props.mode !== "class" || effectiveClass !== "all") &&
     (props.mode !== "student" || !!selectedStudent);
+  const reportSchool = props.schools.find((s) => s.id === effectiveSchoolId);
   const options = {
+    academicYear: getAcademicYear() ?? undefined,
+    schoolCode: reportSchool?.code,
+    location: reportSchool?.location ?? undefined,
     school: props.schools.find((s) => s.id === effectiveSchoolId)?.name || props.schoolName,
     classLabel:
       props.mode === "school" || effectiveClass === "all"
@@ -134,14 +139,16 @@ export function useVisualAnalytics(props: Props) {
       ? "Session progress unavailable. Check your Session Status access and retry."
       : sessions.isFetching
         ? "Loading session progress…"
-        : "Select a class and section to view session progress.",
+        : props.mode === "school"
+          ? "School-wide session totals are not included in this assessment report. Select a class and section to review delivery context."
+          : "Select a class and section to view session progress.",
     student: props.mode === "student",
     excluded: prepared?.excluded ?? 0,
     duplicates: prepared?.duplicates ?? 0,
   };
   const html =
     ready && allSchools
-      ? schoolPerformanceReport(schoolComparison, thresholds, remarks)
+      ? schoolPerformanceReport(schoolComparison, thresholds, remarks, options)
       : ready && exportView
         ? analyticsReport(exportView, options)
         : "";
