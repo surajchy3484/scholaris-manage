@@ -396,6 +396,34 @@ assert.deepEqual(await linked("clicker_records", "Y26"), savedChildren);
 await db.exec("DROP TRIGGER test_block_delete ON assessments; DROP FUNCTION test_block_delete()");
 console.log("PASS: assessment deletion cleans linked results, preserves universal questions/unrelated data, clears report scores, permits admin unassigned records, rejects wrong year/school/role");
 
+// Install format migration on an evaluated assessment and verify its linked rows.
+await db.exec("BEGIN");
+await db.exec("UPDATE assessments SET assessment_id='ASM-2026-0120' WHERE assessment_id='Y26'");
+const plainBefore = await linked("clicker_records", "ASM-2026-0120");
+const plainSql = await fs.readFile("supabase/migrations/20261022110000_plain_assessment_ids.sql", "utf8");
+// Strip transaction delimiters to isolate fixtures inside this test transaction.
+await db.exec(plainSql.replace(/^BEGIN;$/m, '').replace(/^COMMIT;$/m, ''));
+assert.deepEqual(await linked("clicker_records", "ASM-0120"), plainBefore);
+assert.equal((await one("SELECT old_code FROM assessment_code_format_backup WHERE new_code='ASM-0120'")).old_code,"ASM-2026-0120");
+await db.exec("ROLLBACK");
+// Duplicate suffixes abort without changing either assessment.
+await db.exec("BEGIN");
+await db.exec("INSERT INTO assessments(assessment_id) VALUES('ASM-0009'),('ASM-2026-0009')");
+await db.exec("SAVEPOINT format_collision");
+await assert.rejects(() => db.exec(plainSql.replace(/^BEGIN;$/m, '').replace(/^COMMIT;$/m, '')), /format conflict/);
+await db.exec("ROLLBACK TO SAVEPOINT format_collision");
+assert.equal((await one("SELECT count(*)::int n FROM assessments WHERE assessment_id IN ('ASM-0009','ASM-2026-0009')")).n,2);
+await db.exec("ROLLBACK");
+// Standalone migration and repeat execution are safe.
+await db.exec(plainSql);
+await db.exec(plainSql);
+await assert.rejects(() => db.exec("INSERT INTO assessments(assessment_id) VALUES('ASM-2026-0121')"), /original Assessment ID format/);
+await db.exec("INSERT INTO assessments(assessment_id) VALUES('ASM-0121')");
+assert.equal((await one("SELECT count(*)::int n FROM assessments WHERE assessment_id='ASM-0121'")).n,1);
+await db.exec("DELETE FROM assessments WHERE assessment_id='ASM-0121'");
+await db.exec("UPDATE assessments SET name='Name only' WHERE assessment_id='Y26'");
+console.log("PASS: plain assessment format migration, linked record preservation, repeat execution, future year-prefix rejection and legacy descriptive edits");
+
 if (process.env.TEST_CURRENT_YEAR_BASELINE === "1") {
   const baseline = await fs.readFile(
     "supabase/migrations/20261006110000_current_year_baseline.sql",
