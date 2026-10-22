@@ -1,5 +1,7 @@
 import {
   classify,
+  parameterPerformance,
+  parameterPractice,
   buildSchoolComparison,
   type AnalyticsView,
   type Area,
@@ -125,6 +127,56 @@ function areaSection(title: string, rows: Area[], t: Thresholds) {
     ) + areaTable(rows, t),
   );
 }
+function studentParameterSections(view: AnalyticsView, thresholds: Thresholds) {
+  const rows = parameterPerformance(view.attempts);
+  const note =
+    '<p class="va-muted">Correct rate = correct answers ÷ all recorded question responses × 100. Unanswered questions are included. These results describe the selected assessments, not a diagnosis of ability.</p>';
+  const breakdown = rows.length
+    ? bars(
+        "Parameter correct rate",
+        rows.map((row) => ({
+          name: row.name,
+          value: row.rate,
+          color: classify(row.rate, thresholds).color,
+        })),
+      ) +
+      table(
+        ["Parameter", "Total", "Correct", "Incorrect", "Unanswered", "Correct rate", "Status"],
+        rows.map((row) => [
+          row.name,
+          row.total,
+          row.correct,
+          row.incorrect,
+          row.unanswered,
+          pct(row.rate),
+          row.mapped ? classify(row.rate, thresholds).status : "Label missing",
+        ]),
+      ) +
+      note
+    : '<p class="va-note">Parameter-wise performance is unavailable: no linked question-level answers were recorded for this student. Summary scores alone cannot identify improvement areas.</p>';
+  const priorities = rows.filter((row) => row.mapped && row.rate < thresholds.good);
+  let advice = priorities.length
+    ? table(
+        ["Parameter / priority", "Evidence", "Topics to review", "Suggested next step"],
+        priorities.map((row) => [
+          `${row.name} — ${classify(row.rate, thresholds).priority}`,
+          `${row.correct}/${row.total} correct (${pct(row.rate)}); ${row.incorrect} incorrect; ${row.unanswered} unanswered`,
+          row.topics.join("; ") || "Topic labels not recorded; review the missed questions below.",
+          `${parameterPractice(row.name)}${row.unanswered ? " Revisit unanswered questions with guidance before a short follow-up check." : " Complete a short follow-up check after practice."}`,
+        ]),
+      )
+    : `<p class="va-muted">${rows.some((row) => row.mapped) ? "No recorded parameter falls below the selected Good threshold. Continue practice and review any missed questions." : "There is not enough labelled question data to suggest parameter-specific improvement areas."}</p>`;
+  if (rows.some((row) => !row.mapped))
+    advice +=
+      '<p class="va-note">Some question parameters are missing. Ask the teacher to review their labels; no parameter-specific weakness is inferred from these rows.</p>';
+  if (rows.length)
+    advice += `<p class="va-muted">Priority is based on the selected thresholds: Strong ≥ ${thresholds.strong}%, Good ≥ ${thresholds.good}%, Needs Attention ≥ ${thresholds.attention}%; below that is Weak. Small question counts provide limited evidence; teacher review is recommended.</p>`;
+  return (
+    section("2. Parameter-wise Performance", breakdown) +
+    section("3. Areas for Improvement", advice)
+  );
+}
+
 export function analyticsReport(view: AnalyticsView, options: ReportOptions) {
   const overviewLabel = options.student
     ? "Student Overview"
@@ -133,9 +185,10 @@ export function analyticsReport(view: AnalyticsView, options: ReportOptions) {
       : "Class Overview";
   let body = `<style>${analyticsStyles}</style><div class="va"><h2>Student Performance Report</h2><p><b>${escape(options.school)}</b> · ${escape(options.classLabel)}${options.student && view.students[0] ? ` · ${escape(view.students[0].name)}` : ""}</p>`;
   body += section(`1. ${overviewLabel}`, stats(view.summary));
+  if (options.student) body += studentParameterSections(view, options.thresholds);
   if (options.student)
     body += section(
-      "Question Details",
+      "4. Question Details",
       table(
         ["Assessment", "Question", "Subject", "Parameter", "Response", "Correct answer", "Result"],
         view.attempts.flatMap((a) =>
@@ -146,13 +199,13 @@ export function analyticsReport(view: AnalyticsView, options: ReportOptions) {
             r.question.parameter || "Unspecified",
             r.answer || "Blank",
             r.question.correct_answer,
-            r.correct ? "Correct" : "Incorrect",
+            !r.answer ? "Unanswered" : r.correct ? "Correct" : "Incorrect",
           ]),
         ),
       ),
     );
   body += section(
-    "2. Teacher Remarks",
+    options.student ? "5. Teacher Remarks" : "2. Teacher Remarks",
     `<div class="va-remarks">${escape(options.remarks || "Teacher / trainer remarks:")}</div>`,
   );
   return body + "</div>";
