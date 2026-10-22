@@ -53,7 +53,7 @@ export async function writeClicker(
   const assessments = assessmentIds.length
     ? await fetchAllRows((from, to) =>
         db
-          .from("assessments")
+          .from("assessment_evaluation_context" as "assessments")
           .select("assessment_id,school_id")
           .in("assessment_id", assessmentIds)
           .order("id")

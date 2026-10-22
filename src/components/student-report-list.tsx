@@ -1,3 +1,4 @@
+import { refreshStudentDeletionQueries } from "@/lib/query-refresh";
 import { getAcademicYear } from "@/lib/academic-year";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
@@ -166,6 +167,7 @@ export function StudentReportList({
     onSuccess: () => {
       setSelected([]);
       setDeleting(null);
+      void refreshStudentDeletionQueries(qc);
       toast.success("Students deleted");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -379,8 +381,8 @@ export function StudentReportList({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {deleting?.length} student(s)?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes the selected students and related records. This cannot be
-              undone.
+              This permanently removes the selected students, enrollments, attendance, Clicker data
+              and results across all academic years. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

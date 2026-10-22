@@ -222,7 +222,7 @@ export const listClickerQuestionKeys = createServerFn({ method: "POST" })
     const profile = await requirePermission(data.token, "clicker", "view");
     const db = await academicDb(data.academicYear);
     const { data: assessments, error } = await db
-      .from("assessments")
+      .from("assessment_evaluation_context" as "assessments")
       .select("assessment_id,school_id,exam_type,class")
       .in("assessment_id", data.assessmentIds);
     if (error) throw new Error(error.message);
@@ -351,9 +351,22 @@ export const deleteStudentDetails = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const profile = await requirePermission(data.token, data.module, "delete");
     if (!canSeeSchool(profile, data.schoolId)) throw new Error("School access denied");
-    throw new Error(
-      "Student history is preserved. Set enrollment status to Left School or Inactive in Academic Year instead of deleting the student.",
+    const db = await academicDb(data.academicYear);
+    const { data: count, error } = await db.rpc(
+      "delete_students_permanently" as never,
+      {
+        p_school: data.schoolId,
+        p_ids: [...new Set(data.ids)],
+        p_schools: profile.role === "admin" || profile.allSchools ? null : profile.schoolIds,
+      } as never,
     );
+    if (error)
+      throw new Error(
+        isMissingDbObject(error)
+          ? "Apply migration 20261022140000_allow_student_deletion.sql before deleting students."
+          : error.message,
+      );
+    return { ok: true, count: Number(count) };
   });
 export const saveStudentDetails = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>

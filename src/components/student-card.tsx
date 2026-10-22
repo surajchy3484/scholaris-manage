@@ -170,8 +170,8 @@ export function StudentCard({
             <AlertDialogHeader>
               <AlertDialogTitle>Delete this student?</AlertDialogTitle>
               <AlertDialogDescription>
-                Remove <strong>{student.name}</strong> and all attendance records. This cannot be
-                undone.
+                Remove <strong>{student.name}</strong> and their enrollments, attendance, Clicker
+                data and results across all academic years. This cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

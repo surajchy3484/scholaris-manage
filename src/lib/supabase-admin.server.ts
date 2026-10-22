@@ -36,6 +36,7 @@ function academicFetch(key: string, year: string): typeof fetch {
     "session_division_status",
     "attendance",
     "assessments",
+    "assessment_evaluation_context",
     "clicker_records",
     "assessment_results",
     "exam_scores",

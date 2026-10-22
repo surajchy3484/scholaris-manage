@@ -43,7 +43,7 @@ import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sh
 import {
   clickerQuestionColumns,
   deleteRowsByIds,
-  fetchAssessments,
+  fetchEvaluationAssessments,
   fetchClickerRecords,
   fetchQuestions,
   type ClickerRecord,
@@ -110,7 +110,7 @@ function sameValue(left: string | null | undefined, right: string | null | undef
 
 function resolveAssessmentId(
   row: ParsedClicker,
-  available: Awaited<ReturnType<typeof fetchAssessments>>,
+  available: Awaited<ReturnType<typeof fetchEvaluationAssessments>>,
 ) {
   const matches = available.filter(
     (a) =>
@@ -209,7 +209,7 @@ function resolveStudentId(row: ParsedClicker, students: StudentLookup[]) {
  */
 async function linkStudents(
   rows: ParsedClicker[],
-  available: Awaited<ReturnType<typeof fetchAssessments>>,
+  available: Awaited<ReturnType<typeof fetchEvaluationAssessments>>,
 ): Promise<ParsedClicker[]> {
   for (const row of rows) {
     if (row.errors.length) continue;
@@ -441,7 +441,7 @@ function ClickerPage() {
   const [confirm, setConfirm] = useState<"single" | "bulk" | null>(null);
   const [target, setTarget] = useState<ClickerRecord | null>(null);
 
-  const assessments = useQuery({ queryKey: ["assessments"], queryFn: fetchAssessments });
+  const assessments = useQuery({ queryKey: ["evaluation-assessments"], queryFn: fetchEvaluationAssessments });
   const facets = useQuery({
     queryKey: ["clicker-filter-options"],
     queryFn: () =>

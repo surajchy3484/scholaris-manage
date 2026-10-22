@@ -44,6 +44,7 @@ const tableQueries: Record<string, string[]> = {
   class_session_plans: ["main-dashboard", ...sessionQueries],
   assessments: [
     "assessments",
+    "evaluation-assessments",
     "clicker",
     "clicker-filter-options",
     "main-dashboard",
@@ -106,5 +107,23 @@ export function createQueryRefreshQueue(client: QueryClient, delay = 250) {
 export function refreshSessionQueries(client: QueryClient) {
   return client.invalidateQueries({
     predicate: (query) => queryAffectedByTables(query.queryKey, new Set(["sessions"])),
+  });
+}
+
+/** Student deletion also removes attendance/results across years. */
+export function refreshStudentDeletionQueries(client: QueryClient) {
+  return client.invalidateQueries({
+    predicate: (query) =>
+      queryAffectedByTables(
+        query.queryKey,
+        new Set([
+          "students",
+          "student_enrollments",
+          "attendance",
+          "clicker_records",
+          "assessment_results",
+          "exam_scores",
+        ]),
+      ),
   });
 }
