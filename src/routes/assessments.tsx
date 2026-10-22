@@ -28,6 +28,7 @@ import {
   type ParsedBase,
 } from "@/components/master/sheet-import-dialog";
 import { supabase } from "@/lib/academic-data";
+import { useAuth } from "@/lib/auth";
 import {
   deleteRowsByIds,
   fetchAssessments,
@@ -85,6 +86,11 @@ const fmtDate = (v: string | null) => (v ? new Date(v).toLocaleDateString() : "â
 
 function AssessmentsPage() {
   const qc = useQueryClient();
+  const { can } = useAuth();
+  const canAdd = can("assessments", "add");
+  const canEdit = can("assessments", "edit");
+  const canDelete = can("assessments", "delete");
+  const canImport = can("assessments", "import");
   const [selected, setSelected] = useState<string[]>([]);
   const [editing, setEditing] = useState<Assessment | null>(null);
   const [dupCode, setDupCode] = useState<string | undefined>();
@@ -144,57 +150,63 @@ function AssessmentsPage() {
       {
         key: "actions",
         label: "Actions",
-        value: () => "",
-        render: (r) => (
-          <span className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label="Edit"
-              onClick={async () => {
-                setEditing(r);
-                setDupCode(undefined);
-                setDialog(true);
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label="Duplicate"
-              onClick={async () => {
-                try {
-                  const code = nextAssessmentCode(await fetchAssessments());
-                  setEditing(r);
-                  setDupCode(code);
-                  setDialog(true);
-                } catch (error) {
-                  toast.error(
-                    error instanceof Error ? error.message : "Unable to load assessment codes",
-                  );
-                }
-              }}
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label="Delete"
-              className="text-destructive"
-              onClick={() => {
-                setTarget(r);
-                setConfirm("single");
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </span>
-        ),
+          value: () => "",
+          render: (r) => (
+            <span className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+              {canEdit && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Edit"
+                  onClick={async () => {
+                    setEditing(r);
+                    setDupCode(undefined);
+                    setDialog(true);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+              {canAdd && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Duplicate"
+                  onClick={async () => {
+                    try {
+                      const code = nextAssessmentCode(await fetchAssessments());
+                      setEditing(r);
+                      setDupCode(code);
+                      setDialog(true);
+                    } catch (error) {
+                      toast.error(
+                        error instanceof Error ? error.message : "Unable to load assessment codes",
+                      );
+                    }
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Delete"
+                  className="text-destructive"
+                  onClick={() => {
+                    setTarget(r);
+                    setConfirm("single");
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </span>
+          ),
       },
     ],
-    [rows],
+    [canAdd, canDelete, canEdit, rows],
   );
 
   return (
@@ -225,38 +237,46 @@ function AssessmentsPage() {
           emptyMessage="No assessments yet. Add one or import a sheet."
           selectedIds={selected}
           onSelectedChange={setSelected}
-          onRowClick={(r) => {
-            setEditing(r);
-            setDupCode(undefined);
-            setDialog(true);
-          }}
+          onRowClick={
+            canEdit
+              ? (r) => {
+                  setEditing(r);
+                  setDupCode(undefined);
+                  setDialog(true);
+                }
+              : undefined
+          }
           toolbar={
             <>
-              {selected.length > 0 && (
+              {selected.length > 0 && canDelete && (
                 <Button variant="destructive" size="sm" onClick={() => setConfirm("bulk")}>
                   <Trash2 className="h-4 w-4" /> Delete {selected.length}
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-                <Upload className="h-4 w-4" /> Import
-              </Button>
-              <Button
-                size="sm"
-                onClick={async () => {
-                  try {
-                    const code = nextAssessmentCode(await fetchAssessments());
-                    setEditing(null);
-                    setDupCode(code);
-                    setDialog(true);
-                  } catch (error) {
-                    toast.error(
-                      error instanceof Error ? error.message : "Unable to load assessment codes",
-                    );
-                  }
-                }}
-              >
-                <Plus className="h-4 w-4" /> Add Assessment
-              </Button>
+              {canImport && (
+                <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                  <Upload className="h-4 w-4" /> Import
+                </Button>
+              )}
+              {canAdd && (
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      const code = nextAssessmentCode(await fetchAssessments());
+                      setEditing(null);
+                      setDupCode(code);
+                      setDialog(true);
+                    } catch (error) {
+                      toast.error(
+                        error instanceof Error ? error.message : "Unable to load assessment codes",
+                      );
+                    }
+                  }}
+                >
+                  <Plus className="h-4 w-4" /> Add Assessment
+                </Button>
+              )}
             </>
           }
         />
