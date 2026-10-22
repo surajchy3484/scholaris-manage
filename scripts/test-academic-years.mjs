@@ -360,6 +360,42 @@ assert.equal((await one("SELECT name FROM assessments WHERE assessment_id='ASM-0
 await db.exec("UPDATE assessments SET assessment_id='Y26' WHERE assessment_id='ASM-0120'");
 console.log("PASS: evaluated assessment rename, preserved scores/snapshots/results, duplicate and blank ID rollback, protected context, descriptive edits");
 
+await db.exec(await fs.readFile("supabase/migrations/20261022100000_delete_assessments.sql", "utf8"));
+const deleteIds = [ (await one("SELECT id FROM assessments WHERE assessment_id='Y26'")).id ];
+await assert.rejects(() => db.query("SELECT delete_assessments($1,$2)", [deleteIds, [other]]), /School access denied/);
+await selectYear("2027-28");
+await assert.rejects(() => db.query("SELECT delete_assessments($1,NULL)", [deleteIds]), /selected academic year/);
+await selectYear("2026-27");
+await db.exec("SET ROLE anon");
+await assert.rejects(() => db.query("SELECT delete_assessments($1,NULL)", [deleteIds]), /permission denied/);
+await db.exec("RESET ROLE");
+await db.exec("BEGIN");
+const bankBefore = (await one("SELECT count(*)::int n FROM question_bank")).n;
+const unrelatedBefore = await linked("clicker_records", "VERSION");
+assert.equal((await one("SELECT delete_assessments($1,$2) n", [deleteIds, [school]])).n, 1);
+for (const table of ["assessments", "clicker_records", "assessment_results", "questions"])
+  assert.equal((await linked(table, "Y26")).length, 0, table + " cleaned up");
+assert.deepEqual(await linked("clicker_records", "VERSION"), unrelatedBefore);
+assert.equal((await one("SELECT count(*)::int n FROM question_bank")).n, bankBefore);
+assert.equal((await one("SELECT count(*)::int n FROM exam_scores WHERE student_id=$1 AND academic_year='2026-27' AND exam_type='ICA'", [student])).n, 0);
+const unassigned = await one("INSERT INTO assessments(assessment_id,exam_type,class,academic_year) VALUES('UNASSIGNED','ICA','8','2026-27') RETURNING id");
+assert.equal((await one("SELECT delete_assessments($1,NULL) n", [[unassigned.id]])).n, 1);
+await db.exec("ROLLBACK");
+assert.equal((await linked("assessments", "Y26")).length, 1);
+await db.exec("BEGIN");
+await writer([{assessment_id:"VERSION",exam_type:"ICA",class:"8",school_id:school,
+ student_id:student,keypad_id:"FALLBACK",student_name:"Asha",section:"A",answers:{S1:"C"}}]);
+await one("SELECT delete_assessments($1,NULL)", [deleteIds]);
+assert.equal(Number((await one("SELECT score FROM exam_scores WHERE student_id=$1 AND academic_year='2026-27' AND exam_type='ICA'", [student])).score),100);
+await db.exec("ROLLBACK");
+// A failure at parent deletion must roll back already-deleted child records.
+await db.exec("CREATE FUNCTION test_block_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test rollback'; END $$; CREATE TRIGGER test_block_delete BEFORE DELETE ON assessments FOR EACH ROW EXECUTE FUNCTION test_block_delete()");
+const savedChildren = await linked("clicker_records", "Y26");
+await assert.rejects(() => one("SELECT delete_assessments($1,NULL)", [deleteIds]), /test rollback/);
+assert.deepEqual(await linked("clicker_records", "Y26"), savedChildren);
+await db.exec("DROP TRIGGER test_block_delete ON assessments; DROP FUNCTION test_block_delete()");
+console.log("PASS: assessment deletion cleans linked results, preserves universal questions/unrelated data, clears report scores, permits admin unassigned records, rejects wrong year/school/role");
+
 if (process.env.TEST_CURRENT_YEAR_BASELINE === "1") {
   const baseline = await fs.readFile(
     "supabase/migrations/20261006110000_current_year_baseline.sql",

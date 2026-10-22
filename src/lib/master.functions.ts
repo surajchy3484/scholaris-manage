@@ -146,9 +146,20 @@ export const deleteMasterRows = createServerFn({ method: "POST" })
       return writeClicker(profile, "delete", [], data.ids, {}, data.academicYear);
     const db = await academicDb(data.academicYear);
     await checkedAssessmentIds(db, profile, data.ids);
-    const { error } = await db.from(data.table).delete().in("id", data.ids);
-    if (error) throw new Error("Failed to delete records");
-    return { ok: true };
+    const { data: count, error } = await db.rpc(
+      "delete_assessments" as never,
+      {
+        p_ids: [...new Set(data.ids)],
+        p_schools: profile.role === "admin" || profile.allSchools ? null : profile.schoolIds,
+      } as never,
+    );
+    if (error)
+      throw new Error(
+        ["PGRST202", "42883"].includes(error.code)
+          ? "Assessment deletion update is required. Apply migration 20261022100000_delete_assessments.sql and retry."
+          : error.message,
+      );
+    return { ok: true, count: Number(count) };
   });
 
 async function checkedAssessmentIds(
@@ -159,7 +170,10 @@ async function checkedAssessmentIds(
   const { data, error } = await db.from("assessments").select("id,school_id").in("id", ids);
   if (error || data?.length !== new Set(ids).size)
     throw new Error("Assessment is not in the selected academic year");
-  if (data.some((r) => !r.school_id || !canSeeSchool(profile, r.school_id)))
+  if (
+    profile.role !== "admin" &&
+    data.some((r) => !r.school_id || !canSeeSchool(profile, r.school_id))
+  )
     throw new Error("School access denied");
 }
 

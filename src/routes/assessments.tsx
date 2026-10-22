@@ -378,6 +378,8 @@ function AssessmentsPage() {
               {confirm === "bulk"
                 ? `${selected.length} assessment(s) will be permanently removed.`
                 : `"${target?.name ?? ""}" will be permanently removed.`}
+              {" "}Linked Clicker data, results and assessment-specific questions will also be
+              removed. Reports will be recalculated. Shared Question Master questions will remain.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
