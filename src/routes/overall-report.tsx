@@ -262,7 +262,7 @@ function OverallReport() {
     mode,
   });
   const analyticsRequired =
-    mode === "class" || mode === "school" || (mode === "student" && schoolId !== "all");
+    mode === "class" || mode === "school" || mode === "student";
   const exportDisabled =
     (analyticsRequired && !analytics.ready) ||
     ((mode === "overall" || mode === "school") && !activity.data);

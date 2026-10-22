@@ -27,8 +27,14 @@ export function useVisualAnalytics(props: Props) {
   const [remarks, setRemarks] = useState("");
   const [focusStudent, setFocusStudent] = useState("");
   const allSchools = props.mode === "school" && props.schoolId === "all";
+  const selectedStudent = props.students.find(
+    (s) => s.id === props.studentId && (props.schoolId === "all" || s.school_id === props.schoolId),
+  );
+  const effectiveSchoolId =
+    props.mode === "student" && selectedStudent ? selectedStudent.school_id : props.schoolId;
   const active =
-    allSchools || (["class", "school", "student"].includes(props.mode) && props.schoolId !== "all");
+    allSchools ||
+    (["class", "school", "student"].includes(props.mode) && effectiveSchoolId !== "all");
   const query = useQuery({
     queryKey: ["visual-analytics-source"],
     enabled: active,
@@ -42,9 +48,6 @@ export function useVisualAnalytics(props: Props) {
     },
     staleTime: 60_000,
   });
-  const selectedStudent = props.students.find(
-    (s) => s.id === props.studentId && s.school_id === props.schoolId,
-  );
   const effectiveClass =
     props.mode === "school"
       ? "all"
@@ -53,13 +56,13 @@ export function useVisualAnalytics(props: Props) {
         : props.classKey;
   const [klass, division] = effectiveClass.split("|");
   const sessions = useQuery({
-    queryKey: ["visual-analytics-sessions", props.schoolId, effectiveClass],
+    queryKey: ["visual-analytics-sessions", effectiveSchoolId, effectiveClass],
     enabled: active && effectiveClass !== "all",
     queryFn: async () =>
       Promise.all(
         UNITS.map(async (unit) => {
           const rows = await fetchDivisionSessions({
-            schoolId: props.schoolId,
+            schoolId: effectiveSchoolId,
             klass,
             division,
             unit,
@@ -94,31 +97,32 @@ export function useVisualAnalytics(props: Props) {
       prepared
         ? buildAnalyticsView(
             prepared,
-            props.schoolId,
+            effectiveSchoolId,
             props.mode === "school" ? "all" : effectiveClass,
             props.mode === "student" ? props.studentId : "",
           )
         : null,
-    [prepared, props.schoolId, props.mode, effectiveClass, props.studentId],
+    [prepared, effectiveSchoolId, props.mode, effectiveClass, props.studentId],
   );
   const validFocus = exportView?.students.some((s) => s.id === focusStudent) ? focusStudent : "";
   const screenView = useMemo(
     () =>
       prepared && validFocus && props.mode !== "student"
-        ? buildAnalyticsView(prepared, props.schoolId, effectiveClass, validFocus)
+        ? buildAnalyticsView(prepared, effectiveSchoolId, effectiveClass, validFocus)
         : exportView,
-    [prepared, props.schoolId, props.mode, effectiveClass, validFocus, exportView],
+    [prepared, effectiveSchoolId, props.mode, effectiveClass, validFocus, exportView],
   );
   const ready =
     active &&
     !!exportView &&
+    !query.isError &&
     validThresholds(thresholds) &&
     !query.isFetching &&
     !(effectiveClass !== "all" && sessions.isFetching) &&
     (props.mode !== "class" || effectiveClass !== "all") &&
     (props.mode !== "student" || !!selectedStudent);
   const options = {
-    school: props.schoolName,
+    school: props.schools.find((s) => s.id === effectiveSchoolId)?.name || props.schoolName,
     classLabel:
       props.mode === "school" || effectiveClass === "all"
         ? "All classes"

@@ -186,6 +186,68 @@ export type Area = {
   correct: number;
   rate: number;
 };
+export function parameterPerformance(attempts: Attempt[]) {
+  const groups = new Map<
+    string,
+    {
+      name: string;
+      mapped: boolean;
+      correct: number;
+      incorrect: number;
+      unanswered: number;
+      topics: Set<string>;
+    }
+  >();
+  for (const attempt of attempts)
+    for (const response of attempt.responses) {
+      const label = response.question.parameter?.trim();
+      const key = label ? `named:${norm(label)}` : "missing";
+      const group = groups.get(key) ?? {
+        name: label || "Parameter not recorded",
+        mapped: !!label,
+        correct: 0,
+        incorrect: 0,
+        unanswered: 0,
+        topics: new Set<string>(),
+      };
+      if (!response.answer.trim()) group.unanswered++;
+      else if (response.correct) group.correct++;
+      else group.incorrect++;
+      if (!response.correct && response.question.topic?.trim()) {
+        group.topics.add(
+          [
+            response.question.subject?.trim() || attempt.assessment.subject?.trim(),
+            response.question.chapter?.trim(),
+            response.question.topic.trim(),
+          ]
+            .filter(Boolean)
+            .join(" / "),
+        );
+      }
+      groups.set(key, group);
+    }
+  return [...groups.values()]
+    .map((group) => {
+      const total = group.correct + group.incorrect + group.unanswered;
+      return { ...group, total, rate: (group.correct / total) * 100, topics: [...group.topics] };
+    })
+    .sort((a, b) => a.rate - b.rate || a.name.localeCompare(b.name));
+}
+
+export function parameterPractice(name: string) {
+  if (/reason|analys|critical|तर्क/i.test(name))
+    return "Work through a problem step by step and explain the evidence for each answer.";
+  if (/recall|knowledge|remember|memory/i.test(name))
+    return "Review key terms with flashcards, then answer a short recall quiz without notes.";
+  if (/applic|problem.solv/i.test(name))
+    return "Practise a worked example, then solve a similar real-life problem independently.";
+  if (/concept|understand|comprehension/i.test(name))
+    return "Explain the concept in your own words using a diagram and one everyday example.";
+  if (/observ|experiment|practical/i.test(name))
+    return "Repeat a short hands-on activity, record observations and explain the conclusion.";
+  return "Review the missed questions with a teacher, practise similar questions and explain each answer.";
+}
+
 export type Dimension = "subject" | "parameter" | "topic" | "chapter";
 export function areas(attempts: Attempt[], dimension: Dimension): Area[] {
   const groups = new Map<
