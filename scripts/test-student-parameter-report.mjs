@@ -46,6 +46,7 @@ const reportModule=url((await compile('src/lib/visual-analytics-report.ts')).rep
 let queryError=false;
 globalThis.__parameterQuery=options=>({data:options.queryKey[0]==='visual-analytics-source'?{assessments:[assessment],questions:[],records:[record]}:[],isFetching:false,isError:queryError});
 const replacements={
+ '@/lib/academic-year':url('export const getAcademicYear=()=>"2026";'),
  'react':url('export const useMemo=f=>f(); export const useState=v=>[v,()=>{}];'),
  '@tanstack/react-query':url('export const useQuery=o=>globalThis.__parameterQuery(o);'),
  '@/lib/master':url('export const fetchAssessments=()=>[];export const fetchClickerRecords=()=>[];export const fetchQuestions=()=>[];'),
@@ -62,3 +63,19 @@ assert(result.html.includes('Actual School'));
 assert.deepEqual(result.exportView.students.map(s=>s.id),['one']);
 queryError=true;assert.equal(useVisualAnalytics(props).ready,false);
 console.log('PASS: all-schools student export includes isolated parameter analysis; query errors block export.');
+const classHtml=analyticsReport(buildAnalyticsView(data,'school','5|A'),{...options,student:false,academicYear:'2026',schoolCode:'REAP-1',location:'Kalwa',generatedAt:'22/10/2026'});
+for(const text of ['Class-wise Performance Report','2026','REAP-1','Kalwa','Executive Summary &amp; Coverage','Class &amp; Division Comparison','Assessment-wise Results &amp; Trend','Student Performance Distribution','Subject-wise Performance','Parameter-wise Performance','Topic &amp; Chapter Review','Improvement Priorities &amp; Action Plan','Session Delivery Context','Student Performance Register','Calculation Rules &amp; Data Quality','Teacher Remarks &amp; Review','Prepared by','Reviewed by'])assert(classHtml.includes(text),text);
+assert(!classHtml.includes('<script>'));
+const expanded=prepareAnalytics([...students,{...students[0],id:'class-six',name:'OtherClassOnly',class:'6'}],[assessment],[],[record]);
+const scopedClass=analyticsReport(buildAnalyticsView(expanded,'school','5|A'),{...options,student:false});
+assert(!scopedClass.includes('OtherClassOnly'),'class register never includes a different class');
+assert(scopedClass.includes('1 of 2 enrolled students'));
+const schoolHtml=analyticsReport(buildAnalyticsView(expanded,'school'),{...options,student:false,classLabel:'All classes'});
+assert(schoolHtml.includes('School-wise Performance Report'));
+assert(schoolHtml.includes('OtherClassOnly'));
+assert(schoolHtml.includes('1 of 3 enrolled students'));
+assert(schoolHtml.includes('Check missing results'));
+const noDataHtml=analyticsReport(buildAnalyticsView(prepareAnalytics([],[],[],[]),'school'),{...options,student:false,classLabel:'All classes'});
+assert(!noDataHtml.includes('NaN'));assert(!noDataHtml.includes('Infinity'));
+assert(noDataHtml.includes('no valid scores'));
+console.log('PASS: professional cohort fields, school/class titles, coverage counts, class isolation, complete school register, escaping and empty-state denominators.');
