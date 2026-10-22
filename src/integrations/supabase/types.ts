@@ -248,6 +248,7 @@ export type Database = {
       }
       assessments: {
         Row: {
+          preserved_context: Json | null
           academic_year: string
           assessment_id: string
           class: string | null
@@ -269,6 +270,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          preserved_context?: Json | null
           academic_year: string
           assessment_id: string
           class?: string | null
@@ -290,6 +292,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          preserved_context?: Json | null
           academic_year?: string
           assessment_id?: string
           class?: string | null

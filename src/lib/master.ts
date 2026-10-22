@@ -20,6 +20,13 @@ export const ASSESSMENT_STATUS_OPTIONS = ["Draft", "Scheduled", "Active", "Compl
 export const ANSWER_OPTIONS = ["A", "B", "C", "D"] as const;
 
 export type Assessment = {
+  preserved_context?: {
+    school_id?: string | null;
+    class?: string | null;
+    section?: string | null;
+    exam_type?: string | null;
+    academic_year?: string | null;
+  } | null;
   question_set_version_id?: string | null;
   question_snapshot?: Question[] | null;
   id: string;
@@ -106,6 +113,18 @@ async function listRows(table: MasterTable, assessmentId?: string) {
 
 export async function fetchAssessments(): Promise<Assessment[]> {
   return (await listRows("assessments")) as Assessment[];
+}
+
+/** Original assessment context for Clicker entry and historical reports. */
+export async function fetchEvaluationAssessments(): Promise<Assessment[]> {
+  return listMasterRows({
+    data: {
+      token: getAccessToken(),
+      academicYear: getAcademicYear(),
+      table: "assessments",
+      evaluationContext: true,
+    },
+  });
 }
 
 export async function fetchQuestions(assessmentId?: string): Promise<Question[]> {

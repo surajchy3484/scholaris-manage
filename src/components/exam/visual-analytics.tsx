@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { getAcademicYear } from "@/lib/academic-year";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAssessments, fetchClickerRecords, fetchQuestions } from "@/lib/master";
+import { fetchEvaluationAssessments, fetchClickerRecords, fetchQuestions } from "@/lib/master";
 import { fetchDivisionSessions, UNITS } from "@/lib/sessions";
 import {
   buildAnalyticsView,
@@ -41,7 +41,7 @@ export function useVisualAnalytics(props: Props) {
     enabled: active,
     queryFn: async () => {
       const [assessments, questions, records] = await Promise.all([
-        fetchAssessments(),
+        fetchEvaluationAssessments(),
         fetchQuestions(),
         fetchClickerRecords(),
       ]);

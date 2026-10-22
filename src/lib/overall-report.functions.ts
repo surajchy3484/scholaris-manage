@@ -27,7 +27,7 @@ export const overallReportActivity = createServerFn({ method: "POST" })
         }),
         fetchAllRows<ReportActivity>((from, to) => {
           let q = db
-            .from("assessments")
+            .from("assessment_evaluation_context" as "assessments")
             .select("id,school_id,class,section")
             .order("id")
             .range(from, to);

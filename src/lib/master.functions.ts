@@ -38,6 +38,7 @@ const tokenSchema = z.object({
 const listSchema = tokenSchema.extend({
   table: tableSchema,
   assessmentId: z.string().max(120).optional(),
+  evaluationContext: z.boolean().optional(),
 });
 
 export const listMasterRows = createServerFn({ method: "POST" })
@@ -50,7 +51,11 @@ export const listMasterRows = createServerFn({ method: "POST" })
     const batch = 1000;
     for (let from = 0; ; from += batch) {
       let q = db
-        .from(data.table)
+        .from(
+          data.table === "assessments" && data.evaluationContext
+            ? ("assessment_evaluation_context" as "assessments")
+            : data.table,
+        )
         .select("*")
         .range(from, from + batch - 1);
       if (data.table === "assessments") q = q.order("created_at", { ascending: false });
@@ -119,6 +124,8 @@ export const updateMasterRows = createServerFn({ method: "POST" })
       return writeClicker(profile, "update", [], data.ids, data.patch, data.academicYear);
     const db = await academicDb(data.academicYear);
     await checkedAssessmentIds(db, profile, data.ids);
+    if (profile.role !== "admin" && "school_id" in data.patch && !data.patch.school_id)
+      throw new Error("School access denied");
     if (data.patch.school_id && !canSeeSchool(profile, String(data.patch.school_id)))
       throw new Error("School access denied");
     const { error } = await db
@@ -167,12 +174,24 @@ async function checkedAssessmentIds(
   profile: import("./access-control").AccessProfile,
   ids: string[],
 ) {
-  const { data, error } = await db.from("assessments").select("id,school_id").in("id", ids);
+  const { data, error } = await db
+    .from("assessments")
+    .select("id,school_id,preserved_context")
+    .in("id", ids);
   if (error || data?.length !== new Set(ids).size)
     throw new Error("Assessment is not in the selected academic year");
   if (
     profile.role !== "admin" &&
-    data.some((r) => !r.school_id || !canSeeSchool(profile, r.school_id))
+    data.some(
+      (r) =>
+        !r.school_id ||
+        !canSeeSchool(profile, r.school_id) ||
+        (r.preserved_context &&
+          !canSeeSchool(
+            profile,
+            String((r.preserved_context as Record<string, unknown>).school_id ?? ""),
+          )),
+    )
   )
     throw new Error("School access denied");
 }

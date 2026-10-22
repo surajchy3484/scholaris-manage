@@ -1,3 +1,4 @@
+import { refreshStudentDeletionQueries } from "@/lib/query-refresh";
 import { getAcademicYear } from "@/lib/academic-year";
 import { useDebounced } from "@/hooks/use-master-page";
 import {
@@ -219,6 +220,7 @@ function SchoolDetail() {
       qc.invalidateQueries({ queryKey: ["students", schoolId] });
       qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
+      void refreshStudentDeletionQueries(qc);
       toast.success("Student deleted");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -244,6 +246,7 @@ function SchoolDetail() {
       qc.invalidateQueries({ queryKey: ["students", schoolId] });
       qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
+      void refreshStudentDeletionQueries(qc);
       toast.success("Selected students deleted");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -672,7 +675,7 @@ function SchoolDetail() {
             onDelete={
               canDelete
                 ? (row) => {
-                    if (window.confirm(`Delete ${row.name}? This cannot be undone.`))
+                    if (window.confirm(`Permanently delete ${row.name} and their enrollments, attendance, Clicker data and results across all academic years? This cannot be undone.`))
                       del.mutate(row.id);
                   }
                 : undefined
@@ -770,7 +773,7 @@ function SchoolDetail() {
               {filterClass !== "all" && filterDiv !== "all"
                 ? ` from Class ${filterClass} · Division ${filterDiv}`
                 : " from this school"}
-              . This action cannot be undone.
+              . Their enrollments, attendance, Clicker data and results across all academic years will also be removed. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

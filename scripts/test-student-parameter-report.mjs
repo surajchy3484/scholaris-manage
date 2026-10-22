@@ -49,7 +49,7 @@ const replacements={
  '@/lib/academic-year':url('export const getAcademicYear=()=>"2026";'),
  'react':url('export const useMemo=f=>f(); export const useState=v=>[v,()=>{}];'),
  '@tanstack/react-query':url('export const useQuery=o=>globalThis.__parameterQuery(o);'),
- '@/lib/master':url('export const fetchAssessments=()=>[];export const fetchClickerRecords=()=>[];export const fetchQuestions=()=>[];'),
+ '@/lib/master':url('export const fetchEvaluationAssessments=()=>[];export const fetchClickerRecords=()=>[];export const fetchQuestions=()=>[];'),
  '@/lib/sessions':url('export const UNITS=[];export const fetchDivisionSessions=()=>[];'),
  '@/lib/visual-analytics':engine,
  '@/lib/visual-analytics-report':reportModule,

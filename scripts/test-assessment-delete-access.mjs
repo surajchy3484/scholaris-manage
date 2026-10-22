@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import ts from 'typescript';
 const url=code=>`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`;
-let profile={role:'admin',allSchools:false,schoolIds:[]}, allowed=true, calls=[];
+let profile={role:'admin',allSchools:false,schoolIds:[]}, allowed=true, calls=[], expectedAction='delete', edits=[];
 const id='11111111-1111-4111-8111-111111111111';
 let rows=[{id,school_id:null}];
 globalThis.__assessmentGuard=async(token,module,action)=>{
- assert.equal(module,'assessments'); assert.equal(action,'delete');
+ assert.equal(module,'assessments'); assert.equal(action,expectedAction);
  if(!allowed)throw new Error('Permission denied');return profile;
 };
 globalThis.__assessmentDb={from:()=>({select:()=>({in:async()=>({data:rows,error:null})})}),rpc:async(name,args)=>{calls.push({name,args});return {data:1,error:null};}};
@@ -20,7 +20,7 @@ const modules={
  './universal-clicker.server':url('export const writeClicker=()=>{throw new Error("unexpected");};'),
 };
 for(const [key,value] of Object.entries(modules))code=code.replaceAll(JSON.stringify(key),JSON.stringify(value));
-const {deleteMasterRows}=await import(url(code));
+const {deleteMasterRows,updateMasterRows}=await import(url(code));
 const run=()=>deleteMasterRows({data:{token:'test',table:'assessments',ids:[id],academicYear:'2026'}});
 assert.equal((await run()).count,1);
 assert.equal(calls[0].name,'delete_assessments');assert.equal(calls[0].args.p_schools,null);
@@ -32,3 +32,16 @@ allowed=false;await assert.rejects(run,/Permission denied/);
 assert.equal(calls.length,2);
 allowed=true;rows=[];await assert.rejects(run,/selected academic year/);
 console.log('PASS: admin deletes unassigned assessments; non-admin school scope, delete permission and missing/year checks enforced before RPC.');
+
+expectedAction='edit'; rows=[{id,school_id:'school-a',preserved_context:{school_id:'school-b'}}];
+const edit=patch=>updateMasterRows({data:{token:'test',table:'assessments',ids:[id],academicYear:'2026',patch}});
+await assert.rejects(()=>edit({class:'9'}),/School access denied/);
+rows=[{id,school_id:'school-a',preserved_context:{school_id:'school-a'}}];
+await assert.rejects(()=>edit({school_id:null}),/School access denied/);
+await assert.rejects(()=>edit({school_id:'school-b'}),/School access denied/);
+globalThis.__assessmentDb.from=()=>({select:()=>({in:async()=>({data:rows,error:null})}),update:patch=>({in:async()=>{edits.push(patch);return {error:null};}})});
+await edit({class:'9',preserved_context:null,question_snapshot:[]});
+assert.deepEqual(edits,[{class:'9'}],'protected context and key cannot be supplied by client');
+allowed=false;await assert.rejects(()=>edit({class:'8'}),/Permission denied/);
+assert.equal(edits.length,1);
+console.log('PASS: edit permission, original and corrected school scopes, null-school denial and protected-field allowlist.');

@@ -424,6 +424,65 @@ await db.exec("DELETE FROM assessments WHERE assessment_id='ASM-0121'");
 await db.exec("UPDATE assessments SET name='Name only' WHERE assessment_id='Y26'");
 console.log("PASS: plain assessment format migration, linked record preservation, repeat execution, future year-prefix rejection and legacy descriptive edits");
 
+// Correct Master metadata while preserving the original evaluation context.
+await db.exec(await fs.readFile("supabase/migrations/20261022130000_edit_preserved_assessment_details.sql", "utf8"));
+await db.exec(await fs.readFile("supabase/migrations/20261022130000_edit_preserved_assessment_details.sql", "utf8"));
+await db.exec("BEGIN");
+const protectedClicker = await linked("clicker_records", "Y26");
+const protectedResults = await linked("assessment_results", "Y26");
+const protectedScores = (await db.query("SELECT * FROM exam_scores ORDER BY id")).rows;
+await db.query("UPDATE assessments SET school_id=$1,school_name='Corrected school',class='9',section='B',exam_type='MCA',academic_year='2027-28',subject='Corrected subject',name='Corrected assessment' WHERE assessment_id='Y26'", [other]);
+assert.equal((await one("SELECT class FROM assessments WHERE assessment_id='Y26'")).class,'9');
+const originalContext = await one("SELECT school_id,class,section,exam_type,academic_year FROM assessment_evaluation_context WHERE assessment_id='Y26'");
+assert.equal(originalContext.school_id,school);
+assert.equal(originalContext.class,'8');assert.equal(originalContext.exam_type,'ICA');
+assert.equal(originalContext.academic_year,'2026-27');
+assert.deepEqual(await linked("clicker_records", "Y26"),protectedClicker);
+assert.deepEqual(await linked("assessment_results", "Y26"),protectedResults);
+assert.deepEqual((await db.query("SELECT * FROM exam_scores ORDER BY id")).rows,protectedScores);
+await db.exec("UPDATE assessments SET assessment_id='ASM-0200',class='7',preserved_context=NULL WHERE assessment_id='Y26'");
+assert.equal((await one("SELECT class FROM assessment_evaluation_context WHERE assessment_id='ASM-0200'")).class,'8');
+assert.deepEqual(await linked("clicker_records", "ASM-0200"),protectedClicker);
+assert.deepEqual(await linked("assessment_results", "ASM-0200"),protectedResults);
+// Additional entries retain the original year/class/key, not corrected Master metadata.
+await writer([{assessment_id:'ASM-0200',exam_type:'ICA',class:'8',school_id:school,keypad_id:'PRESERVED',student_name:'Additional',answers:{S1:'A'}}]);
+assert.equal((await one("SELECT correct_answers FROM clicker_records WHERE keypad_id='PRESERVED'")).correct_answers,1);
+assert.equal((await one("SELECT academic_year FROM clicker_records WHERE keypad_id='PRESERVED'")).academic_year,'2026-27');
+await selectYear('2027-28');
+const correctedId=(await one("SELECT id FROM assessments WHERE assessment_id='ASM-0200'")).id;
+await one("SELECT delete_assessments($1,NULL)", [[correctedId]]);
+assert.equal((await one("SELECT count(*)::int n FROM exam_scores WHERE student_id=$1 AND academic_year='2026-27' AND exam_type='ICA'", [student])).n,0);
+await db.exec("ROLLBACK");
+await db.exec("SET ROLE anon");
+await assert.rejects(()=>db.query("SELECT * FROM assessment_evaluation_context"),/permission denied/);
+await db.exec("RESET ROLE");
+console.log("PASS: editable Master school/class/section/exam/year metadata, immutable original context, unchanged results/scores, rename cascade, original-key future evaluation, idempotent migration and restricted view");
+
+await db.exec(await fs.readFile("supabase/migrations/20261022140000_allow_student_deletion.sql", "utf8"));
+await assert.rejects(()=>one("SELECT delete_students_permanently($1,$2,$3)", [school,[student],[other]]), /School access denied/);
+await selectYear('2027-28');
+await assert.rejects(()=>one("SELECT delete_students_permanently($1,$2,NULL)", [school,[student]]), /selected school and academic year/);
+await selectYear('2026-27');
+await assert.rejects(()=>db.query("DELETE FROM students WHERE id=$1",[student]), /authorized student deletion/);
+await db.exec("CREATE FUNCTION test_student_delete_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test student rollback'; END $$; CREATE TRIGGER zz_test_student_delete_failure BEFORE DELETE ON students FOR EACH ROW EXECUTE FUNCTION test_student_delete_failure()");
+const studentRowsBefore=(await db.query("SELECT * FROM student_enrollments WHERE student_id=$1 ORDER BY id",[student])).rows;
+await assert.rejects(()=>one("SELECT delete_students_permanently($1,$2,NULL)",[school,[student]]),/test student rollback/);
+assert.deepEqual((await db.query("SELECT * FROM student_enrollments WHERE student_id=$1 ORDER BY id",[student])).rows,studentRowsBefore);
+await db.exec("DROP TRIGGER zz_test_student_delete_failure ON students; DROP FUNCTION test_student_delete_failure()");
+await db.exec("BEGIN");
+const unrelatedAssessments=(await one("SELECT count(*)::int n FROM assessments")).n;
+assert.equal((await one("SELECT delete_students_permanently($1,$2,NULL) n",[school,[student]])).n,1);
+for(const table of ['student_enrollments','attendance','clicker_records','assessment_results','exam_scores'])
+ assert.equal((await one(`SELECT count(*)::int n FROM ${table} WHERE student_id=$1`,[student])).n,0,table);
+assert.equal((await one("SELECT count(*)::int n FROM students WHERE id=$1",[student])).n,0);
+assert.equal((await one("SELECT count(*)::int n FROM assessments")).n,unrelatedAssessments);
+assert.equal(Number((await one("SELECT ranking FROM clicker_records WHERE assessment_id='Y26' AND keypad_id='K2'")).ranking),1);
+await db.exec("ROLLBACK");
+await db.exec("SET ROLE anon");
+await assert.rejects(()=>one("SELECT delete_students_permanently($1,$2,NULL)",[school,[student]]), /permission denied/);
+await db.exec("RESET ROLE");
+console.log("PASS: authorized student deletion, all-year child cleanup, retained assessments/other results, rank refresh, scope/year denial, direct-delete guard and atomic rollback");
+
 if (process.env.TEST_CURRENT_YEAR_BASELINE === "1") {
   const baseline = await fs.readFile(
     "supabase/migrations/20261006110000_current_year_baseline.sql",

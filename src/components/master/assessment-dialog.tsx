@@ -97,7 +97,7 @@ export function AssessmentDialog({
     setTotalMarks(String(assessment?.total_marks ?? 0));
     setPassMarks(String(assessment?.passing_marks ?? 0));
     setStatus(assessment?.status ?? "Draft");
-  }, [open, assessment, defaultCode]);
+  }, [open, assessment, defaultCode, isEdit]);
 
   // Question Master link: the universal answer key for the chosen exam type + class.
   const bankKey = `${normalizeExam(examType)}|${normalizeClass(cls)}`;
@@ -177,7 +177,17 @@ export function AssessmentDialog({
           </DialogTitle>
           <DialogDescription>
             Assessments group a question bank and its clicker responses.
+            {isEdit &&
+              " Saving corrections does not change existing marks or answers. Reports and Clicker entries retain the original evaluation settings; create a new assessment to grade with a different setup."}
           </DialogDescription>
+          {isEdit && assessment?.preserved_context && (
+            <p className="text-sm text-muted-foreground">
+              Saved evaluation: {assessment.preserved_context.exam_type || "Not recorded"} · Class{" "}
+              {assessment.preserved_context.class || "Not recorded"} · Section{" "}
+              {assessment.preserved_context.section || "Not recorded"} · Academic year{" "}
+              {assessment.preserved_context.academic_year || "Not recorded"}.
+            </p>
+          )}
         </DialogHeader>
 
         <div className="grid gap-3 py-2 sm:grid-cols-2">
@@ -233,7 +243,7 @@ export function AssessmentDialog({
             <Input value={total} onChange={(e) => setTotal(e.target.value)} inputMode="numeric" />
           </Field>
           <Field label="Academic Year">
-            <Input value={year} readOnly />
+            <Input value={year} onChange={(e) => setYear(e.target.value)} />
           </Field>
           <Field label="Question set version (optional)">
             <select
@@ -263,9 +273,11 @@ export function AssessmentDialog({
                     : "text-xs text-destructive"
                 }
               >
-                {(bank.data?.length ?? 0) > 0
-                  ? `Linked to Question Master: ${normalizeExam(examType)} · Class ${normalizeClass(cls)} — ${bank.data?.length} question(s) will be used.`
-                  : `No Question Master answer key for ${normalizeExam(examType)} · Class ${normalizeClass(cls)} yet. Add questions in Question Master.`}
+                {isEdit && (assessment?.preserved_context || assessment?.question_snapshot)
+                  ? "Existing evaluations retain their original answer key. The selected Question Master link is saved as assessment metadata."
+                  : (bank.data?.length ?? 0) > 0
+                    ? `Linked to Question Master: ${normalizeExam(examType)} · Class ${normalizeClass(cls)} — ${bank.data?.length} question(s) will be used.`
+                    : `No Question Master answer key for ${normalizeExam(examType)} · Class ${normalizeClass(cls)} yet. Add questions in Question Master.`}
               </p>
             )}
           </Field>
