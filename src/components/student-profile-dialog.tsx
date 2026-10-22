@@ -36,7 +36,7 @@ export function StudentProfileDialog({
   const chart = [
     { name: "Attendance", value: student.attendance_pct },
     { name: "ICA", value: student.ica ?? 0 },
-    { name: "IMF", value: student.mca ?? 0 },
+    { name: "MCA", value: student.mca ?? 0 },
     { name: "FCA", value: student.fca ?? 0 },
     { name: "Overall", value: student.performance },
   ];

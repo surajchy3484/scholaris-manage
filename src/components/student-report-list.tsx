@@ -193,7 +193,7 @@ export function StudentReportList({
         "Roll No.": r.roll_number,
         Attendance: r.attendance_recorded ? r.attendance_pct : "",
         ICA: r.ica ?? "",
-        IMF: r.mca ?? "",
+        MCA: r.mca ?? "",
         FCA: r.fca ?? "",
         Photo: r.photo_url ?? "",
         "School Name": r.school_name,

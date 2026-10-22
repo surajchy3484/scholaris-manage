@@ -306,7 +306,7 @@ export const listStudentDetails = createServerFn({ method: "POST" })
         klass: z.string().max(100),
         division: z.string().max(100),
         attendance: z.enum(["all", "recorded", "missing", "below75", "atleast75"]),
-        exam: z.enum(["ICA", "IMF", "FCA"]),
+        exam: z.enum(["ICA", "MCA", "FCA"]),
         status: z.enum(["all", "recorded", "missing"]),
         min: z.number().min(0).max(100).nullable(),
         max: z.number().min(0).max(100).nullable(),

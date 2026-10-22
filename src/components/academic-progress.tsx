@@ -83,7 +83,7 @@ export function AcademicProgress() {
           <option value="all">All exam types</option>
           {exams.map((e) => (
             <option key={e} value={e}>
-              {e === "MCA" ? "MCA / IMF" : e}
+              {e}
             </option>
           ))}
         </select>
