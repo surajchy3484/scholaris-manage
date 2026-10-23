@@ -41,7 +41,7 @@ export function useVisualAnalytics(props: Props) {
     enabled: active,
     queryFn: async () => {
       const [assessments, questions, records] = await Promise.all([
-        fetchAssessments(),
+        fetchEvaluationAssessments(),
         fetchQuestions(),
         fetchClickerRecords(),
       ]);
