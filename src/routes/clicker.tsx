@@ -1,3 +1,4 @@
+import { clickerImportPayload } from "@/lib/clicker-import-payload";
 import { getAcademicYear } from "@/lib/academic-year";
 import {
   fetchExamTypes,
@@ -914,26 +915,11 @@ function ClickerPage() {
                 "Question Set Inactive: This Exam Type is currently hidden in Question Master and cannot be used for Clicker evaluation.",
               );
           }
-          const toPayload = ({
-            _row,
-            errors,
-            duplicate,
-            score,
-            correct_rate,
-            ranking,
-            _existingId,
-            _importSaved,
-            _match,
-            ...row
-          }: ParsedClicker) => {
-            const a = (assessments.data ?? []).find((a) => a.assessment_id === row.assessment_id);
-            return {
-              ...row,
-              class: normalizeClass(row.class),
-              school_id: a?.school_id ?? null,
-              school_name: a?.school_name ?? null,
-            };
-          };
+          const toPayload = (row: ParsedClicker) => clickerImportPayload(
+            row,
+            (assessments.data ?? []).find((a) => a.assessment_id === row.assessment_id),
+            normalizeClass(row.class),
+          );
           const toCreate = valid.filter((r) => r._match === "create");
           let done = 0;
           for (const row of toCreate) {
