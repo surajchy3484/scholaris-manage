@@ -95,6 +95,7 @@ type ParsedClicker = ParsedBase & {
   ranking: number | null;
   answers: Record<string, string>;
   _existingId?: string | null;
+  _importSaved?: boolean;
   _match?: "matched" | "create" | "created" | "update" | "unmatched" | "duplicate";
 };
 
@@ -921,6 +922,7 @@ function ClickerPage() {
             correct_rate,
             ranking,
             _existingId,
+            _importSaved,
             _match,
             ...row
           }: ParsedClicker) => {
@@ -958,19 +960,29 @@ function ClickerPage() {
             done++;
             onProgress?.(done);
           }
-          const inserts = valid.filter((r) => !r._existingId).map(toPayload);
+          const inserts = valid.filter((r) => !r._existingId);
           const updates = valid.filter((r) => r._existingId);
-          if (inserts.length) await insertRows("clicker_records", inserts, 300);
-          done = inserts.length;
+          done = valid.filter((r) => r._importSaved).length;
           onProgress?.(done);
-          for (let i = 0; i < updates.length; i += 5) {
-            await Promise.all(
-              updates
-                .slice(i, i + 5)
-                .map((r) => updateRowsByIds("clicker_records", [r._existingId!], toPayload(r))),
-            );
-            done += Math.min(5, updates.length - i);
-            onProgress?.(done);
+          // Small sequential transactions avoid timeout and lock contention.
+          // Mark only acknowledged rows so retrying this preview skips saved batches.
+          const pending = inserts.filter((r) => !r._importSaved);
+          try {
+            for (let i = 0; i < pending.length; i += 25) {
+              const batch = pending.slice(i, i + 25);
+              await insertRows("clicker_records", batch.map(toPayload), 25);
+              batch.forEach((r) => { r._importSaved = true; });
+              done += batch.length;
+              onProgress?.(done);
+            }
+            for (const row of updates.filter((r) => !r._importSaved)) {
+              await updateRowsByIds("clicker_records", [row._existingId!], toPayload(row));
+              row._importSaved = true;
+              onProgress?.(++done);
+            }
+          } catch (error) {
+            await qc.invalidateQueries({ queryKey: ["clicker"] });
+            throw new Error(`${done} of ${valid.length} results saved. ${error instanceof Error ? error.message : "Import failed"} Confirmed batches will be skipped on retry. If the connection was lost, reopen the import to check saved records first.`);
           }
           await qc.invalidateQueries({ queryKey: ["visual-analytics-source"] });
           await qc.invalidateQueries({ queryKey: ["exam-data"] });

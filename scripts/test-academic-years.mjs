@@ -424,9 +424,28 @@ await db.exec("DELETE FROM assessments WHERE assessment_id='ASM-0121'");
 await db.exec("UPDATE assessments SET name='Name only' WHERE assessment_id='Y26'");
 console.log("PASS: plain assessment format migration, linked record preservation, repeat execution, future year-prefix rejection and legacy descriptive edits");
 
+await db.exec(await fs.readFile("supabase/migrations/20261010110000_refresh_scores_after_clicker_delete.sql", "utf8"));
+// Apply performance patch twice to verify safe repeat execution, then exercise
+// the same scoring, preserved-context and deletion paths against the patched RPC.
+await db.exec(await fs.readFile("supabase/migrations/20261023100000_clicker_import_performance.sql", "utf8"));
+await db.exec(await fs.readFile("supabase/migrations/20261023100000_clicker_import_performance.sql", "utf8"));
 // Correct Master metadata while preserving the original evaluation context.
 await db.exec(await fs.readFile("supabase/migrations/20261022130000_edit_preserved_assessment_details.sql", "utf8"));
 await db.exec(await fs.readFile("supabase/migrations/20261022130000_edit_preserved_assessment_details.sql", "utf8"));
+// Reproduce the reported multi-file volume with 25-row transactions.
+await db.exec("BEGIN");
+const importRows = Array.from({length:316}, (_,i)=>({assessment_id:'Y26',exam_type:'ICA',class:'8',school_id:school,keypad_id:`BULK-${i}`,student_name:`Fixture ${i}`,answers:{S1:i%2?'A':'B'}}));
+for(let i=0;i<importRows.length;i+=25) await writer(importRows.slice(i,i+25));
+assert.equal((await one("SELECT count(*)::int n FROM clicker_records WHERE keypad_id LIKE 'BULK-%'")).n,316);
+assert.equal((await one("SELECT count(*)::int n FROM assessment_results WHERE keypad_id LIKE 'BULK-%'")).n,316);
+assert.equal((await one("SELECT count(*)::int n FROM assessment_results r JOIN clicker_records c ON c.id=r.clicker_id WHERE c.assessment_id='Y26' AND r.ranking IS DISTINCT FROM c.ranking")).n,0);
+const bulkId=(await one("SELECT id FROM clicker_records WHERE keypad_id='BULK-0'")).id;
+await db.query("SELECT universal_clicker_write('update','[]',$1,$2,NULL)",[[bulkId],JSON.stringify({answers:{S1:'A'}})]);
+assert.equal((await one("SELECT correct_answers FROM assessment_results WHERE keypad_id='BULK-0'")).correct_answers,1);
+assert.equal((await one("SELECT count(*)::int n FROM assessment_results r JOIN clicker_records c ON c.id=r.clicker_id WHERE c.assessment_id='Y26' AND r.ranking IS DISTINCT FROM c.ranking")).n,0);
+await assert.rejects(()=>writer([importRows[0]]),/Duplicate/);
+await db.exec("ROLLBACK");
+console.log("PASS: 316-row batched import, matching result counts, rankings after insert/update and duplicate rejection");
 await db.exec("BEGIN");
 const protectedClicker = await linked("clicker_records", "Y26");
 const protectedResults = await linked("assessment_results", "Y26");
