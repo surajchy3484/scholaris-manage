@@ -31,7 +31,7 @@ type Mode =
   | { mode: "add"; schoolId: string; schoolName: string; schoolCode: string }
   | { mode: "edit"; student: Student };
 
-type Errors = Partial<Record<"name" | "class" | "division" | "roll" | "photo", string>>;
+type Errors = Partial<Record<"name" | "class" | "division" | "roll", string>>;
 
 export function StudentDialog({
   open,
@@ -89,7 +89,6 @@ export function StudentDialog({
     if (!cls.trim()) e.class = "Class is required.";
     if (!division.trim()) e.division = "Division is required.";
     if (!roll.trim()) e.roll = "Roll number is required.";
-    if (!isEdit && !photo) e.photo = "Student photo is required when adding a student.";
     return e;
   }
 
@@ -221,20 +220,13 @@ export function StudentDialog({
           <DialogTitle>{isEdit ? "Edit student" : "Add student"}</DialogTitle>
           <DialogDescription>
             {isEdit
-              ? "Update the student details. A photo is optional when editing."
-              : "All fields are required, including a photo."}
+              ? "Update the student details. A photo is optional."
+              : "Enter the student details. A photo is optional and can be added later."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
-            <PhotoPicker
-              value={photo}
-              onChange={(v) => {
-                setPhoto(v);
-                if (v) setErrors((prev) => ({ ...prev, photo: undefined }));
-              }}
-            />
-            {errors.photo && <p className="mt-1.5 text-xs text-destructive">{errors.photo}</p>}
+            <PhotoPicker value={photo} onChange={setPhoto} />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
