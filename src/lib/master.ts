@@ -147,6 +147,7 @@ export async function insertRows(
   rows: Record<string, unknown>[],
   chunk = 500,
 ): Promise<number> {
+  chunk = Math.max(1, Math.min(chunk, table === "clicker_records" ? 25 : 500));
   const token = getAccessToken();
   for (let i = 0; i < rows.length; i += chunk) {
     await insertMasterRows({
