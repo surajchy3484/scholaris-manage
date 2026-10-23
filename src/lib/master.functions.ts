@@ -85,7 +85,10 @@ export const listMasterRows = createServerFn({ method: "POST" })
         q = q.in("school_id", profile.schoolIds);
       q = q.order("id"); // Stable tie-breaker prevents skipped/repeated rows across pages.
       const { data: rows, error } = await q;
-      if (error) throw new Error("Failed to load records");
+      if (error)
+        throw new Error(
+          `Failed to load ${data.table}: ${error.message || error.code || "database request failed"}`,
+        );
       const list = (rows ?? []) as Record<string, unknown>[];
       out.push(...list);
       if (list.length < batch) break;

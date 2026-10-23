@@ -41,12 +41,15 @@ export function useVisualAnalytics(props: Props) {
     enabled: active,
     queryFn: async () => {
       const [assessments, questions, records] = await Promise.all([
-        fetchEvaluationAssessments(),
+        fetchAssessments(),
         fetchQuestions(),
         fetchClickerRecords(),
       ]);
       return { assessments, questions, records };
     },
+    retry: 2,
+    retryDelay: (attempt) => Math.min(250 * 2 ** attempt, 1500),
+    refetchOnWindowFocus: true,
     staleTime: 60_000,
   });
   const effectiveClass =
@@ -233,8 +236,14 @@ export function VisualAnalytics({
           {a.query.isError && (
             <div role="alert">
               <p>
-                Analytics could not load. Access to Assessment Master, Question Master, and Clicker
-                Data is required.
+                Analytics could not load:{" "}
+                {a.query.error instanceof Error
+                  ? a.query.error.message
+                  : "Unknown data request error"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Exam Report → View permission is required. The detailed message above identifies the
+                specific data source if the request still fails.
               </p>
               <button type="button" className="underline" onClick={() => a.query.refetch()}>
                 Retry analytics
