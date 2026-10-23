@@ -117,14 +117,24 @@ export async function fetchAssessments(): Promise<Assessment[]> {
 
 /** Original assessment context for Clicker entry and historical reports. */
 export async function fetchEvaluationAssessments(): Promise<Assessment[]> {
-  return listMasterRows({
-    data: {
-      token: getAccessToken(),
-      academicYear: getAcademicYear(),
-      table: "assessments",
-      evaluationContext: true,
-    },
-  });
+  try {
+    return (await listMasterRows({
+      data: {
+        token: getAccessToken(),
+        academicYear: getAcademicYear(),
+        table: "assessments",
+        evaluationContext: true,
+      },
+    })) as Assessment[];
+  } catch (error) {
+    // Older deployments may not have the preserved-context view yet. The
+    // current Assessment Master row is still sufficient to build analytics;
+    // preserve the view automatically once its migration is applied.
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/assessment_evaluation_context|relation .* does not exist|PGRST/i.test(message))
+      throw error;
+    return fetchAssessments();
+  }
 }
 
 export async function fetchQuestions(assessmentId?: string): Promise<Question[]> {
