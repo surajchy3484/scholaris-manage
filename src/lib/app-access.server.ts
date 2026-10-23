@@ -11,11 +11,11 @@
  */
 import {
   can,
+  normalizeRole,
   sanitizePermissions,
   type AccessProfile,
   type AppAction,
   type AppModule,
-  type AppRole,
   type Permissions,
 } from "./access-control";
 
@@ -180,7 +180,7 @@ export async function resolveAccess(token: string): Promise<AccessProfile> {
     userId: data.id,
     username: data.username,
     fullName: data.full_name ?? "",
-    role: (data.role === "admin" ? "admin" : "trainer") as AppRole,
+    role: normalizeRole(data.role),
     permissions: sanitizePermissions(data.permissions) as Permissions,
     schoolIds: (data.school_ids ?? []) as string[],
     allSchools: !!data.all_schools,

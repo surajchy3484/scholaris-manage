@@ -5,7 +5,15 @@
  * defaults for each role. Enforcement lives in app-access.server.ts.
  */
 
-export type AppRole = "admin" | "trainer";
+export const APP_ROLES = ["admin", "trainer", "reap_staff", "coordinator", "manager", "official"] as const;
+export type AppRole = (typeof APP_ROLES)[number];
+export const ROLE_LABELS: Record<AppRole, string> = {
+  admin: "Administrator", trainer: "STEM Trainer", reap_staff: "REAP Staff",
+  coordinator: "Coordinator", manager: "Manager", official: "Official",
+};
+export function normalizeRole(value: unknown): AppRole {
+  return APP_ROLES.includes(value as AppRole) ? value as AppRole : "trainer";
+}
 
 export const MODULES = [
   "main_dashboard",

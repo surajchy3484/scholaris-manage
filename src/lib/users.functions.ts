@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { sanitizePermissions, type AccessProfile, type Permissions } from "./access-control";
+import { APP_ROLES, normalizeRole, sanitizePermissions, type AccessProfile, type Permissions } from "./access-control";
 import {
   adminDb,
   hashPassword,
@@ -98,7 +98,7 @@ export const appLogin = createServerFn({ method: "POST" })
       .update({ last_login_at: new Date().toISOString(), login_count: (row.login_count ?? 0) + 1 })
       .eq("id", row.id);
 
-    const role = row.role === "admin" ? "admin" : "trainer";
+    const role = normalizeRole(row.role);
     return {
       token: await issueToken(row.id),
       profile: {
@@ -149,7 +149,7 @@ const upsertSchema = tokenSchema.extend({
   fullName: z.string().max(120).default(""),
   email: z.string().max(200).nullable().optional(),
   phone: z.string().max(40).nullable().optional(),
-  role: z.enum(["admin", "trainer"]),
+  role: z.enum(APP_ROLES),
   password: z.string().min(6).max(200).optional(),
   isActive: z.boolean().default(true),
   permissions: z.record(z.string(), z.array(z.string())).optional(),
