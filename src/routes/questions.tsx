@@ -166,7 +166,40 @@ function QuestionsPage() {
                   size="sm"
                   variant="outline"
                   disabled={busy}
-                  onClick={() => void action(() => saveExamType(t.name, !t.visible))}
+                  onClick={() =>
+                    void action(async () => {
+                      const examTypes = types.data ?? [];
+                      if (!t.visible) {
+                        // Only one exam type may be active at a time.
+                        for (const other of examTypes) {
+                          if (other.name !== t.name && other.visible) {
+                            await saveExamType(other.name, false);
+                          }
+                        }
+                        await saveExamType(t.name, true);
+                        return;
+                      }
+
+                      // When hiding the active type, automatically activate the next
+                      // available type in the ICA → MCA → FCA cycle.
+                      const priority = ["ICA", "MCA", "FCA"];
+                      const ordered = [...examTypes].sort((a, b) => {
+                        const ai = priority.indexOf(a.name.toUpperCase());
+                        const bi = priority.indexOf(b.name.toUpperCase());
+                        return (ai < 0 ? priority.length : ai) - (bi < 0 ? priority.length : bi) ||
+                          a.name.localeCompare(b.name);
+                      });
+                      const currentIndex = ordered.findIndex(
+                        (item) => item.name === t.name,
+                      );
+                      const next = ordered
+                        .slice(currentIndex + 1)
+                        .concat(ordered.slice(0, currentIndex))
+                        .find((item) => item.name !== t.name);
+                      await saveExamType(t.name, false);
+                      if (next) await saveExamType(next.name, true);
+                    })
+                  }
                 >
                   {t.visible ? "Hide" : "Make visible"}
                 </Button>
