@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { getAcademicYear } from "@/lib/academic-year";
 import { useQuery } from "@tanstack/react-query";
-import { fetchEvaluationAssessments, fetchClickerRecords, fetchQuestions } from "@/lib/master";
+import { loadReportAnalytics } from "@/lib/report-analytics.functions";
+import { getAccessToken } from "@/lib/app-access";
 import { fetchDivisionSessions, UNITS } from "@/lib/sessions";
 import {
   buildAnalyticsView,
@@ -37,17 +38,14 @@ export function useVisualAnalytics(props: Props) {
     allSchools ||
     (["class", "school", "student"].includes(props.mode) && effectiveSchoolId !== "all");
   const query = useQuery({
-    queryKey: ["visual-analytics-source"],
+    queryKey: ["visual-analytics-source", getAccessToken(), getAcademicYear(), effectiveSchoolId],
     enabled: active,
-    queryFn: async () => {
-      const [assessments, questions, records] = await Promise.all([
-        fetchEvaluationAssessments(),
-        fetchQuestions(),
-        fetchClickerRecords(),
-      ]);
-      return { assessments, questions, records };
-    },
-    staleTime: 60_000,
+    queryFn: () => loadReportAnalytics({ data: {
+      token: getAccessToken(), academicYear: getAcademicYear(), schoolId: effectiveSchoolId,
+    }}),
+    staleTime: 5 * 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
   const effectiveClass =
     props.mode === "school"
@@ -57,7 +55,7 @@ export function useVisualAnalytics(props: Props) {
         : props.classKey;
   const [klass, division] = effectiveClass.split("|");
   const sessions = useQuery({
-    queryKey: ["visual-analytics-sessions", effectiveSchoolId, effectiveClass],
+    queryKey: ["visual-analytics-sessions", getAccessToken(), getAcademicYear(), effectiveSchoolId, effectiveClass],
     enabled: active && effectiveClass !== "all",
     queryFn: async () =>
       Promise.all(
@@ -233,8 +231,7 @@ export function VisualAnalytics({
           {a.query.isError && (
             <div role="alert">
               <p>
-                Analytics could not load. Access to Assessment Master, Question Master, and Clicker
-                Data is required.
+                Analytics could not load. {a.query.error instanceof Error ? a.query.error.message : "Please retry."}
               </p>
               <button type="button" className="underline" onClick={() => a.query.refetch()}>
                 Retry analytics
