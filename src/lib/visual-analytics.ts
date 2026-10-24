@@ -257,7 +257,7 @@ export function areas(attempts: Attempt[], dimension: Dimension): Area[] {
   for (const a of attempts)
     for (const r of a.responses) {
       const subject =
-        r.question.subject?.trim() || a.assessment.subject?.trim() || "Unspecified subject";
+        r.question.subject?.trim() || a.assessment.subject?.trim() || "";
       const value =
         dimension === "subject"
           ? subject
@@ -265,9 +265,9 @@ export function areas(attempts: Attempt[], dimension: Dimension): Area[] {
       // Keep identically named topics in different subjects/chapters distinct.
       const name =
         dimension === "topic"
-          ? `${subject} / ${r.question.chapter?.trim() || "Unspecified chapter"} / ${value}`
+          ? [subject, r.question.chapter?.trim() || "Unspecified chapter", value].filter(Boolean).join(" / ")
           : dimension === "chapter"
-            ? `${subject} / ${value}`
+            ? [subject, value].filter(Boolean).join(" / ")
             : value;
       const k = norm(name);
       const g = groups.get(k) ?? { name, questions: new Set<string>(), responses: 0, correct: 0 };
