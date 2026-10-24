@@ -401,3 +401,22 @@ export const getSupportSummary = createServerFn({ method: "POST" })
       })),
     };
   });
+
+const deleteTicketSchema = token.extend({ id: ticketId });
+export const deleteSupportTicket = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => deleteTicketSchema.parse(data))
+  .handler(async ({ data }) => {
+    await requirePermission(data.token, "support", "manage");
+    const db = (await academicDb(data.academicYear)) as any;
+    const { error, count } = await db
+      .from("support_tickets")
+      .delete({ count: "exact" })
+      .eq("id", data.id);
+    if (error) {
+      console.error("[support] delete ticket failed", { code: error.code, message: error.message });
+      throw new Error("Unable to delete ticket. Please try again.");
+    }
+    // Supabase may not return a row count for this client configuration; a
+    // successful delete is still considered successful.
+    return { ok: true, deleted: count ?? null };
+  });
