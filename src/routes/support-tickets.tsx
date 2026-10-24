@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Clock3, Send, Ticket, TicketCheck } from "lucide-react";
+import { CheckCircle2, Clock3, Send, Ticket, TicketCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth";
 import { getAccessToken } from "@/lib/app-access";
 import {
   createSupportTicket,
+  deleteSupportTicket,
   listMySupportTickets,
   listSupportTickets,
   updateSupportTicketStatus,
@@ -61,6 +62,15 @@ function SupportTicketsPage() {
       updateSupportTicketStatus({ data: { token, ...v } }),
     onSuccess: () => {
       toast.success("Ticket status updated");
+      void qc.invalidateQueries({ queryKey: ["support-tickets"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const removeTicket = useMutation({
+    mutationFn: (id: string) => deleteSupportTicket({ data: { token, id } }),
+    onSuccess: () => {
+      toast.success("Ticket deleted");
       void qc.invalidateQueries({ queryKey: ["support-tickets"] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -176,6 +186,18 @@ function SupportTicketsPage() {
                       <CheckCircle2 className="mr-2 h-4 w-4" /> Resolve Ticket
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => {
+                      if (window.confirm(`Delete the ticket "${ticket.subject}"? This action cannot be undone.`)) {
+                        removeTicket.mutate(ticket.id);
+                      }
+                    }}
+                    disabled={removeTicket.isPending}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                  </Button>
                 </div>
               </article>
             ))}
