@@ -20,6 +20,7 @@ import { Route as QuestionsRouteImport } from './routes/questions'
 import { Route as SchoolDashboardRouteImport } from './routes/school-dashboard'
 import { Route as SessionStatusRouteImport } from './routes/session-status'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SupportRouteImport } from './routes/support'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as SupportTicketsRouteImport } from './routes/support-tickets'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
@@ -84,6 +85,11 @@ const SessionStatusRoute = SessionStatusRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UsersRoute = UsersRouteImport.update({
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/school-dashboard': typeof SchoolDashboardRoute
   '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
   '/users': typeof UsersRoute
   '/support-tickets': typeof SupportTicketsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -176,6 +183,7 @@ export interface FileRoutesByTo {
   '/school-dashboard': typeof SchoolDashboardRoute
   '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
   '/users': typeof UsersRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/school-dashboard': typeof SchoolDashboardRoute
   '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
   '/users': typeof UsersRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -223,6 +232,7 @@ export interface FileRouteTypes {
     | '/school-dashboard'
     | '/session-status'
     | '/settings'
+    | '/support'
     | '/users'
     | '/support-tickets'
     | '/.mcp/list-tools'
@@ -246,6 +256,7 @@ export interface FileRouteTypes {
     | '/school-dashboard'
     | '/session-status'
     | '/settings'
+    | '/support'
     | '/users'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -268,6 +279,7 @@ export interface FileRouteTypes {
     | '/school-dashboard'
     | '/session-status'
     | '/settings'
+    | '/support'
     | '/users'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -291,6 +303,7 @@ export interface RootRouteChildren {
   SchoolDashboardRoute: typeof SchoolDashboardRoute
   SessionStatusRoute: typeof SessionStatusRoute
   SettingsRoute: typeof SettingsRoute
+  SupportRoute: typeof SupportRoute
   UsersRoute: typeof UsersRoute
   SupportTicketsRoute: typeof SupportTicketsRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
@@ -382,6 +395,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/users': {
       id: '/users'
       path: '/users'
@@ -467,6 +487,7 @@ const rootRouteChildren: RootRouteChildren = {
   SchoolDashboardRoute: SchoolDashboardRoute,
   SessionStatusRoute: SessionStatusRoute,
   SettingsRoute: SettingsRoute,
+  SupportRoute: SupportRoute,
   UsersRoute: UsersRoute,
   SupportTicketsRoute: SupportTicketsRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,

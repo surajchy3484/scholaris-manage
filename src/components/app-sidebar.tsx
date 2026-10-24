@@ -12,6 +12,7 @@ import {
   GraduationCap,
   HelpCircle,
   LayoutDashboard,
+  LifeBuoy,
   School,
   LogOut,
   Moon,
@@ -298,6 +299,21 @@ export function AppSidebar() {
                     <Link to="/settings" onClick={close}>
                       <SettingsIcon />
                       <span>Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+
+              {(can("support", "raise") || can("support", "view") || can("support", "manage")) && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith("/support")}
+                    tooltip="Help & Support"
+                  >
+                    <Link to="/support" onClick={close}>
+                      <LifeBuoy />
+                      <span>Help &amp; Support</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

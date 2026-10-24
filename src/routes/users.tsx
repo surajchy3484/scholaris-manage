@@ -37,6 +37,7 @@ import {
   ACTION_LABELS,
   MODULES,
   MODULE_LABELS,
+  TICKET_ACTIONS,
   TRAINER_PERMISSIONS,
   type AppAction,
   type AppModule,
@@ -92,6 +93,8 @@ type FormState = {
   schoolIds: string[];
   permissions: Permissions;
 };
+
+const permissionActions: AppAction[] = [...ACTIONS, ...TICKET_ACTIONS];
 
 const emptyForm = (): FormState => ({
   username: "",
@@ -418,7 +421,9 @@ function UsersPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {APP_ROLES.map((role) => (
-                      <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>
+                      <SelectItem key={role} value={role}>
+                        {ROLE_LABELS[role]}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -452,7 +457,7 @@ function UsersPage() {
                       <thead className="bg-muted/50">
                         <tr>
                           <th className="p-2 text-left font-medium">Module</th>
-                          {ACTIONS.map((a) => (
+                          {permissionActions.map((a) => (
                             <th key={a} className="p-2 text-center font-medium">
                               {ACTION_LABELS[a]}
                             </th>
@@ -463,10 +468,14 @@ function UsersPage() {
                         {MODULES.map((m) => (
                           <tr key={m} className="border-t border-border/60">
                             <td className="p-2">{MODULE_LABELS[m]}</td>
-                            {ACTIONS.map((a) => (
+                            {permissionActions.map((a) => (
                               <td key={a} className="p-2 text-center">
                                 <Checkbox
-                                  disabled={m === "main_dashboard" && a !== "view"}
+                                  disabled={
+                                    (m === "main_dashboard" && a !== "view") ||
+                                    (m !== "support" &&
+                                      TICKET_ACTIONS.includes(a as (typeof TICKET_ACTIONS)[number]))
+                                  }
                                   checked={(form.permissions[m] ?? []).includes(a)}
                                   onCheckedChange={() => togglePerm(m, a)}
                                   aria-label={`${MODULE_LABELS[m]} ${ACTION_LABELS[a]}`}

@@ -5,14 +5,25 @@
  * defaults for each role. Enforcement lives in app-access.server.ts.
  */
 
-export const APP_ROLES = ["admin", "trainer", "reap_staff", "coordinator", "manager", "official"] as const;
+export const APP_ROLES = [
+  "admin",
+  "trainer",
+  "reap_staff",
+  "coordinator",
+  "manager",
+  "official",
+] as const;
 export type AppRole = (typeof APP_ROLES)[number];
 export const ROLE_LABELS: Record<AppRole, string> = {
-  admin: "Administrator", trainer: "STEM Trainer", reap_staff: "REAP Staff",
-  coordinator: "Coordinator", manager: "Manager", official: "Official",
+  admin: "Administrator",
+  trainer: "STEM Trainer",
+  reap_staff: "REAP Staff",
+  coordinator: "Coordinator",
+  manager: "Manager",
+  official: "Official",
 };
 export function normalizeRole(value: unknown): AppRole {
-  return APP_ROLES.includes(value as AppRole) ? value as AppRole : "trainer";
+  return APP_ROLES.includes(value as AppRole) ? (value as AppRole) : "trainer";
 }
 
 export const MODULES = [
@@ -28,12 +39,15 @@ export const MODULES = [
   "session_status",
   "settings",
   "users",
+  "support",
 ] as const;
 
 export type AppModule = (typeof MODULES)[number];
 
 export const ACTIONS = ["view", "add", "edit", "delete", "import", "export", "status"] as const;
-export type AppAction = (typeof ACTIONS)[number];
+export type TicketAction = "raise" | "reply" | "reopen" | "manage" | "internal_note";
+export type AppAction = (typeof ACTIONS)[number] | TicketAction;
+export const TICKET_ACTIONS = ["raise", "reply", "reopen", "manage", "internal_note"] as const;
 
 export type Permissions = Partial<Record<AppModule, AppAction[]>>;
 
@@ -50,6 +64,7 @@ export const MODULE_LABELS: Record<AppModule, string> = {
   session_status: "Session Status",
   settings: "Settings",
   users: "User Access",
+  support: "Help & Support",
 };
 
 /** Landing route for each module, used by menus and the access guard. */
@@ -66,9 +81,13 @@ export const MODULE_ROUTES: Record<AppModule, string> = {
   session_status: "/session-status",
   settings: "/settings",
   users: "/users",
+  support: "/support",
 };
 
-export const ACTION_LABELS: Record<AppAction, string> = {
+export const ACTION_LABELS: Record<
+  AppAction | "raise" | "reply" | "reopen" | "manage" | "internal_note",
+  string
+> = {
   view: "View",
   add: "Add",
   edit: "Edit",
@@ -76,6 +95,11 @@ export const ACTION_LABELS: Record<AppAction, string> = {
   import: "Import",
   export: "Export",
   status: "Change Status",
+  raise: "Raise Ticket",
+  reply: "Reply to Ticket",
+  reopen: "Reopen Own Ticket",
+  manage: "Manage All Tickets",
+  internal_note: "Add Internal Notes",
 };
 
 const ALL_ACTIONS: AppAction[] = [...ACTIONS];
@@ -129,7 +153,7 @@ export function sanitizePermissions(input: unknown): Permissions {
     if (!(MODULES as readonly string[]).includes(key)) continue;
     if (!Array.isArray(value)) continue;
     const actions = value.filter((a): a is AppAction =>
-      (ACTIONS as readonly string[]).includes(a as string),
+      ([...ACTIONS, ...TICKET_ACTIONS] as readonly string[]).includes(a as string),
     );
     const supported = key === "main_dashboard" ? actions.filter((a) => a === "view") : actions;
     if (supported.length) out[key as AppModule] = supported;
