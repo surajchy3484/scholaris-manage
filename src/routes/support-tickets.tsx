@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LifeBuoy, Send, TicketCheck } from "lucide-react";
 import { toast } from "sonner";
 
-import { RequireModule } from "@/components/require-module";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,11 +22,7 @@ import {
 
 export const Route = createFileRoute("/support-tickets")({
   head: () => ({ meta: [{ title: "Support Tickets — SchoolRise" }] }),
-  component: () => (
-    <RequireModule module="session_status">
-      <SupportTicketsPage />
-    </RequireModule>
-  ),
+  component: SupportTicketsPage,
 });
 
 function SupportTicketsPage() {
