@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Clock3, LifeBuoy, Send, TicketCheck } from "lucide-react";
+import { CheckCircle2, Clock3, Send, Ticket, TicketCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -71,7 +71,7 @@ function SupportTicketsPage() {
   return (
     <main className="mx-auto max-w-5xl space-y-5 px-4 py-6 sm:px-6">
       <header className="flex items-start gap-3">
-        <div className="rounded-xl bg-primary/10 p-3 text-primary"><LifeBuoy className="h-6 w-6" /></div>
+        <div className="rounded-xl bg-primary/10 p-3 text-primary"><Ticket className="h-6 w-6" /></div>
         <div>
           <h1 className="font-display text-3xl font-bold">Support Tickets</h1>
           <p className="text-sm text-muted-foreground">Tell the administrator what difficulty you are facing. Your ticket is private.</p>
