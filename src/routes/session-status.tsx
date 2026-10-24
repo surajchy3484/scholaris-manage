@@ -655,7 +655,6 @@ function SessionStatusPage() {
       <AddSessionDialog
         open={addOpen}
         onOpenChange={setAddOpen}
-        classOptions={classOptions}
         defaultClass={klass}
         onSave={async (row) => {
           await createSessions([{ ...row, school_id: schoolId, unit }]);
@@ -970,19 +969,25 @@ type ParsedSession = ParsedBase & {
 function AddSessionDialog({
   open,
   onOpenChange,
-  classOptions,
   defaultClass,
   onSave,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  classOptions: string[];
   defaultClass: string | null;
   onSave: (row: Omit<NewSession, "school_id" | "unit">) => Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [topic, setTopic] = useState("");
   const [klass, setKlass] = useState(defaultClass ?? "");
+
+  useEffect(() => {
+    if (open) {
+      setKlass(defaultClass ?? "");
+      setName("");
+      setTopic("");
+    }
+  }, [open, defaultClass]);
 
   const save = useMutation({
     mutationFn: () => onSave({ session_name: name.trim(), class: klass, topic: topic.trim() }),
@@ -1011,19 +1016,13 @@ function AddSessionDialog({
             <Input id="s-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Class</Label>
-            <Select value={klass} onValueChange={setKlass}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select class" />
-              </SelectTrigger>
-              <SelectContent>
-                {classOptions.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Selected Class</Label>
+            <div className="flex h-10 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium">
+              {klass ? `Class ${klass}` : "No class selected"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This session will be added only to the class currently open.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="s-topic">Topic</Label>
