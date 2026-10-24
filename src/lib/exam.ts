@@ -291,5 +291,5 @@ export const DIVISION_OPTIONS = ["A", "B", "C", "D"];
 
 /** Shared cache across Reports and Overall Report; year changes remain isolated. */
 export function examDataQueryOptions() {
-  return { queryKey: ["exam-data", getAcademicYear()], queryFn: fetchExamData, staleTime: 60_000 };
+  return { queryKey: ["exam-data", getAcademicYear()], queryFn: fetchExamData, staleTime: 5 * 60_000, refetchOnWindowFocus: false, refetchOnReconnect: false };
 }

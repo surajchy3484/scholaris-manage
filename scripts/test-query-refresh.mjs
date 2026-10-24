@@ -7,9 +7,13 @@ const compile = async (path) =>
     compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
   }).outputText;
 const url = (code) => `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`;
-const { createQueryRefreshQueue, queryAffectedByTables, refreshSessionQueries } = await import(
+const { shouldPollQuery, createQueryRefreshQueue, queryAffectedByTables, refreshSessionQueries } = await import(
   url(await compile("src/lib/query-refresh.ts"))
 );
+for (const prefix of ["exam-data", "visual-analytics-source", "visual-analytics-sessions", "overall-report-activity", "student-history", "academic-progress"]) {
+  assert.equal(shouldPollQuery([prefix, "2026"]), false);
+}
+assert.equal(shouldPollQuery(["main-dashboard"]), true);
 assert(queryAffectedByTables(["exam-data", "2026"], new Set(["attendance"])));
 assert(!queryAffectedByTables(["schools", "2026"], new Set(["attendance"])));
 assert(queryAffectedByTables(["questions", "page"], new Set(["question_bank"])));
