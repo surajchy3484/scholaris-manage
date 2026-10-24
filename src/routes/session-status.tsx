@@ -11,6 +11,7 @@ import {
   Clock,
   Download,
   Plus,
+  Pencil,
   Wand2,
   School as SchoolIcon,
   Search,
@@ -57,6 +58,7 @@ import {
   normalizeClass,
   normalizeStatus,
   removeSessions,
+  patchSessions,
   setSessionStatus,
   unitProgress,
   type DivisionSession,
@@ -148,6 +150,7 @@ function SessionStatusPage() {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [addOpen, setAddOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<DivisionSession | null>(null);
   const [importOpen, setImportOpen] = useState(false);
 
   const schoolsQuery = useQuery({
@@ -577,7 +580,7 @@ function SessionStatusPage() {
                         onCheckedChange={(c) => setSelected(c ? visible.map((r) => r.id) : [])}
                       />
                     </th>
-                    {["Session Name", "Class", "Topic", "Status"].map((h) => (
+                    {["Session Name", "Class", "Topic", "Status", "Actions"].map((h) => (
                       <th
                         key={h}
                         className="sticky top-0 z-10 bg-muted/95 px-3 py-2.5 text-left font-semibold backdrop-blur"
@@ -609,6 +612,13 @@ function SessionStatusPage() {
                           onChange={(status) => setStatus.mutate({ ids: [r.id], status })}
                         />
                       </td>
+                      <td className="px-3 py-2">
+                        {can("session_status", "edit") && (
+                          <Button size="sm" variant="ghost" onClick={() => setEditingSession(r)}>
+                            <Pencil className="h-4 w-4" /> Edit
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -630,7 +640,12 @@ function SessionStatusPage() {
                   </div>
                   <StatusBadge status={r.status} />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                  {can("session_status", "edit") && (
+                    <Button size="sm" variant="outline" onClick={() => setEditingSession(r)}>
+                      <Pencil className="h-4 w-4" /> Edit Session
+                    </Button>
+                  )}
                   <Button
                     size="lg"
                     className="h-11 flex-1"
@@ -659,6 +674,23 @@ function SessionStatusPage() {
         onSave={async (row) => {
           await createSessions([{ ...row, school_id: schoolId, unit }]);
           await refresh();
+        }}
+      />
+
+      <AddSessionDialog
+        open={!!editingSession}
+        onOpenChange={(open) => { if (!open) setEditingSession(null); }}
+        defaultClass={klass}
+        initialSession={editingSession}
+        onSave={async (row) => {
+          if (!editingSession) return;
+          await patchSessions([editingSession.id], {
+            session_name: row.session_name,
+            topic: row.topic,
+          });
+          setEditingSession(null);
+          await refresh();
+          toast.success("Session details updated");
         }}
       />
 
@@ -970,11 +1002,13 @@ function AddSessionDialog({
   open,
   onOpenChange,
   defaultClass,
+  initialSession = null,
   onSave,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   defaultClass: string | null;
+  initialSession?: DivisionSession | null;
   onSave: (row: Omit<NewSession, "school_id" | "unit">) => Promise<void>;
 }) {
   const [name, setName] = useState("");
@@ -983,11 +1017,11 @@ function AddSessionDialog({
 
   useEffect(() => {
     if (open) {
-      setKlass(defaultClass ?? "");
-      setName("");
-      setTopic("");
+      setKlass(initialSession?.class ?? defaultClass ?? "");
+      setName(initialSession?.session_name ?? "");
+      setTopic(initialSession?.topic ?? "");
     }
-  }, [open, defaultClass]);
+  }, [open, defaultClass, initialSession]);
 
   const save = useMutation({
     mutationFn: () => onSave({ session_name: name.trim(), class: klass, topic: topic.trim() }),
@@ -1004,10 +1038,11 @@ function AddSessionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add session</DialogTitle>
+          <DialogTitle>{initialSession ? "Edit session" : "Add session"}</DialogTitle>
           <DialogDescription>
-            Saved for the selected school, unit and class. It becomes available to every division
-            present in the student roster for that class.
+            {initialSession
+              ? "Update the session name or topic. Changes apply to this session across all divisions of the selected class."
+              : "Saved for the selected school, unit and class. It becomes available to every division present in the student roster for that class."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-1">
@@ -1034,7 +1069,7 @@ function AddSessionDialog({
             Cancel
           </Button>
           <Button onClick={() => save.mutate()} disabled={!name.trim() || !klass || save.isPending}>
-            {save.isPending ? "Saving..." : "Save Session"}
+            {save.isPending ? "Saving..." : initialSession ? "Save Changes" : "Save Session"}
           </Button>
         </DialogFooter>
       </DialogContent>
