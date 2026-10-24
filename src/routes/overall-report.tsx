@@ -261,8 +261,7 @@ function OverallReport() {
     studentId: selectedStudent?.id ?? "",
     mode,
   });
-  const analyticsRequired =
-    mode === "class" || mode === "school" || mode === "student";
+  const analyticsRequired = mode === "class" || mode === "school" || mode === "student";
   const exportDisabled =
     (analyticsRequired && !analytics.ready) ||
     ((mode === "overall" || mode === "school") && !activity.data);
@@ -328,7 +327,10 @@ function OverallReport() {
       (mode === "overall" || mode === "school"
         ? `<h2>Schools</h2>${table(schoolTableHeaders, schoolTableRows)}`
         : "") + body,
-    ).replace('src="/reap-logo-circle.png"', `src="${window.location.origin}/reap-logo-circle.png"`);
+    ).replace(
+      'src="/reap-logo-circle.png"',
+      `src="${window.location.origin}/reap-logo-circle.png"`,
+    );
   };
 
   if (isLoading) return <div className="mx-auto max-w-7xl px-4 py-12">Loading reports…</div>;
@@ -720,7 +722,7 @@ function StudentPreview({
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-2xl font-bold">STUDENT PERFORMANCE MARKSHEET</h2>
           <p className="text-sm text-muted-foreground">
-            Academic Year: ${escapeHtml(getAcademicYear() ?? "Current")} · SchoolRise
+            Academic Year: {getAcademicYear() ?? "2026"} · SchoolRise
           </p>
         </div>
         <Button type="button" size="sm" onClick={onDownloadPdf} className="shrink-0">

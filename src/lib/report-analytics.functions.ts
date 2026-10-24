@@ -22,7 +22,15 @@ export const loadReportAnalytics = createServerFn({ method: "POST" })
       fetchAllRows<Assessment>(async (from, to) => {
         let q = db.from("assessment_evaluation_context" as "assessments").select("*").order("id").range(from,to);
         if (scope) q=q.in("school_id",scope);
-        const result = await q;
+        let result = await q;
+        if (result.error && ["42P01", "PGRST205"].includes(result.error.code)) {
+          let fallback = db.from("assessments").select("*").order("id").range(from,to);
+          if (scope) fallback = fallback.in("school_id",scope);
+          result = await fallback;
+          if (result.data?.some(row => row.preserved_context)) {
+            throw new Error("Apply the preserved assessment context migration to load historical analytics correctly.");
+          }
+        }
         if (result.error) throw new Error(result.error.message);
         return { data: result.data as Assessment[] | null, error: null };
       }),

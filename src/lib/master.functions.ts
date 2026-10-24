@@ -9,8 +9,8 @@ import { z } from "zod";
  * Every read and write goes through these server functions, which require the
  * app's shared access password before using privileged database access.
  */
-import { requirePermission } from "./app-access.server";
-import { canSeeSchool } from "./access-control";
+import { requirePermission, resolveAccess } from "./app-access.server";
+import { can, canSeeSchool } from "./access-control";
 import type { AppAction, AppModule } from "./access-control";
 
 const MODULE_FOR: Record<
@@ -29,6 +29,22 @@ const guard = (
   action: AppAction,
 ) => requirePermission(token, MODULE_FOR[table], action);
 
+/**
+ * Analytics is part of Exam Report. A report viewer needs read-only access to
+ * the source tables, but must not receive any Assessment/Question/Clicker
+ * mutation permission just to open a report.
+ */
+async function readGuard(
+  token: string,
+  table: "assessments" | "questions" | "clicker_records" | "assessment_results",
+) {
+  const profile = await resolveAccess(token);
+  if (!can(profile, "exam_report", "view") && !can(profile, MODULE_FOR[table], "view")) {
+    throw new Error(`Access Denied: view permission is required for ${MODULE_FOR[table]}.`);
+  }
+  return profile;
+}
+
 const tableSchema = z.enum(["assessments", "questions", "clicker_records", "assessment_results"]);
 const tokenSchema = z.object({
   academicYear: z.string().max(80).optional(),
@@ -45,7 +61,7 @@ export const listMasterRows = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => listSchema.parse(data))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .handler(async ({ data }): Promise<any[]> => {
-    const profile = await guard(data.token, data.table, "view");
+    const profile = await readGuard(data.token, data.table);
     const db = await academicDb(data.academicYear);
     const out: Record<string, unknown>[] = [];
     const batch = 1000;
@@ -69,7 +85,10 @@ export const listMasterRows = createServerFn({ method: "POST" })
         q = q.in("school_id", profile.schoolIds);
       q = q.order("id"); // Stable tie-breaker prevents skipped/repeated rows across pages.
       const { data: rows, error } = await q;
-      if (error) throw new Error("Failed to load records");
+      if (error)
+        throw new Error(
+          `Failed to load ${data.table}: ${error.message || error.code || "database request failed"}`,
+        );
       const list = (rows ?? []) as Record<string, unknown>[];
       out.push(...list);
       if (list.length < batch) break;
