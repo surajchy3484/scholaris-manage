@@ -688,9 +688,7 @@ function SessionStatusPage() {
             session_name: row.session_name,
             topic: row.topic,
           });
-          setEditingSession(null);
           await refresh();
-          toast.success("Session details updated");
         }}
       />
 
@@ -1026,7 +1024,11 @@ function AddSessionDialog({
   const save = useMutation({
     mutationFn: () => onSave({ session_name: name.trim(), class: klass, topic: topic.trim() }),
     onSuccess: () => {
-      toast.success("Session added for every division of this class");
+      toast.success(
+        initialSession
+          ? "Session details updated"
+          : "Session added for every division of this class",
+      );
       setName("");
       setTopic("");
       onOpenChange(false);
