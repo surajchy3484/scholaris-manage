@@ -37,7 +37,31 @@ export const createSupportTicket = createServerFn({ method: "POST" })
       subject: data.subject,
       description: data.description,
     });
-    if (error) throw new Error("Unable to submit your ticket. Please try again.");
+    if (error) {
+      // Keep database details in server logs so the real cause can be diagnosed
+      // without exposing SQL or schema details to users.
+      console.error("[support-tickets] insert failed", {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
+      if (
+        error.code === "42P01" ||
+        error.code === "PGRST205" ||
+        /relation .*support_tickets.* does not exist|could not find the table .*support_tickets/i.test(error.message)
+      ) {
+        throw new Error(
+          "Support tickets are not configured in the database yet. An administrator must apply the support_tickets migration in Supabase, then try again.",
+        );
+      }
+      if (error.code === "23503") {
+        throw new Error(
+          "Your account could not be linked to the support ticket. Please sign out and sign in again, then retry.",
+        );
+      }
+      throw new Error("Unable to save your ticket. Please try again. If it continues, ask the administrator to check the server logs.");
+    }
     return { ok: true };
   });
 
