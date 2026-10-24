@@ -8,6 +8,7 @@ import {
   Paperclip,
   RefreshCw,
   Send,
+  Trash2,
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -31,6 +32,7 @@ import {
 } from "@/lib/support-types";
 import {
   createSupportTicket,
+  deleteSupportTicket,
   getSupportTicket,
   getSupportSummary,
   listSupportRoster,
@@ -170,6 +172,17 @@ function SupportPage() {
       qc.invalidateQueries({ queryKey: ["support-ticket", selectedId] });
       qc.invalidateQueries({ queryKey: ["support-tickets"] });
       qc.invalidateQueries({ queryKey: ["support-summary"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const deleteM = useMutation({
+    mutationFn: (id: string) => deleteSupportTicket({ data: { ...tokenData(), id } }),
+    onSuccess: () => {
+      toast.success("Ticket deleted");
+      setSelectedId(null);
+      qc.invalidateQueries({ queryKey: ["support-tickets"] });
+      qc.invalidateQueries({ queryKey: ["support-summary"] });
+      qc.invalidateQueries({ queryKey: ["support-ticket"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -364,9 +377,25 @@ function SupportPage() {
                         <Badge variant={statusTone(row.status)}>{row.status}</Badge>
                       </td>
                       <td className="px-3 py-3">
-                        <Button size="sm" variant="outline" onClick={() => setSelectedId(row.id)}>
-                          View Details
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                          <Button size="sm" variant="outline" onClick={() => setSelectedId(row.id)}>
+                            View Details
+                          </Button>
+                          {canManage && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              disabled={deleteM.isPending}
+                              onClick={() => {
+                                if (window.confirm(`Delete ticket ${row.ticket_id} — "${row.subject}"? This permanently removes the ticket and its replies.`)) {
+                                  deleteM.mutate(row.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="mr-1 h-4 w-4" /> Delete
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
