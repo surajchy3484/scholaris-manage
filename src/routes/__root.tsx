@@ -1,4 +1,4 @@
-import { createQueryRefreshQueue } from "@/lib/query-refresh";
+import { createQueryRefreshQueue, shouldPollQuery } from "@/lib/query-refresh";
 import { AcademicYearLabel, AcademicYearBoundary } from "@/components/academic-year-select";
 import { resetAcademicYear } from "@/lib/academic-year";
 import { getAccessToken } from "@/lib/app-access";
@@ -343,7 +343,7 @@ function RootComponent() {
       if (document.visibilityState !== "visible") return;
       // Refresh visible data without invalidating every inactive sidebar page or
       // cancelling requests already in flight during an import.
-      void queryClient.refetchQueries({ type: "active" }, { cancelRefetch: false });
+      void queryClient.refetchQueries({ type: "active", predicate: (q) => shouldPollQuery(q.queryKey) }, { cancelRefetch: false });
     }, 60_000);
     return () => {
       window.clearInterval(fallback);

@@ -46,6 +46,7 @@ export function useVisualAnalytics(props: Props) {
     staleTime: 5 * 60_000,
     retry: false,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
   const effectiveClass =
     props.mode === "school"
@@ -73,7 +74,9 @@ export function useVisualAnalytics(props: Props) {
           };
         }),
       ),
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
   const prepared = useMemo(
     () =>

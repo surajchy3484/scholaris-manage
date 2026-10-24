@@ -198,7 +198,9 @@ function OverallReport() {
     queryKey: ["overall-report-activity", getAcademicYear()],
     queryFn: () =>
       overallReportActivity({ data: { token: getAccessToken(), academicYear: getAcademicYear() } }),
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
   const classes = useMemo(
     () =>

@@ -1,6 +1,10 @@
 import type { QueryClient } from "@tanstack/react-query";
 
 const reports = ["exam-data", "visual-analytics-source", "student-history", "academic-progress"];
+/** Reports refresh through relevant writes/realtime events, never the fallback timer. */
+export function shouldPollQuery(key: readonly unknown[]) {
+  return ![...reports, "visual-analytics-sessions", "overall-report-activity"].includes(String(key[0]));
+}
 const sessionQueries = [
   "class-session-coverage",
   "session-schools",
