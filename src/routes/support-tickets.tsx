@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { LifeBuoy, Send, TicketCheck } from "lucide-react";
+import { CheckCircle2, Clock3, LifeBuoy, Send, TicketCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth";
 import { getAccessToken } from "@/lib/app-access";
 import {
   createSupportTicket,
+  listMySupportTickets,
   listSupportTickets,
   updateSupportTicketStatus,
   type SupportTicket,
@@ -32,18 +33,25 @@ function SupportTicketsPage() {
   const [description, setDescription] = useState("");
   const token = getAccessToken();
   const tickets = useQuery({
-    queryKey: ["support-tickets"],
+    queryKey: ["support-tickets", "admin"],
     queryFn: () => listSupportTickets({ data: { token } }),
     enabled: isAdmin,
+    refetchInterval: 30_000,
+  });
+  const myTickets = useQuery({
+    queryKey: ["support-tickets", "mine", profile?.username],
+    queryFn: () => listMySupportTickets({ data: { token } }),
+    enabled: Boolean(token) && !isAdmin,
+    refetchInterval: 30_000,
   });
 
   const submit = useMutation({
     mutationFn: () => createSupportTicket({ data: { token, subject, description } }),
     onSuccess: () => {
-      toast.success("Support ticket submitted to the administrator");
+      toast.success("Ticket submitted successfully. Your status is Pending.");
       setSubject("");
       setDescription("");
-      if (isAdmin) void qc.invalidateQueries({ queryKey: ["support-tickets"] });
+      void qc.invalidateQueries({ queryKey: ["support-tickets"] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -73,7 +81,7 @@ function SupportTicketsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Send className="h-5 w-5" /> Raise a ticket</CardTitle>
-          <CardDescription>Your name and account details are attached automatically. Only administrators can read the ticket.</CardDescription>
+          <CardDescription>Your name and account details are attached automatically. Only administrators can read your problem details; you can track your own tickets below.</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); submit.mutate(); }}>
@@ -95,6 +103,37 @@ function SupportTicketsPage() {
           </form>
         </CardContent>
       </Card>
+
+      {!isAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Clock3 className="h-5 w-5" /> My ticket history</CardTitle>
+            <CardDescription>Track every problem you have reported. New tickets show Pending until an administrator resolves them.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {myTickets.isLoading && <p className="text-sm text-muted-foreground">Loading your tickets…</p>}
+            {myTickets.error && <p role="alert" className="text-sm text-destructive">{myTickets.error.message}</p>}
+            {!myTickets.isLoading && !myTickets.error && myTickets.data?.length === 0 && (
+              <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">You have not raised any tickets yet.</p>
+            )}
+            {myTickets.data?.map((ticket) => (
+              <article key={ticket.id} className="space-y-2 rounded-xl border p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold">{ticket.subject}</h3>
+                    <p className="text-xs text-muted-foreground">Submitted {new Date(ticket.created_at).toLocaleString()}</p>
+                  </div>
+                  <Badge variant={ticket.status === "resolved" ? "secondary" : "outline"} className="gap-1">
+                    {ticket.status === "resolved" ? <><CheckCircle2 className="h-3.5 w-3.5" /> Resolved</> : <><Clock3 className="h-3.5 w-3.5" /> Pending</>}
+                  </Badge>
+                </div>
+                <p className="whitespace-pre-wrap text-sm text-muted-foreground">{ticket.description}</p>
+                {ticket.status === "resolved" && <p className="text-xs font-medium text-emerald-600">The administrator has marked this ticket as resolved.</p>}
+              </article>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {isAdmin && (
         <Card>
@@ -132,6 +171,11 @@ function SupportTicketsPage() {
                       <SelectItem value="resolved">Resolved</SelectItem>
                     </SelectContent>
                   </Select>
+                  {ticket.status !== "resolved" && (
+                    <Button size="sm" onClick={() => status.mutate({ id: ticket.id, status: "resolved" })} disabled={status.isPending}>
+                      <CheckCircle2 className="mr-2 h-4 w-4" /> Resolve Ticket
+                    </Button>
+                  )}
                 </div>
               </article>
             ))}

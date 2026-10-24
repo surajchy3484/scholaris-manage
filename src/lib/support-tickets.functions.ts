@@ -56,6 +56,21 @@ export const listSupportTickets = createServerFn({ method: "POST" })
     return (rows ?? []) as SupportTicket[];
   });
 
+export const listMySupportTickets = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => z.object({ token }).parse(data))
+  .handler(async ({ data }): Promise<SupportTicket[]> => {
+    const profile = await resolveAccess(data.token);
+    const db = await adminDb();
+    const { data: rows, error } = await db
+      .from("support_tickets")
+      .select("id,username,full_name,role,subject,description,status,created_at,updated_at")
+      .eq("created_by", profile.userId)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) throw new Error("Unable to load your support ticket history.");
+    return (rows ?? []) as SupportTicket[];
+  });
+
 export const updateSupportTicketStatus = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
     z.object({
