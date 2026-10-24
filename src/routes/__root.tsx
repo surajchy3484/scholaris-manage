@@ -13,7 +13,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { GraduationCap, ArrowLeft, LogOut, ShieldCheck, UserRound, Ticket } from "lucide-react";
+import { GraduationCap, ArrowLeft, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -207,18 +207,6 @@ function Header() {
         </>
       )}
       <AcademicYearLabel />
-      <Button
-        variant="ghost"
-        size="icon"
-        asChild
-        aria-label="Raise a support ticket"
-        title="Raise a support ticket"
-        className="relative"
-      >
-        <Link to="/support-tickets">
-          <Ticket className="h-5 w-5" />
-        </Link>
-      </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -355,7 +343,10 @@ function RootComponent() {
       if (document.visibilityState !== "visible") return;
       // Refresh visible data without invalidating every inactive sidebar page or
       // cancelling requests already in flight during an import.
-      void queryClient.refetchQueries({ type: "active", predicate: (q) => shouldPollQuery(q.queryKey) }, { cancelRefetch: false });
+      void queryClient.refetchQueries(
+        { type: "active", predicate: (q) => shouldPollQuery(q.queryKey) },
+        { cancelRefetch: false },
+      );
     }, 60_000);
     return () => {
       window.clearInterval(fallback);
