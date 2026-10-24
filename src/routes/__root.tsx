@@ -13,7 +13,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { GraduationCap, ArrowLeft, LogOut, ShieldCheck, UserRound, LifeBuoy } from "lucide-react";
+import { GraduationCap, ArrowLeft, LogOut, ShieldCheck, UserRound, Ticket } from "lucide-react";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -216,7 +216,7 @@ function Header() {
         className="relative"
       >
         <Link to="/support-tickets">
-          <LifeBuoy className="h-5 w-5" />
+          <Ticket className="h-5 w-5" />
         </Link>
       </Button>
       <DropdownMenu>
