@@ -56,8 +56,10 @@ export function SupportNotificationBell() {
     queryKey: ["support-notifications"],
     enabled: ready && allowed && !!profile?.userId,
     queryFn: () => listSupportNotifications({ data: tokenData() }),
-    refetchInterval: 30000,
-    staleTime: 10000,
+    // Poll frequently so ticket notifications appear even if Realtime is not enabled.
+    refetchInterval: 10000,
+    refetchIntervalInBackground: true,
+    staleTime: 0,
   });
   const markRead = useMutation({
     mutationFn: (id: string) => markSupportNotificationRead({ data: { ...tokenData(), id } }),
