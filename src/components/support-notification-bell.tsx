@@ -73,16 +73,9 @@ export function SupportNotificationBell() {
   useEffect(() => {
     if (!ready || !allowed || !profile?.userId) return;
     const channel = supabase
-      .channel(`support-notifications-${profile.userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "support_notifications",
-          filter: `user_id=eq.${profile.userId}`,
-        },
-        () => queryClient.invalidateQueries({ queryKey: ["support-notifications"] }),
+      .channel("schoolrise-support-notifications")
+      .on("broadcast", { event: "new" }, () =>
+        queryClient.invalidateQueries({ queryKey: ["support-notifications"] }),
       )
       .subscribe();
     return () => {
