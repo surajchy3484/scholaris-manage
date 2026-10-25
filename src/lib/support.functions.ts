@@ -131,6 +131,12 @@ export const createSupportTicket = createServerFn({ method: "POST" })
         creator_id: profile.userId,
         creator_name: profile.fullName || profile.username,
         creator_designation: profile.role,
+        // Keep compatibility with the first support_tickets schema, which
+        // required these legacy identity columns.
+        created_by: profile.userId,
+        username: profile.username,
+        full_name: profile.fullName || profile.username,
+        role: profile.role,
         school_id: data.schoolId ?? null,
         class: data.className ?? null,
         division: data.division ?? null,
