@@ -164,7 +164,7 @@ export const createSupportTicket = createServerFn({ method: "POST" })
         (recipients ?? [])
           .filter((user: any) => {
             if (!user.id || user.id === profile.userId) return false;
-            if (String(user.role).toLowerCase() === "admin") return true;
+            if (["admin", "administrator", "super admin", "super_admin"].includes(String(user.role).trim().toLowerCase())) return true;
             const supportActions = user.permissions?.support;
             return Array.isArray(supportActions) && supportActions.includes("manage");
           })
@@ -491,7 +491,7 @@ export const listSupportNotifications = createServerFn({ method: "POST" })
       if (recipientsError) throw new Error("Unable to load support notification recipients.");
       recipientIds = (recipients ?? [])
         .filter((user: any) =>
-          String(user.role).toLowerCase() === "admin" ||
+          ["admin", "administrator", "super admin", "super_admin"].includes(String(user.role).trim().toLowerCase()) ||
           (Array.isArray(user.permissions?.support) && user.permissions.support.includes("manage")),
         )
         .map((user: any) => user.id as string);
