@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -43,6 +43,9 @@ import {
 } from "@/lib/support.functions";
 
 export const Route = createFileRoute("/support")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    ticket: typeof search.ticket === "string" ? search.ticket : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Help & Support — SchoolRise" },
@@ -99,6 +102,7 @@ const priorityTone = (priority: string) =>
   priority === "Critical" ? "destructive" : priority === "High" ? "default" : "secondary";
 
 function SupportPage() {
+  const { ticket: ticketFromUrl } = Route.useSearch();
   const { ready, can, profile } = useAuth();
   const qc = useQueryClient();
   const canRaise = can("support", "raise");
@@ -112,6 +116,11 @@ function SupportPage() {
   const [status, setStatus] = useState("");
   const [category, setCategory] = useState("");
   const [priority, setPriority] = useState("");
+  useEffect(() => {
+    if (!ticketFromUrl) return;
+    setSelectedId(ticketFromUrl);
+    setTab(canManage ? "manage" : "mine");
+  }, [canManage, ticketFromUrl]);
   const isListTab = tab === "mine" || tab === "manage";
   const listQ = useQuery({
     queryKey: ["support-tickets", tab, page, search, status, category, priority],

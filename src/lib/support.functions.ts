@@ -146,6 +146,29 @@ export const createSupportTicket = createServerFn({ method: "POST" })
       action: "created",
       new_value: row.status,
     });
+    const usersDb = (await adminDb()) as any;
+    const { data: recipients } = await usersDb
+      .from("app_users")
+      .select("id,role,permissions")
+      .eq("is_active", true);
+    const recipientIds = (recipients ?? [])
+      .filter((user: any) => {
+        if (user.id === profile.userId) return false;
+        if (user.role === "admin") return true;
+        const supportActions = user.permissions?.support;
+        return Array.isArray(supportActions) && supportActions.includes("manage");
+      })
+      .map((user: any) => user.id);
+    if (recipientIds.length) {
+      await db.from("support_notifications").insert(
+        recipientIds.map((userId: string) => ({
+          user_id: userId,
+          ticket_id: row.id,
+          type: "new_ticket",
+          message: `${row.ticket_id}: ${row.subject}`,
+        })),
+      );
+    }
     const files = data.attachments ?? [];
     for (const file of files) {
       const match = /^data:([^;]+);base64,(.+)$/.exec(file.dataUrl);
@@ -362,6 +385,13 @@ export const updateSupportTicket = createServerFn({ method: "POST" })
         type: "status",
         message: `Your ticket ${previous.ticket_id} is now ${data.status}.`,
       });
+    if (data.assignedTo && data.assignedTo !== previous.assigned_to)
+      await db.from("support_notifications").insert({
+        user_id: data.assignedTo,
+        ticket_id: data.id,
+        type: "assignment",
+        message: `You were assigned ticket ${previous.ticket_id}.`,
+      });
     return updated;
   });
 
@@ -419,4 +449,94 @@ export const deleteSupportTicket = createServerFn({ method: "POST" })
     // Supabase may not return a row count for this client configuration; a
     // successful delete is still considered successful.
     return { ok: true, deleted: count ?? null };
+  });
+
+const notificationIdSchema = token.extend({ id: z.string().uuid() });
+
+export const listSupportNotifications = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => token.parse(data))
+  .handler(async ({ data }) => {
+    const profile = await resolveAccess(data.token);
+    if (!canAny(profile, "view", "manage")) throw new Error("Support access is required.");
+    if (!profile.userId) return { rows: [], unreadCount: 0 };
+    const db = (await academicDb(data.academicYear)) as any;
+    const { data: rows, error } = await db
+      .from("support_notifications")
+      .select("id,ticket_id,type,message,read_at,created_at")
+      .eq("user_id", profile.userId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw new Error("Unable to load support notifications.");
+    const { count: unreadCount, error: unreadError } = await db
+      .from("support_notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", profile.userId)
+      .is("read_at", null);
+    if (unreadError) throw new Error("Unable to count support notifications.");
+    const rawRows = (rows ?? []) as Array<Record<string, unknown>>;
+    const ticketIds = rawRows.map((row) => row.ticket_id).filter(Boolean) as string[];
+    const tickets = ticketIds.length
+      ? await db
+          .from("support_tickets")
+          .select("id,ticket_id,subject,creator_name,school_id")
+          .in("id", ticketIds)
+      : { data: [], error: null };
+    if (tickets.error) throw new Error("Unable to load notification tickets.");
+    const schoolIds = (tickets.data ?? []).map((ticket: any) => ticket.school_id).filter(Boolean);
+    const schools = schoolIds.length
+      ? await db.from("schools").select("id,name").in("id", schoolIds)
+      : { data: [], error: null };
+    if (schools.error) throw new Error("Unable to load notification schools.");
+    const ticketMap = new Map<string, any>(
+      (tickets.data ?? []).map((ticket: any) => [ticket.id, ticket] as [string, any]),
+    );
+    const schoolMap = new Map((schools.data ?? []).map((school: any) => [school.id, school.name]));
+    return {
+      rows: rawRows.map((row) => {
+        const ticketId = typeof row.ticket_id === "string" ? row.ticket_id : null;
+        const ticket = ticketId ? ticketMap.get(ticketId) : null;
+        return {
+          ...row,
+          ticket: ticket
+            ? {
+                ...ticket,
+                school_name: ticket.school_id ? (schoolMap.get(ticket.school_id) ?? null) : null,
+              }
+            : null,
+        };
+      }),
+      unreadCount: unreadCount ?? rawRows.filter((row) => !row.read_at).length,
+    };
+  });
+
+export const markSupportNotificationRead = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => notificationIdSchema.parse(data))
+  .handler(async ({ data }) => {
+    const profile = await resolveAccess(data.token);
+    if (!canAny(profile, "view", "manage") || !profile.userId)
+      throw new Error("Support access is required.");
+    const db = (await academicDb(data.academicYear)) as any;
+    const { error } = await db
+      .from("support_notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("id", data.id)
+      .eq("user_id", profile.userId);
+    if (error) throw new Error("Unable to mark notification as read.");
+    return { ok: true };
+  });
+
+export const markAllSupportNotificationsRead = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => token.parse(data))
+  .handler(async ({ data }) => {
+    const profile = await resolveAccess(data.token);
+    if (!canAny(profile, "view", "manage") || !profile.userId)
+      throw new Error("Support access is required.");
+    const db = (await academicDb(data.academicYear)) as any;
+    const { error } = await db
+      .from("support_notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("user_id", profile.userId)
+      .is("read_at", null);
+    if (error) throw new Error("Unable to mark notifications as read.");
+    return { ok: true };
   });

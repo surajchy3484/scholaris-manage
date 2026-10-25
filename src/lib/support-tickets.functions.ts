@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { adminDb, resolveAccess } from "./app-access.server";
@@ -28,7 +29,7 @@ export const createSupportTicket = createServerFn({ method: "POST" })
     if (profile.role === "admin") {
       // Admins may raise tickets too, but the same identity is recorded.
     }
-    const db = await adminDb();
+    const db = (await adminDb()) as any;
     const { error } = await db.from("support_tickets").insert({
       created_by: profile.userId,
       username: profile.username,
@@ -49,7 +50,9 @@ export const createSupportTicket = createServerFn({ method: "POST" })
       if (
         error.code === "42P01" ||
         error.code === "PGRST205" ||
-        /relation .*support_tickets.* does not exist|could not find the table .*support_tickets/i.test(error.message)
+        /relation .*support_tickets.* does not exist|could not find the table .*support_tickets/i.test(
+          error.message,
+        )
       ) {
         throw new Error(
           "Support tickets are not configured in the database yet. An administrator must apply the support_tickets migration in Supabase, then try again.",
@@ -60,7 +63,9 @@ export const createSupportTicket = createServerFn({ method: "POST" })
           "Your account could not be linked to the support ticket. Please sign out and sign in again, then retry.",
         );
       }
-      throw new Error("Unable to save your ticket. Please try again. If it continues, ask the administrator to check the server logs.");
+      throw new Error(
+        "Unable to save your ticket. Please try again. If it continues, ask the administrator to check the server logs.",
+      );
     }
     return { ok: true };
   });
@@ -70,7 +75,7 @@ export const listSupportTickets = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<SupportTicket[]> => {
     const profile = await resolveAccess(data.token);
     if (profile.role !== "admin") throw new Error("Only administrators can view support tickets.");
-    const db = await adminDb();
+    const db = (await adminDb()) as any;
     const { data: rows, error } = await db
       .from("support_tickets")
       .select("id,username,full_name,role,subject,description,status,created_at,updated_at")
@@ -84,7 +89,7 @@ export const listMySupportTickets = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => z.object({ token }).parse(data))
   .handler(async ({ data }): Promise<SupportTicket[]> => {
     const profile = await resolveAccess(data.token);
-    const db = await adminDb();
+    const db = (await adminDb()) as any;
     const { data: rows, error } = await db
       .from("support_tickets")
       .select("id,username,full_name,role,subject,description,status,created_at,updated_at")
@@ -97,16 +102,19 @@ export const listMySupportTickets = createServerFn({ method: "POST" })
 
 export const updateSupportTicketStatus = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
-    z.object({
-      token,
-      id: z.string().uuid(),
-      status: z.enum(["open", "in_progress", "resolved"]),
-    }).parse(data),
+    z
+      .object({
+        token,
+        id: z.string().uuid(),
+        status: z.enum(["open", "in_progress", "resolved"]),
+      })
+      .parse(data),
   )
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const profile = await resolveAccess(data.token);
-    if (profile.role !== "admin") throw new Error("Only administrators can update support tickets.");
-    const db = await adminDb();
+    if (profile.role !== "admin")
+      throw new Error("Only administrators can update support tickets.");
+    const db = (await adminDb()) as any;
     const { error } = await db
       .from("support_tickets")
       .update({ status: data.status, updated_at: new Date().toISOString() })

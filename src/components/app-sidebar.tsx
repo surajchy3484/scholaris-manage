@@ -311,7 +311,7 @@ export function AppSidebar() {
                     isActive={pathname.startsWith("/support")}
                     tooltip="Help & Support"
                   >
-                    <Link to="/support" onClick={close}>
+                    <Link to="/support" search={{ ticket: undefined }} onClick={close}>
                       <LifeBuoy />
                       <span>Help &amp; Support</span>
                     </Link>

@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { logoutLocal, refreshProfileFromServer, useAuth } from "@/lib/auth";
 import { setupOffline } from "@/lib/pwa";
 import { BrandName } from "@/components/brand";
+import { SupportNotificationBell } from "@/components/support-notification-bell";
 import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
@@ -207,6 +208,7 @@ function Header() {
         </>
       )}
       <AcademicYearLabel />
+      <SupportNotificationBell />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
