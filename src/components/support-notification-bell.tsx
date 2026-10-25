@@ -54,7 +54,7 @@ export function SupportNotificationBell() {
   const tokenData = () => ({ token: getAccessToken(), academicYear: getAcademicYear() });
   const notifications = useQuery({
     queryKey: ["support-notifications"],
-    enabled: ready && allowed && !!profile?.userId,
+    enabled: ready && allowed,
     queryFn: () => listSupportNotifications({ data: tokenData() }),
     // Poll frequently so ticket notifications appear even if Realtime is not enabled.
     refetchInterval: 10000,
@@ -73,7 +73,7 @@ export function SupportNotificationBell() {
   });
 
   useEffect(() => {
-    if (!ready || !allowed || !profile?.userId) return;
+    if (!ready || !allowed) return;
     const channel = supabase
       .channel("schoolrise-support-notifications")
       .on("broadcast", { event: "new" }, () =>
@@ -83,7 +83,7 @@ export function SupportNotificationBell() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [allowed, profile?.userId, queryClient, ready]);
+  }, [allowed, queryClient, ready]);
 
   if (!allowed) return null;
   const rows = (notifications.data?.rows ?? []) as NotificationRow[];

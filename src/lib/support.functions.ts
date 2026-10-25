@@ -478,19 +478,36 @@ export const listSupportNotifications = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const profile = await resolveAccess(data.token);
     if (!canAny(profile, "view", "manage")) throw new Error("Support access is required.");
-    if (!profile.userId) return { rows: [], unreadCount: 0 };
     const db = (await academicDb(data.academicYear)) as any;
+    let recipientIds: string[] = profile.userId ? [profile.userId] : [];
+    // The legacy shared Administrator login has no app_users ID. For that
+    // session, show notifications delivered to active admin/support managers.
+    if (!profile.userId && profile.role === "admin") {
+      const usersDb = (await adminDb()) as any;
+      const { data: recipients, error: recipientsError } = await usersDb
+        .from("app_users")
+        .select("id,role,permissions")
+        .eq("is_active", true);
+      if (recipientsError) throw new Error("Unable to load support notification recipients.");
+      recipientIds = (recipients ?? [])
+        .filter((user: any) =>
+          String(user.role).toLowerCase() === "admin" ||
+          (Array.isArray(user.permissions?.support) && user.permissions.support.includes("manage")),
+        )
+        .map((user: any) => user.id as string);
+    }
+    if (!recipientIds.length) return { rows: [], unreadCount: 0 };
     const { data: rows, error } = await db
       .from("support_notifications")
       .select("id,ticket_id,type,message,read_at,created_at")
-      .eq("user_id", profile.userId)
+      .in("user_id", recipientIds)
       .order("created_at", { ascending: false })
       .limit(50);
     if (error) throw new Error("Unable to load support notifications.");
     const { count: unreadCount, error: unreadError } = await db
       .from("support_notifications")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", profile.userId)
+      .in("user_id", recipientIds)
       .is("read_at", null);
     if (unreadError) throw new Error("Unable to count support notifications.");
     const rawRows = (rows ?? []) as Array<Record<string, unknown>>;
@@ -533,14 +550,16 @@ export const markSupportNotificationRead = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => notificationIdSchema.parse(data))
   .handler(async ({ data }) => {
     const profile = await resolveAccess(data.token);
-    if (!canAny(profile, "view", "manage") || !profile.userId)
+    if (!canAny(profile, "view", "manage"))
       throw new Error("Support access is required.");
     const db = (await academicDb(data.academicYear)) as any;
-    const { error } = await db
+    let query = db
       .from("support_notifications")
       .update({ read_at: new Date().toISOString() })
-      .eq("id", data.id)
-      .eq("user_id", profile.userId);
+      .eq("id", data.id);
+    if (profile.userId) query = query.eq("user_id", profile.userId);
+    else if (profile.role !== "admin") throw new Error("Support access is required.");
+    const { error } = await query;
     if (error) throw new Error("Unable to mark notification as read.");
     return { ok: true };
   });
@@ -549,13 +568,29 @@ export const markAllSupportNotificationsRead = createServerFn({ method: "POST" }
   .inputValidator((data: unknown) => token.parse(data))
   .handler(async ({ data }) => {
     const profile = await resolveAccess(data.token);
-    if (!canAny(profile, "view", "manage") || !profile.userId)
+    if (!canAny(profile, "view", "manage"))
       throw new Error("Support access is required.");
     const db = (await academicDb(data.academicYear)) as any;
+    let recipientIds: string[] = profile.userId ? [profile.userId] : [];
+    if (!profile.userId && profile.role === "admin") {
+      const usersDb = (await adminDb()) as any;
+      const { data: recipients, error: recipientsError } = await usersDb
+        .from("app_users")
+        .select("id,role,permissions")
+        .eq("is_active", true);
+      if (recipientsError) throw new Error("Unable to load support notification recipients.");
+      recipientIds = (recipients ?? [])
+        .filter((user: any) =>
+          String(user.role).toLowerCase() === "admin" ||
+          (Array.isArray(user.permissions?.support) && user.permissions.support.includes("manage")),
+        )
+        .map((user: any) => user.id as string);
+    }
+    if (!recipientIds.length) return { ok: true };
     const { error } = await db
       .from("support_notifications")
       .update({ read_at: new Date().toISOString() })
-      .eq("user_id", profile.userId)
+      .in("user_id", recipientIds)
       .is("read_at", null);
     if (error) throw new Error("Unable to mark notifications as read.");
     return { ok: true };
