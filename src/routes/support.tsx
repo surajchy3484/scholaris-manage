@@ -108,7 +108,7 @@ function SupportPage() {
   const canRaise = can("support", "raise");
   const canManage = can("support", "manage");
   const [tab, setTab] = useState<"raise" | "mine" | "manage">(
-    canRaise ? "raise" : canManage ? "manage" : "mine",
+    canManage ? "manage" : canRaise ? "raise" : "mine",
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -396,7 +396,11 @@ function SupportPage() {
                               variant="destructive"
                               disabled={deleteM.isPending}
                               onClick={() => {
-                                if (window.confirm(`Delete ticket ${row.ticket_id} — "${row.subject}"? This permanently removes the ticket and its replies.`)) {
+                                if (
+                                  window.confirm(
+                                    `Delete ticket ${row.ticket_id} — "${row.subject}"? This permanently removes the ticket and its replies.`,
+                                  )
+                                ) {
                                   deleteM.mutate(row.id);
                                 }
                               }}
