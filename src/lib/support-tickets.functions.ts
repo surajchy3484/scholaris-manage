@@ -123,18 +123,20 @@ export const updateSupportTicketStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-
 export const deleteSupportTicket = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
-    z.object({
-      token,
-      id: z.string().uuid(),
-    }).parse(data),
+    z
+      .object({
+        token,
+        id: z.string().uuid(),
+      })
+      .parse(data),
   )
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const profile = await resolveAccess(data.token);
-    if (profile.role !== "admin") throw new Error("Only administrators can delete support tickets.");
-    const db = await adminDb();
+    if (profile.role !== "admin")
+      throw new Error("Only administrators can delete support tickets.");
+    const db = (await adminDb()) as any;
     const { error } = await db.from("support_tickets").delete().eq("id", data.id);
     if (error) {
       console.error("[support-tickets] delete failed", {
