@@ -153,27 +153,41 @@ export const createSupportTicket = createServerFn({ method: "POST" })
       new_value: row.status,
     });
     const usersDb = (await adminDb()) as any;
-    const { data: recipients } = await usersDb
+    const { data: recipients, error: recipientsError } = await usersDb
       .from("app_users")
       .select("id,role,permissions")
       .eq("is_active", true);
-    const recipientIds = (recipients ?? [])
-      .filter((user: any) => {
-        if (user.id === profile.userId) return false;
-        if (user.role === "admin") return true;
-        const supportActions = user.permissions?.support;
-        return Array.isArray(supportActions) && supportActions.includes("manage");
-      })
-      .map((user: any) => user.id);
-    if (recipientIds.length) {
-      await db.from("support_notifications").insert(
-        recipientIds.map((userId: string) => ({
-          user_id: userId,
-          ticket_id: row.id,
-          type: "new_ticket",
-          message: `${row.ticket_id}: ${row.subject}`,
-        })),
-      );
+    if (recipientsError) {
+      console.error("[support] unable to find ticket notification recipients", recipientsError);
+    } else {
+      const recipientIds = [...new Set(
+        (recipients ?? [])
+          .filter((user: any) => {
+            if (!user.id || user.id === profile.userId) return false;
+            if (String(user.role).toLowerCase() === "admin") return true;
+            const supportActions = user.permissions?.support;
+            return Array.isArray(supportActions) && supportActions.includes("manage");
+          })
+          .map((user: any) => user.id as string),
+      )];
+      if (recipientIds.length) {
+        const { error: notificationError } = await usersDb.from("support_notifications").insert(
+          recipientIds.map((userId: string) => ({
+            user_id: userId,
+            ticket_id: row.id,
+            type: "new_ticket",
+            message: `${row.ticket_id}: ${row.subject}`,
+          })),
+        );
+        if (notificationError) {
+          console.error("[support] unable to create new-ticket notifications", {
+            code: notificationError.code,
+            message: notificationError.message,
+          });
+        }
+      } else {
+        console.warn("[support] no active admin/support managers found for new ticket", row.ticket_id);
+      }
     }
     const files = data.attachments ?? [];
     for (const file of files) {
