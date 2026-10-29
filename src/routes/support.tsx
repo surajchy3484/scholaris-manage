@@ -738,9 +738,27 @@ function TicketDetails({
         <Badge variant="outline">{ticket.category}</Badge>
         {school && <Badge variant="outline">{school.name}</Badge>}
       </div>
-      <p className="mt-5 whitespace-pre-wrap rounded-xl bg-muted/30 p-4 text-sm">
-        {ticket.description}
-      </p>
+      <section className="mt-5 rounded-xl border bg-card p-4 sm:p-5">
+        <h3 className="mb-2 flex items-center gap-2 font-semibold">
+          <FileText className="h-4 w-4 text-primary" />
+          Issue Description
+        </h3>
+        {ticket.description?.trim() ? (
+          <p className="whitespace-pre-wrap break-words text-sm leading-6">
+            {ticket.description}
+          </p>
+        ) : (
+          <p className="text-sm italic text-muted-foreground">
+            No issue description was provided for this ticket.
+          </p>
+        )}
+        {(ticket.class || ticket.division) && (
+          <p className="mt-3 border-t pt-3 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Class / Division: </span>
+            {[ticket.class, ticket.division].filter(Boolean).join(" / ")}
+          </p>
+        )}
+      </section>
       {canManage && (
         <div className="mt-5 grid gap-3 rounded-xl border border-dashed p-4 md:grid-cols-3">
           <Field label="Status">
