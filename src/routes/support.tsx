@@ -714,6 +714,8 @@ function TicketDetails({
   const [message, setMessage] = useState("");
   const [internal, setInternal] = useState(false);
   const ticket = data.ticket;
+  const [selectedStatus, setSelectedStatus] = useState<TicketStatus>(ticket.status);
+  useEffect(() => setSelectedStatus(ticket.status), [ticket.id, ticket.status]);
   const school = schools.find((s) => s.id === ticket.school_id);
   return (
     <Card className="border-primary/30 p-5 sm:p-7">
@@ -744,11 +746,11 @@ function TicketDetails({
           <Field label="Status">
             <select
               className="h-10 rounded-md border bg-background px-3 text-sm"
-              value={ticket.status}
-              onChange={(e) => onUpdate({ status: e.target.value as TicketStatus })}
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value as TicketStatus)}
             >
               {statuses.map((v) => (
-                <option key={v}>{v}</option>
+                <option key={v} value={v}>{v}</option>
               ))}
             </select>
           </Field>
@@ -769,6 +771,15 @@ function TicketDetails({
               onBlur={(e) => e.target.value && onUpdate({ resolutionDetails: e.target.value })}
             />
           </Field>
+          <div className="flex items-end">
+            <Button
+              className="w-full"
+              disabled={pending || selectedStatus === ticket.status}
+              onClick={() => onUpdate({ status: selectedStatus })}
+            >
+              {pending ? "Saving…" : "Update Status"}
+            </Button>
+          </div>
         </div>
       )}
       <div className="mt-6 space-y-3">
