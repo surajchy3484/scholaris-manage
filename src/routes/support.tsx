@@ -714,6 +714,8 @@ function TicketDetails({
   const [message, setMessage] = useState("");
   const [internal, setInternal] = useState(false);
   const ticket = data.ticket;
+  const [selectedStatus, setSelectedStatus] = useState<TicketStatus>(ticket.status);
+  useEffect(() => setSelectedStatus(ticket.status), [ticket.id, ticket.status]);
   const school = schools.find((s) => s.id === ticket.school_id);
   return (
     <Card className="border-primary/30 p-5 sm:p-7">
@@ -736,19 +738,37 @@ function TicketDetails({
         <Badge variant="outline">{ticket.category}</Badge>
         {school && <Badge variant="outline">{school.name}</Badge>}
       </div>
-      <p className="mt-5 whitespace-pre-wrap rounded-xl bg-muted/30 p-4 text-sm">
-        {ticket.description}
-      </p>
+      <section className="mt-5 rounded-xl border bg-card p-4 sm:p-5">
+        <h3 className="mb-2 flex items-center gap-2 font-semibold">
+          <FileText className="h-4 w-4 text-primary" />
+          Issue Description
+        </h3>
+        {ticket.description?.trim() ? (
+          <p className="whitespace-pre-wrap break-words text-sm leading-6">
+            {ticket.description}
+          </p>
+        ) : (
+          <p className="text-sm italic text-muted-foreground">
+            No issue description was provided for this ticket.
+          </p>
+        )}
+        {(ticket.class || ticket.division) && (
+          <p className="mt-3 border-t pt-3 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Class / Division: </span>
+            {[ticket.class, ticket.division].filter(Boolean).join(" / ")}
+          </p>
+        )}
+      </section>
       {canManage && (
         <div className="mt-5 grid gap-3 rounded-xl border border-dashed p-4 md:grid-cols-3">
           <Field label="Status">
             <select
               className="h-10 rounded-md border bg-background px-3 text-sm"
-              value={ticket.status}
-              onChange={(e) => onUpdate({ status: e.target.value as TicketStatus })}
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value as TicketStatus)}
             >
               {statuses.map((v) => (
-                <option key={v}>{v}</option>
+                <option key={v} value={v}>{v}</option>
               ))}
             </select>
           </Field>
@@ -769,6 +789,15 @@ function TicketDetails({
               onBlur={(e) => e.target.value && onUpdate({ resolutionDetails: e.target.value })}
             />
           </Field>
+          <div className="flex items-end">
+            <Button
+              className="w-full"
+              disabled={pending || selectedStatus === ticket.status}
+              onClick={() => onUpdate({ status: selectedStatus })}
+            >
+              {pending ? "Saving…" : "Update Status"}
+            </Button>
+          </div>
         </div>
       )}
       <div className="mt-6 space-y-3">
