@@ -16,6 +16,7 @@ import { RequireModule } from "@/components/require-module";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -441,19 +442,17 @@ function SupportPage() {
           </Card>
         </>
       )}
-      {selected && (
-        <TicketDetails
-          data={selected}
-          schools={schoolsQ.data ?? []}
-          canManage={canManage}
-          onReply={(message, internal) =>
-            replyM.mutate({ id: selected.ticket.id, message, internal })
-          }
-          onUpdate={(patch) => updateM.mutate({ ...tokenData(), id: selected.ticket.id, ...patch })}
-          pending={replyM.isPending || updateM.isPending}
-          onClose={() => setSelectedId(null)}
-        />
-      )}
+      <Dialog open={!!selectedId} onOpenChange={(open) => { if (!open) setSelectedId(null); }}>
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Support Ticket Details</DialogTitle>
+            <DialogDescription>Review the reported issue, attachments, replies, and ticket history.</DialogDescription>
+          </DialogHeader>
+          {detailQ.isLoading && <p className="py-8 text-center text-sm text-muted-foreground">Loading ticket details…</p>}
+          {detailQ.isError && <p className="py-8 text-center text-sm text-destructive">Unable to load ticket details. Please close and try again.</p>}
+          {selected && <TicketDetails data={selected} schools={schoolsQ.data ?? []} canManage={canManage} onReply={(message, internal) => replyM.mutate({ id: selected.ticket.id, message, internal })} onUpdate={(patch) => updateM.mutate({ ...tokenData(), id: selected.ticket.id, ...patch })} pending={replyM.isPending || updateM.isPending} onClose={() => setSelectedId(null)} />}
+        </DialogContent>
+      </Dialog>
       {profile?.role !== "admin" && !canRaise && !can("support", "view") && (
         <Card className="p-8 text-center text-muted-foreground">
           Support permissions have not been granted to this account.
@@ -718,7 +717,7 @@ function TicketDetails({
   useEffect(() => setSelectedStatus(ticket.status), [ticket.id, ticket.status]);
   const school = schools.find((s) => s.id === ticket.school_id);
   return (
-    <Card className="border-primary/30 p-5 sm:p-7">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-mono text-xs text-muted-foreground">{ticket.ticket_id}</p>
@@ -728,9 +727,6 @@ function TicketDetails({
             {new Date(ticket.created_at).toLocaleString()}
           </p>
         </div>
-        <Button variant="outline" onClick={onClose}>
-          Close details
-        </Button>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <Badge variant={statusTone(ticket.status)}>{ticket.status}</Badge>
@@ -758,6 +754,15 @@ function TicketDetails({
             {[ticket.class, ticket.division].filter(Boolean).join(" / ")}
           </p>
         )}
+      </section>
+      <section className="mt-5 rounded-xl border p-4">
+        <h3 className="mb-3 flex items-center gap-2 font-semibold"><Paperclip className="h-4 w-4 text-primary" /> Attachments</h3>
+        {data.attachments?.length ? <div className="space-y-2">{data.attachments.map((file: any) => (
+          <div key={file.id || file.filename} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/40 p-3 text-sm">
+            <div className="min-w-0"><p className="break-all font-medium">{file.filename || file.name || "Attachment"}</p><p className="text-xs text-muted-foreground">{file.size_bytes ? (file.size_bytes / 1024).toFixed(1) + " KB" : file.content_type || ""}</p></div>
+            {file.url ? <a className="text-primary underline underline-offset-4" href={file.url} target="_blank" rel="noreferrer">Open / Download</a> : <span className="text-xs text-muted-foreground">Link unavailable</span>}
+          </div>
+        ))}</div> : <p className="text-sm text-muted-foreground">No attachments were uploaded with this ticket.</p>}
       </section>
       {canManage && (
         <div className="mt-5 grid gap-3 rounded-xl border border-dashed p-4 md:grid-cols-3">
