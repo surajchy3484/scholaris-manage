@@ -416,7 +416,7 @@ function QuestionsPage() {
         commit={async (valid, onProgress) => {
           for (let i = 0; i < valid.length; i += 500) {
             await saveBankQuestions(
-              valid.slice(i, i + 500).map(({ _row, errors, duplicate, ...q }) => q),
+              valid.slice(i, i + 500).map(({ _row, _file, errors, duplicate, ...q }) => q),
             );
             onProgress?.(Math.min(i + 500, valid.length));
           }
