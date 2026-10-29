@@ -872,6 +872,6 @@ function TicketDetails({
           ))}
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
