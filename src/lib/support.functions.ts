@@ -128,6 +128,7 @@ export const createSupportTicket = createServerFn({ method: "POST" })
         category: data.category,
         priority: data.priority,
         description: data.description,
+        status: "Open",
         creator_id: profile.userId,
         creator_name: profile.fullName || profile.username,
         creator_designation: profile.role,
