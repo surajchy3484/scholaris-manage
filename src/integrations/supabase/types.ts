@@ -1385,6 +1385,157 @@ export type Database = {
           },
         ]
       }
+      support_ticket_activity: {
+        Row: {
+          action: string
+          actor_id: string
+          actor_name: string
+          created_at: string
+          id: string
+          new_value: string | null
+          previous_value: string | null
+          ticket_id: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          actor_name?: string
+          created_at?: string
+          id?: string
+          new_value?: string | null
+          previous_value?: string | null
+          ticket_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          actor_name?: string
+          created_at?: string
+          id?: string
+          new_value?: string | null
+          previous_value?: string | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_activity_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_activity_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_attachments: {
+        Row: {
+          content_type: string
+          created_at: string
+          filename: string
+          id: string
+          reply_id: string | null
+          size_bytes: number
+          storage_path: string
+          ticket_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          filename: string
+          id?: string
+          reply_id?: string | null
+          size_bytes: number
+          storage_path: string
+          ticket_id: string
+          uploaded_by: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          filename?: string
+          id?: string
+          reply_id?: string | null
+          size_bytes?: number
+          storage_path?: string
+          ticket_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_attachments_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "support_ticket_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_attachments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_replies: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          sender_id: string
+          sender_name: string
+          ticket_id: string
+          visibility: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          sender_id: string
+          sender_name?: string
+          ticket_id: string
+          visibility?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          sender_id?: string
+          sender_name?: string
+          ticket_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_replies_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_replies_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_tickets: {
         Row: {
           academic_year: string
