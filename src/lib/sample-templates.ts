@@ -135,9 +135,33 @@ export const SESSION_SAMPLE = {
   fileName: "sessions-sample.xlsx",
   sheetName: "Sessions",
   rows: [
-    { "Session Name": "Introduction", Class: "Class 5", Topic: "Basics" },
-    { "Session Name": "Numbers", Class: "Class 5", Topic: "Number System" },
-    { "Session Name": "Addition", Class: "Class 5", Topic: "Addition" },
-    { "Session Name": "Fractions", Class: "Class 6", Topic: "Fractions" },
+    {
+      "Session Name": "Introduction",
+      Class: "Class 5",
+      Topic: "Basics",
+      Division: "A",
+      Status: "Pending",
+    },
+    {
+      "Session Name": "Numbers",
+      Class: "Class 5",
+      Topic: "Number System",
+      Division: "B",
+      Status: "Pending",
+    },
+    {
+      "Session Name": "Addition",
+      Class: "Class 5",
+      Topic: "Addition",
+      Division: "C",
+      Status: "Pending",
+    },
+    {
+      "Session Name": "Fractions",
+      Class: "Class 6",
+      Topic: "Fractions",
+      Division: "A",
+      Status: "Complete",
+    },
   ],
 };

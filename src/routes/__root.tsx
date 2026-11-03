@@ -1,3 +1,6 @@
+import { createQueryRefreshQueue, shouldPollQuery } from "@/lib/query-refresh";
+import { AcademicYearLabel, AcademicYearBoundary } from "@/components/academic-year-select";
+import { resetAcademicYear } from "@/lib/academic-year";
 import { getAccessToken } from "@/lib/app-access";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -9,7 +12,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { GraduationCap, ArrowLeft, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -30,6 +33,8 @@ import { Button } from "@/components/ui/button";
 import { logoutLocal, refreshProfileFromServer, useAuth } from "@/lib/auth";
 import { setupOffline } from "@/lib/pwa";
 import { BrandName } from "@/components/brand";
+import { SupportNotificationBell } from "@/components/support-notification-bell";
+import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -119,6 +124,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", type: "image/png", href: "/favicon.png" },
       { rel: "apple-touch-icon", href: "/icon-192.png" },
       { rel: "stylesheet", href: appCss },
 
@@ -189,12 +195,26 @@ function Header() {
         </div>
         <BrandName className="font-display font-bold" />
       </Link>
+      {pathname === "/" && (
+        <>
+          <img
+            src="/reap-logo-transparent.png"
+            alt="REAP"
+            className="hidden h-10 w-10 object-contain sm:block"
+          />
+          <span className="hidden text-xs font-semibold xl:block">
+            Reach Education Action Program
+          </span>
+        </>
+      )}
+      <AcademicYearLabel />
+      <SupportNotificationBell />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
             aria-label={`Open profile for ${displayName}`}
-            className="ml-auto flex items-center gap-2 rounded-full p-1.5 pr-2 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="flex items-center gap-2 rounded-full p-1.5 pr-2 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <Avatar className="h-8 w-8 border border-primary/20">
               <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
@@ -270,8 +290,10 @@ function AuthGate({ children }: { children: ReactNode }) {
     }
   }, [ready, isAuthed, onLogin, pathname, router]);
 
-  // Protected content stays hidden during SSR and until a local session is available.
-  if (!onLogin && (!ready || !isAuthed)) return null;
+  // Once we've hydrated and know the user is not signed in on a protected
+  // route, hide the content instantly (redirect is running). Before hydration
+  // we render children so the initial paint matches SSR.
+  if (ready && !isAuthed && !onLogin) return null;
   return <>{children}</>;
 }
 
@@ -282,19 +304,56 @@ function RootComponent() {
   useEffect(() => {
     if (!ready || !isAuthed) return;
 
-    // Custom app accounts do not have Supabase Auth sessions. Refresh through
-    // authorized server functions instead of subscribing as an anonymous user.
-    const refresh = () => {
-      if (document.visibilityState === "visible") {
-        void refreshProfileFromServer();
-        void queryClient.invalidateQueries();
-      }
-    };
-    const timer = window.setInterval(refresh, 60_000);
-    window.addEventListener("focus", refresh);
+    const refreshQueue = createQueryRefreshQueue(queryClient);
+    const tables = [
+      "app_users",
+      "assessments",
+      "attendance",
+      "clicker_records",
+      "exam_scores",
+      "questions",
+      "question_bank",
+      "exam_types",
+      "question_bank_migration_issues",
+      "school_clusters",
+      "school_divisions",
+      "schools",
+      "session_division_status",
+      "sessions",
+      "students",
+      "student_enrollments",
+      "academic_years",
+      "assessment_results",
+      "session_assignment_targets",
+      "session_catalogue",
+      "session_school_assignments",
+      "session_coverage_settings",
+      "class_session_plans",
+    ] as const;
+    const channel = tables.reduce(
+      (current, table) =>
+        current.on("postgres_changes", { event: "*", schema: "public", table }, () =>
+          refreshQueue.enqueue(table),
+        ),
+      supabase.channel("scholaris-shared-data"),
+    );
+    void channel.subscribe();
+
+    // Realtime may be unavailable on older deployments, so keep a quiet
+    // fallback that refreshes active queries for other users' changes.
+    const fallback = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      // Refresh visible data without invalidating every inactive sidebar page or
+      // cancelling requests already in flight during an import.
+      void queryClient.refetchQueries(
+        { type: "active", predicate: (q) => shouldPollQuery(q.queryKey) },
+        { cancelRefetch: false },
+      );
+    }, 60_000);
     return () => {
-      window.clearInterval(timer);
-      window.removeEventListener("focus", refresh);
+      window.clearInterval(fallback);
+      refreshQueue.dispose();
+      void supabase.removeChannel(channel);
     };
   }, [isAuthed, ready, queryClient]);
   useEffect(() => {
@@ -304,6 +363,7 @@ function RootComponent() {
       const reason = (event as CustomEvent<{ reason?: string }>).detail?.reason;
       if (reason === "login" || reason === "logout" || token !== previousToken) {
         previousToken = token;
+        resetAcademicYear();
         queryClient.clear();
       }
     };
@@ -313,6 +373,15 @@ function RootComponent() {
       window.removeEventListener("scholaris:auth", clearOnAccountChange);
       window.removeEventListener("storage", clearOnAccountChange);
     };
+  }, [queryClient]);
+  const [yearRevision, setYearRevision] = useState(0);
+  useEffect(() => {
+    const changed = () => {
+      queryClient.clear();
+      setYearRevision((v) => v + 1);
+    };
+    window.addEventListener("schoolrise:academic-year", changed);
+    return () => window.removeEventListener("schoolrise:academic-year", changed);
   }, [queryClient]);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const onLogin = pathname === "/login" || pathname.startsWith("/.lovable");
@@ -324,15 +393,17 @@ function RootComponent() {
             <Outlet />
           </div>
         ) : (
-          <SidebarProvider>
-            <AppSidebar />
-            <SidebarInset className="min-h-screen bg-background text-foreground">
-              <Header />
-              <main className="flex-1">
-                <Outlet />
-              </main>
-            </SidebarInset>
-          </SidebarProvider>
+          <AcademicYearBoundary>
+            <SidebarProvider key={yearRevision}>
+              <AppSidebar />
+              <SidebarInset className="min-h-screen bg-background text-foreground">
+                <Header />
+                <main className="flex-1">
+                  <Outlet />
+                </main>
+              </SidebarInset>
+            </SidebarProvider>
+          </AcademicYearBoundary>
         )}
       </AuthGate>
       <Toaster position="top-right" richColors />

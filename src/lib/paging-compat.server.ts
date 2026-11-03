@@ -175,7 +175,7 @@ export async function readWithoutPagingRpc(db: Db, name: string, args: Args): Pr
           (att === "atleast75" && (!row.attendance_recorded || Number(row.attendance_pct) < 75))
         )
           return false;
-        const value = args.p_exam === "IMF" ? row.mca : args.p_exam === "FCA" ? row.fca : row.ica;
+        const value = args.p_exam === "MCA" ? row.mca : args.p_exam === "FCA" ? row.fca : row.ica;
         if (
           (args.p_status === "recorded" && value === null) ||
           (args.p_status === "missing" && value !== null)

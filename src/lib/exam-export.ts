@@ -1,3 +1,4 @@
+import { getAcademicYear } from "./academic-year";
 import FileSaver from "file-saver";
 const { saveAs } = FileSaver;
 
@@ -34,7 +35,7 @@ function tableHtml(title: string, rows: Row[]) {
   tr:nth-child(even) td{background:#f7f8fc}
   @media print{@page{size:landscape;margin:12mm}}
 </style></head><body>
-<h1>${esc(title)}</h1>
+<h1>${esc(title)}</h1><p>Academic Year: ${esc(getAcademicYear() ?? "Current")}</p>
 <div class="sub">Generated ${new Date().toLocaleString()} · ${rows.length} records</div>
 <table><thead><tr>${cols.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead>
 <tbody>${rows

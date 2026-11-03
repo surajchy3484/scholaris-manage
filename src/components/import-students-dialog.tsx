@@ -1,9 +1,10 @@
+import { getAcademicYear } from "@/lib/academic-year";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Upload, Download, AlertCircle, CheckCircle2 } from "lucide-react";
 
-import { supabase } from "@/lib/private-data";
+import { supabase } from "@/lib/academic-data";
 import type { School } from "@/lib/types";
 import { importStudentBatch } from "@/lib/performance.functions";
 import { getAccessToken } from "@/lib/app-access";
@@ -128,6 +129,7 @@ export function ImportStudentsDialog({
               added += await importStudentBatch({
                 data: {
                   token: getAccessToken(),
+                  academicYear: getAcademicYear(),
                   schoolId: school.id,
                   rows: batch.map(({ name, class: klass, division, roll_number }) => ({
                     name,
@@ -154,6 +156,7 @@ export function ImportStudentsDialog({
     },
     onSuccess: (n) => {
       qc.invalidateQueries({ queryKey: ["students"] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
       toast.success(`Imported ${n} students`);
       reset();
@@ -162,6 +165,7 @@ export function ImportStudentsDialog({
     onError: (e: Error) => toast.error(e.message),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["students"] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
     },
   });

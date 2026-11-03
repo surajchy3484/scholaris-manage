@@ -1,9 +1,18 @@
+import { getAcademicYear } from "@/lib/academic-year";
 import { getAccessToken } from "./app-access";
 import {
+  listSessionSchools,
+  listSessionRoster,
   deleteSessions,
   insertSessions,
   listDivisionSessions,
   listSessions,
+  listAssignmentContext,
+  previewClassAssignment,
+  applyClassAssignment,
+  overrideAssignmentTarget,
+  applySchoolAssignment,
+  importSessionsToEligibleSchools,
   sessionUnitCounts,
   setDivisionStatus,
   updateSessions,
@@ -90,6 +99,7 @@ export async function fetchSessions(
   const rows = await listSessions({
     data: {
       token: getAccessToken(),
+      academicYear: getAcademicYear(),
       ...(schoolId ? { schoolId } : {}),
       ...(opts?.unit ? { unit: opts.unit } : {}),
       ...(opts?.klass ? { class: opts.klass } : {}),
@@ -107,6 +117,7 @@ export async function fetchDivisionSessions(args: {
   const rows = await listDivisionSessions({
     data: {
       token: getAccessToken(),
+      academicYear: getAcademicYear(),
       schoolId: args.schoolId,
       unit: args.unit,
       class: args.klass,
@@ -117,15 +128,46 @@ export async function fetchDivisionSessions(args: {
 }
 
 export async function fetchUnitCounts(schoolId: string) {
-  return sessionUnitCounts({ data: { token: getAccessToken(), schoolId } });
+  return sessionUnitCounts({
+    data: { token: getAccessToken(), academicYear: getAcademicYear(), schoolId },
+  });
 }
 
 export async function createSessions(rows: NewSession[]) {
-  return insertSessions({ data: { token: getAccessToken(), rows } });
+  return insertSessions({
+    data: { token: getAccessToken(), academicYear: getAcademicYear(), rows },
+  });
+}
+
+export async function importSessionsForSchools(args: {
+  academicYear: string;
+  unit: Unit;
+  schoolIds?: string[];
+  updateExisting?: boolean;
+  rows: {
+    class: string;
+    session_name: string;
+    topic: string;
+    division: string;
+    status: SessionStatus;
+  }[];
+}) {
+  return importSessionsToEligibleSchools({
+    data: {
+      token: getAccessToken(),
+      academicYear: args.academicYear,
+      unit: args.unit,
+      ...(args.schoolIds?.length ? { schoolIds: args.schoolIds } : {}),
+      updateExisting: args.updateExisting ?? false,
+      rows: args.rows,
+    },
+  });
 }
 
 export async function patchSessions(ids: string[], patch: Partial<NewSession>) {
-  return updateSessions({ data: { token: getAccessToken(), ids, patch } });
+  return updateSessions({
+    data: { token: getAccessToken(), academicYear: getAcademicYear(), ids, patch },
+  });
 }
 
 export async function setSessionStatus(args: {
@@ -139,6 +181,7 @@ export async function setSessionStatus(args: {
   return setDivisionStatus({
     data: {
       token: getAccessToken(),
+      academicYear: getAcademicYear(),
       schoolId: args.schoolId,
       unit: args.unit,
       class: args.klass,
@@ -150,7 +193,9 @@ export async function setSessionStatus(args: {
 }
 
 export async function removeSessions(ids: string[]) {
-  return deleteSessions({ data: { token: getAccessToken(), ids } });
+  return deleteSessions({
+    data: { token: getAccessToken(), academicYear: getAcademicYear(), ids },
+  });
 }
 
 /** Completed ÷ total × 100, rounded to a whole percent. */
@@ -164,3 +209,81 @@ export function unitProgress(rows: { status: SessionStatus }[]) {
     percent: total ? Math.round((complete / total) * 100) : 0,
   };
 }
+
+export const fetchSessionSchools = () =>
+  listSessionSchools({ data: { token: getAccessToken(), academicYear: getAcademicYear() } });
+export const fetchSessionRoster = (schoolId: string) =>
+  listSessionRoster({
+    data: { token: getAccessToken(), academicYear: getAcademicYear(), schoolId },
+  });
+
+export const fetchAssignmentContext = () =>
+  listAssignmentContext({ data: { token: getAccessToken(), academicYear: getAcademicYear() } });
+export const previewClassPlan = (args: {
+  academicYear: string;
+  unit: Unit;
+  klass: string;
+  sessionCount: number;
+}) =>
+  previewClassAssignment({
+    data: {
+      token: getAccessToken(),
+      academicYear: args.academicYear,
+      unit: args.unit,
+      class: args.klass,
+      sessionCount: args.sessionCount,
+    },
+  });
+export const applyClassPlan = (args: {
+  academicYear: string;
+  unit: Unit;
+  klass: string;
+  sessionCount: number;
+}) =>
+  applyClassAssignment({
+    data: {
+      token: getAccessToken(),
+      academicYear: args.academicYear,
+      unit: args.unit,
+      class: args.klass,
+      sessionCount: args.sessionCount,
+    },
+  });
+export const overrideClassPlan = (args: {
+  academicYear: string;
+  schoolId: string;
+  unit: Unit;
+  klass: string;
+  division?: string;
+  sessionCount: number;
+}) =>
+  overrideAssignmentTarget({
+    data: {
+      token: getAccessToken(),
+      academicYear: args.academicYear,
+      schoolId: args.schoolId,
+      unit: args.unit,
+      class: args.klass,
+      division: args.division ?? "",
+      sessionCount: args.sessionCount,
+    },
+  });
+export const applySchoolPlan = (args: {
+  academicYear: string;
+  schoolId: string;
+  unit: Unit;
+  klass: string;
+  division?: string;
+  sessionCount: number;
+}) =>
+  applySchoolAssignment({
+    data: {
+      token: getAccessToken(),
+      academicYear: args.academicYear,
+      schoolId: args.schoolId,
+      unit: args.unit,
+      class: args.klass,
+      division: args.division ?? "",
+      sessionCount: args.sessionCount,
+    },
+  });

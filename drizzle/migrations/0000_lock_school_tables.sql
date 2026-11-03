@@ -1,0 +1,10 @@
+DROP POLICY IF EXISTS "public schools all" ON public.schools;
+DROP POLICY IF EXISTS "public students all" ON public.students;
+DROP POLICY IF EXISTS "public attendance all" ON public.attendance;
+DROP POLICY IF EXISTS "Public can manage school divisions" ON public.school_divisions;
+REVOKE ALL ON public.schools, public.students, public.attendance, public.school_divisions FROM anon, authenticated;
+GRANT ALL ON public.schools, public.students, public.attendance, public.school_divisions TO service_role;
+CREATE POLICY "schools service role only" ON public.schools FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "students service role only" ON public.students FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "attendance service role only" ON public.attendance FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "school_divisions service role only" ON public.school_divisions FOR ALL TO service_role USING (true) WITH CHECK (true);

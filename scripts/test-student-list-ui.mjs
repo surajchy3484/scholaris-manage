@@ -48,7 +48,7 @@ for (const heading of [
   "Division / Section",
   "Attendance",
   "ICA",
-  "IMF",
+  "MCA",
   "FCA",
 ])
   assert.ok(html.includes(heading));
@@ -56,7 +56,7 @@ assert.ok(html.includes("View Test Student"));
 assert.ok(!html.includes("Edit Test Student"));
 assert.ok(!html.includes("Delete Test Student"));
 assert.ok(html.includes("overflow-auto"));
-assert.ok(html.includes(">0</td>"));
+assert.ok(html.includes(">0%</td>"));
 assert.ok(html.includes(">—</td>"));
 html = renderToStaticMarkup(React.createElement(StudentListTable, { ...props, onEdit: () => {} }));
 assert.ok(html.includes("Edit Test Student"));

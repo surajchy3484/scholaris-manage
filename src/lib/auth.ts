@@ -18,8 +18,7 @@ function readSession(): Session | null {
   const raw = localStorage.getItem(KEY) ?? sessionStorage.getItem(KEY);
   if (!raw) return null;
   try {
-    const session = JSON.parse(raw) as Session;
-    return session.profile?.userId ? session : null;
+    return JSON.parse(raw) as Session;
   } catch {
     return null;
   }
@@ -27,8 +26,6 @@ function readSession(): Session | null {
 
 /** Persist a signed-in account (token comes from the appLogin server function). */
 export function loginWithProfile(profile: AccessProfile, token: string, remember: boolean) {
-  localStorage.removeItem(KEY);
-  sessionStorage.removeItem(KEY);
   const session: Session = { user: profile.username, remember, profile };
   const store = remember ? localStorage : sessionStorage;
   store.setItem(KEY, JSON.stringify(session));
@@ -65,8 +62,14 @@ export async function refreshProfileFromServer() {
     const { getAccessToken } = await import("@/lib/app-access");
     const profile = await currentProfile({ data: { token: getAccessToken() } });
     updateStoredProfile(profile);
-  } catch {
-    logoutLocal();
+  } catch (error) {
+    // The server rejected the session (expired, disabled, or the password
+    // changed): sign out locally so the user is sent back to the login page.
+    const message = error instanceof Error ? error.message : "";
+    if (/session expired|unauthorized|disabled/i.test(message)) {
+      logoutLocal();
+    }
+    // Otherwise (offline etc.) keep whatever we have; server calls will fail loudly.
   }
 }
 
@@ -94,10 +97,11 @@ export function useAuth() {
     session,
     profile,
     isAuthed: !!session,
-    isAdmin: profile?.role === "admin",
+    isAdmin: profile ? profile.role === "admin" : !!session && !profile,
     ready,
-    /** Cached profiles control presentation only; the server checks every request. */
-    can: (module: AppModule, action: AppAction = "view") => canDo(profile, module, action),
-    canSeeSchool: (schoolId: string) => canSeeSchoolFor(profile, schoolId),
+    /** Older sessions predate profiles, so treat them as full admins. */
+    can: (module: AppModule, action: AppAction = "view") =>
+      profile ? canDo(profile, module, action) : !!session,
+    canSeeSchool: (schoolId: string) => (profile ? canSeeSchoolFor(profile, schoolId) : !!session),
   };
 }

@@ -99,6 +99,7 @@ export const listUniversalQuestions = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     token
       .extend({
+        academicYear: z.string().max(80).optional(),
         examType: z.string().max(80).default(""),
         className: z.string().max(40).default(""),
       })
@@ -106,7 +107,7 @@ export const listUniversalQuestions = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     await requirePermission(data.token, "questions", "view");
-    const db = await adminDb();
+    const db = await adminDb(data.academicYear);
     try {
       return await fetchAllRows((from, to) => {
         let q = db
@@ -158,6 +159,7 @@ export const writeUniversalQuestions = createServerFn({ method: "POST" })
   .validator((d: unknown) =>
     token
       .extend({
+        academicYear: z.string().max(80).optional(),
         mode: z.enum(["insert", "update", "delete"]),
         rows: z.array(z.record(z.unknown())).max(500),
         ids: z.array(z.string().uuid()).max(500),
@@ -170,7 +172,7 @@ export const writeUniversalQuestions = createServerFn({ method: "POST" })
       "questions",
       data.mode === "insert" ? "add" : data.mode === "update" ? "edit" : "delete",
     );
-    const db = await adminDb();
+    const db = await adminDb(data.academicYear);
     if (data.mode === "delete") {
       const r = await db.from("question_bank").delete().in("id", data.ids);
       if (r.error) {

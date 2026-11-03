@@ -1,3 +1,5 @@
+import { refreshStudentDeletionQueries } from "@/lib/query-refresh";
+import { getAcademicYear } from "@/lib/academic-year";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -11,7 +13,7 @@ import {
 import { useDebounced } from "@/hooks/use-master-page";
 import { EMPTY_SCORE_FILTERS, type ScoreFilters, type StudentListRow } from "@/lib/student-list";
 import { StudentListTable, StudentScoreFilters } from "@/components/student-list";
-import { supabase } from "@/lib/private-data";
+import { supabase } from "@/lib/academic-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -78,12 +80,27 @@ export function StudentReportList({
   const list = useQuery({
     queryKey: ["students", schoolId, "report-list", args, page],
     queryFn: () =>
-      listStudentDetails({ data: { token: getAccessToken(), ...args, page, pageSize: 50 } }),
+      listStudentDetails({
+        data: {
+          token: getAccessToken(),
+          academicYear: getAcademicYear(),
+          ...args,
+          page,
+          pageSize: 50,
+        },
+      }),
   });
   const facets = useQuery({
     queryKey: ["students", schoolId, "report-facets"],
     queryFn: () =>
-      studentFacets({ data: { token: getAccessToken(), schoolId, module: "exam_report" } }),
+      studentFacets({
+        data: {
+          token: getAccessToken(),
+          academicYear: getAcademicYear(),
+          schoolId,
+          module: "exam_report",
+        },
+      }),
   });
   const school = useQuery({
     queryKey: ["school", schoolId],
@@ -104,7 +121,13 @@ export function StudentReportList({
     const result: StudentListRow[] = [];
     for (let page = 0; ; page++) {
       const part = await listStudentDetails({
-        data: { token: getAccessToken(), ...args, page, pageSize: 250 },
+        data: {
+          token: getAccessToken(),
+          academicYear: getAcademicYear(),
+          ...args,
+          page,
+          pageSize: 250,
+        },
       });
       result.push(...part.rows);
       if (part.rows.length < 250 || result.length >= part.total) break;
@@ -134,6 +157,7 @@ export function StudentReportList({
         await deleteStudentDetails({
           data: {
             token: getAccessToken(),
+            academicYear: getAcademicYear(),
             module: "exam_report",
             schoolId,
             ids: items.slice(start, start + 250).map((r) => r.id),
@@ -143,6 +167,7 @@ export function StudentReportList({
     onSuccess: () => {
       setSelected([]);
       setDeleting(null);
+      void refreshStudentDeletionQueries(qc);
       toast.success("Students deleted");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -170,7 +195,7 @@ export function StudentReportList({
         "Roll No.": r.roll_number,
         Attendance: r.attendance_recorded ? r.attendance_pct : "",
         ICA: r.ica ?? "",
-        IMF: r.mca ?? "",
+        MCA: r.mca ?? "",
         FCA: r.fca ?? "",
         Photo: r.photo_url ?? "",
         "School Name": r.school_name,
@@ -356,8 +381,8 @@ export function StudentReportList({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {deleting?.length} student(s)?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes the selected students and related records. This cannot be
-              undone.
+              This permanently removes the selected students, enrollments, attendance, Clicker data
+              and results across all academic years. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

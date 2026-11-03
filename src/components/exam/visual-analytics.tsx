@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
+import { getAcademicYear } from "@/lib/academic-year";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAssessments, fetchClickerRecords, fetchQuestions } from "@/lib/master";
+import { loadReportAnalytics } from "@/lib/report-analytics.functions";
+import { getAccessToken } from "@/lib/app-access";
 import { fetchDivisionSessions, UNITS } from "@/lib/sessions";
 import {
   buildAnalyticsView,
@@ -15,7 +17,7 @@ import type { StudentReport } from "@/lib/exam";
 
 type Props = {
   students: StudentReport[];
-  schools: { id: string; name: string; code: string }[];
+  schools: { id: string; name: string; code: string; location?: string | null }[];
   schoolId: string;
   schoolName: string;
   classKey: string;
@@ -27,24 +29,25 @@ export function useVisualAnalytics(props: Props) {
   const [remarks, setRemarks] = useState("");
   const [focusStudent, setFocusStudent] = useState("");
   const allSchools = props.mode === "school" && props.schoolId === "all";
-  const active =
-    allSchools || (["class", "school", "student"].includes(props.mode) && props.schoolId !== "all");
-  const query = useQuery({
-    queryKey: ["visual-analytics-source"],
-    enabled: active,
-    queryFn: async () => {
-      const [assessments, questions, records] = await Promise.all([
-        fetchAssessments(),
-        fetchQuestions(),
-        fetchClickerRecords(),
-      ]);
-      return { assessments, questions, records };
-    },
-    staleTime: 60_000,
-  });
   const selectedStudent = props.students.find(
-    (s) => s.id === props.studentId && s.school_id === props.schoolId,
+    (s) => s.id === props.studentId && (props.schoolId === "all" || s.school_id === props.schoolId),
   );
+  const effectiveSchoolId =
+    props.mode === "student" && selectedStudent ? selectedStudent.school_id : props.schoolId;
+  const active =
+    allSchools ||
+    (["class", "school", "student"].includes(props.mode) && effectiveSchoolId !== "all");
+  const query = useQuery({
+    queryKey: ["visual-analytics-source", getAccessToken(), getAcademicYear(), effectiveSchoolId],
+    enabled: active,
+    queryFn: () => loadReportAnalytics({ data: {
+      token: getAccessToken(), academicYear: getAcademicYear(), schoolId: effectiveSchoolId,
+    }}),
+    staleTime: 5 * 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
   const effectiveClass =
     props.mode === "school"
       ? "all"
@@ -53,13 +56,13 @@ export function useVisualAnalytics(props: Props) {
         : props.classKey;
   const [klass, division] = effectiveClass.split("|");
   const sessions = useQuery({
-    queryKey: ["visual-analytics-sessions", props.schoolId, effectiveClass],
+    queryKey: ["visual-analytics-sessions", getAccessToken(), getAcademicYear(), effectiveSchoolId, effectiveClass],
     enabled: active && effectiveClass !== "all",
     queryFn: async () =>
       Promise.all(
         UNITS.map(async (unit) => {
           const rows = await fetchDivisionSessions({
-            schoolId: props.schoolId,
+            schoolId: effectiveSchoolId,
             klass,
             division,
             unit,
@@ -71,7 +74,9 @@ export function useVisualAnalytics(props: Props) {
           };
         }),
       ),
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
   const prepared = useMemo(
     () =>
@@ -94,31 +99,36 @@ export function useVisualAnalytics(props: Props) {
       prepared
         ? buildAnalyticsView(
             prepared,
-            props.schoolId,
+            effectiveSchoolId,
             props.mode === "school" ? "all" : effectiveClass,
             props.mode === "student" ? props.studentId : "",
           )
         : null,
-    [prepared, props.schoolId, props.mode, effectiveClass, props.studentId],
+    [prepared, effectiveSchoolId, props.mode, effectiveClass, props.studentId],
   );
   const validFocus = exportView?.students.some((s) => s.id === focusStudent) ? focusStudent : "";
   const screenView = useMemo(
     () =>
       prepared && validFocus && props.mode !== "student"
-        ? buildAnalyticsView(prepared, props.schoolId, effectiveClass, validFocus)
+        ? buildAnalyticsView(prepared, effectiveSchoolId, effectiveClass, validFocus)
         : exportView,
-    [prepared, props.schoolId, props.mode, effectiveClass, validFocus, exportView],
+    [prepared, effectiveSchoolId, props.mode, effectiveClass, validFocus, exportView],
   );
   const ready =
     active &&
     !!exportView &&
+    !query.isError &&
     validThresholds(thresholds) &&
     !query.isFetching &&
     !(effectiveClass !== "all" && sessions.isFetching) &&
     (props.mode !== "class" || effectiveClass !== "all") &&
     (props.mode !== "student" || !!selectedStudent);
+  const reportSchool = props.schools.find((s) => s.id === effectiveSchoolId);
   const options = {
-    school: props.schoolName,
+    academicYear: getAcademicYear() ?? undefined,
+    schoolCode: reportSchool?.code,
+    location: reportSchool?.location ?? undefined,
+    school: props.schools.find((s) => s.id === effectiveSchoolId)?.name || props.schoolName,
     classLabel:
       props.mode === "school" || effectiveClass === "all"
         ? "All classes"
@@ -130,14 +140,16 @@ export function useVisualAnalytics(props: Props) {
       ? "Session progress unavailable. Check your Session Status access and retry."
       : sessions.isFetching
         ? "Loading session progress…"
-        : "Select a class and section to view session progress.",
+        : props.mode === "school"
+          ? "School-wide session totals are not included in this assessment report. Select a class and section to review delivery context."
+          : "Select a class and section to view session progress.",
     student: props.mode === "student",
     excluded: prepared?.excluded ?? 0,
     duplicates: prepared?.duplicates ?? 0,
   };
   const html =
     ready && allSchools
-      ? schoolPerformanceReport(schoolComparison, thresholds, remarks)
+      ? schoolPerformanceReport(schoolComparison, thresholds, remarks, options)
       : ready && exportView
         ? analyticsReport(exportView, options)
         : "";
@@ -222,8 +234,7 @@ export function VisualAnalytics({
           {a.query.isError && (
             <div role="alert">
               <p>
-                Analytics could not load. Access to Assessment Master, Question Master, and Clicker
-                Data is required.
+                Analytics could not load. {a.query.error instanceof Error ? a.query.error.message : "Please retry."}
               </p>
               <button type="button" className="underline" onClick={() => a.query.refetch()}>
                 Retry analytics

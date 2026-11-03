@@ -1,3 +1,4 @@
+import { getAcademicYear } from "@/lib/academic-year";
 import { getAccessToken } from "./app-access";
 import {
   deleteMasterRows,
@@ -19,6 +20,15 @@ export const ASSESSMENT_STATUS_OPTIONS = ["Draft", "Scheduled", "Active", "Compl
 export const ANSWER_OPTIONS = ["A", "B", "C", "D"] as const;
 
 export type Assessment = {
+  preserved_context?: {
+    school_id?: string | null;
+    class?: string | null;
+    section?: string | null;
+    exam_type?: string | null;
+    academic_year?: string | null;
+  } | null;
+  question_set_version_id?: string | null;
+  question_snapshot?: Question[] | null;
   id: string;
   assessment_id: string;
   exam_type: string;
@@ -58,6 +68,7 @@ export type Question = {
 };
 
 export type ClickerRecord = {
+  academic_year?: string | null;
   exam_type?: string | null;
   total_questions?: number | null;
   attempted_questions?: number | null;
@@ -95,11 +106,35 @@ export type ClickerMetrics = {
 export type MasterTable = "assessments" | "questions" | "clicker_records" | "assessment_results";
 
 async function listRows(table: MasterTable, assessmentId?: string) {
-  return listMasterRows({ data: { token: getAccessToken(), table, assessmentId } });
+  return listMasterRows({
+    data: { token: getAccessToken(), academicYear: getAcademicYear(), table, assessmentId },
+  });
 }
 
 export async function fetchAssessments(): Promise<Assessment[]> {
   return (await listRows("assessments")) as Assessment[];
+}
+
+/** Original assessment context for Clicker entry and historical reports. */
+export async function fetchEvaluationAssessments(): Promise<Assessment[]> {
+  try {
+    return (await listMasterRows({
+      data: {
+        token: getAccessToken(),
+        academicYear: getAcademicYear(),
+        table: "assessments",
+        evaluationContext: true,
+      },
+    })) as Assessment[];
+  } catch (error) {
+    // Older deployments may not have the preserved-context view yet. The
+    // current Assessment Master row is still sufficient to build analytics;
+    // preserve the view automatically once its migration is applied.
+    const message = error instanceof Error ? error.message : String(error);
+    if (!/assessment_evaluation_context|relation .* does not exist|PGRST/i.test(message))
+      throw error;
+    return fetchAssessments();
+  }
 }
 
 export async function fetchQuestions(assessmentId?: string): Promise<Question[]> {
@@ -122,9 +157,12 @@ export async function insertRows(
   rows: Record<string, unknown>[],
   chunk = 500,
 ): Promise<number> {
+  chunk = Math.max(1, Math.min(chunk, table === "clicker_records" ? 25 : 500));
   const token = getAccessToken();
   for (let i = 0; i < rows.length; i += chunk) {
-    await insertMasterRows({ data: { token, table, rows: rows.slice(i, i + chunk) } });
+    await insertMasterRows({
+      data: { token, academicYear: getAcademicYear(), table, rows: rows.slice(i, i + chunk) },
+    });
   }
   return rows.length;
 }
@@ -137,11 +175,13 @@ export async function updateRowsByIds(
 ): Promise<void> {
   const token = getAccessToken();
   for (let i = 0; i < ids.length; i += chunk) {
-    await updateMasterRows({ data: { token, table, ids: ids.slice(i, i + chunk), patch } });
+    await updateMasterRows({
+      data: { token, academicYear: getAcademicYear(), table, ids: ids.slice(i, i + chunk), patch },
+    });
   }
 }
 
-/** Next free assessment code, e.g. ASM-0007. */
+/** Next free assessment code, e.g. ASM-0007. Keeps the plain ASM-0001 format. */
 export function nextAssessmentCode(existing: Assessment[]): string {
   let max = 0;
   for (const a of existing) {
@@ -158,8 +198,14 @@ export async function deleteRowsByIds(
   chunk = 200,
 ): Promise<number> {
   const token = getAccessToken();
-  for (let i = 0; i < ids.length; i += chunk) {
-    await deleteMasterRows({ data: { token, table, ids: ids.slice(i, i + chunk) } });
+  // Clicker deletion also recalculates rankings and synchronized results.
+  // Keep each transaction short so a large selection cannot hit the hosted
+  // database statement timeout while holding the Clicker table lock.
+  const batchSize = table === "clicker_records" ? Math.min(chunk, 25) : chunk;
+  for (let i = 0; i < ids.length; i += batchSize) {
+    await deleteMasterRows({
+      data: { token, academicYear: getAcademicYear(), table, ids: ids.slice(i, i + batchSize) },
+    });
   }
   return ids.length;
 }

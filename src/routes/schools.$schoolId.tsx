@@ -1,3 +1,5 @@
+import { refreshStudentDeletionQueries } from "@/lib/query-refresh";
+import { getAcademicYear } from "@/lib/academic-year";
 import { useDebounced } from "@/hooks/use-master-page";
 import {
   listStudentDetails,
@@ -31,7 +33,7 @@ import {
 } from "lucide-react";
 import { EditSchoolDialog } from "@/components/add-school-dialog";
 
-import { supabase } from "@/lib/private-data";
+import { supabase } from "@/lib/academic-data";
 import type { School, Student, AttendanceRecord } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -148,7 +150,10 @@ function SchoolDetail() {
 
   const facets = useQuery({
     queryKey: ["students", schoolId, "facets"],
-    queryFn: () => studentFacets({ data: { token: getAccessToken(), schoolId } }),
+    queryFn: () =>
+      studentFacets({
+        data: { token: getAccessToken(), academicYear: getAcademicYear(), schoolId },
+      }),
   });
   const pageQuery = useQuery({
     queryKey: [
@@ -166,6 +171,7 @@ function SchoolDetail() {
       listStudentDetails({
         data: {
           token: getAccessToken(),
+          academicYear: getAcademicYear(),
           module: "students",
           ...scoreArgs,
           schoolId,
@@ -200,13 +206,21 @@ function SchoolDetail() {
   const del = useMutation({
     mutationFn: async (id: string) => {
       await deleteStudentDetails({
-        data: { token: getAccessToken(), module: "students", schoolId, ids: [id] },
+        data: {
+          token: getAccessToken(),
+          academicYear: getAcademicYear(),
+          module: "students",
+          schoolId,
+          ids: [id],
+        },
       });
     },
     onSuccess: (_data, id) => {
       setSelectedIds((current) => current.filter((selectedId) => selectedId !== id));
       qc.invalidateQueries({ queryKey: ["students", schoolId] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
+      void refreshStudentDeletionQueries(qc);
       toast.success("Student deleted");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -218,6 +232,7 @@ function SchoolDetail() {
         await deleteStudentDetails({
           data: {
             token: getAccessToken(),
+            academicYear: getAcademicYear(),
             module: "students",
             schoolId,
             ids: ids.slice(offset, offset + 250),
@@ -229,12 +244,15 @@ function SchoolDetail() {
       setSelectedIds([]);
       setBulkDeleteOpen(false);
       qc.invalidateQueries({ queryKey: ["students", schoolId] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
+      void refreshStudentDeletionQueries(qc);
       toast.success("Selected students deleted");
     },
     onError: (e: Error) => toast.error(e.message),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["students", schoolId] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
     },
   });
@@ -251,6 +269,7 @@ function SchoolDetail() {
         await updateStudentGrouping({
           data: {
             token: getAccessToken(),
+            academicYear: getAcademicYear(),
             schoolId,
             ids: ids.slice(offset, offset + 250),
             values: payload,
@@ -265,11 +284,13 @@ function SchoolDetail() {
       setMoveDivision("");
       setMoveRoll("");
       qc.invalidateQueries({ queryKey: ["students", schoolId] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       toast.success("Student details updated");
     },
     onError: (e: Error) => toast.error(e.message),
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["students", schoolId] });
+      qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
     },
   });
@@ -324,6 +345,7 @@ function SchoolDetail() {
         const result = await listStudentDetails({
           data: {
             token: getAccessToken(),
+            academicYear: getAcademicYear(),
             module: "students",
             ...scoreFilters,
             min: scoreFilters.min === "" ? null : Number(scoreFilters.min),
@@ -416,7 +438,7 @@ function SchoolDetail() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
       <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2">
-        <Link to="/">
+        <Link to="/school-dashboard">
           <ArrowLeft className="h-4 w-4" />
           All schools
         </Link>
@@ -653,7 +675,7 @@ function SchoolDetail() {
             onDelete={
               canDelete
                 ? (row) => {
-                    if (window.confirm(`Delete ${row.name}? This cannot be undone.`))
+                    if (window.confirm(`Permanently delete ${row.name} and their enrollments, attendance, Clicker data and results across all academic years? This cannot be undone.`))
                       del.mutate(row.id);
                   }
                 : undefined
@@ -751,7 +773,7 @@ function SchoolDetail() {
               {filterClass !== "all" && filterDiv !== "all"
                 ? ` from Class ${filterClass} · Division ${filterDiv}`
                 : " from this school"}
-              . This action cannot be undone.
+              . Their enrollments, attendance, Clicker data and results across all academic years will also be removed. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

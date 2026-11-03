@@ -40,7 +40,7 @@ export function StudentScoreFilters({
           value={value.exam}
           onChange={(e) => onChange({ ...value, exam: e.target.value as ScoreFilters["exam"] })}
         >
-          {["ICA", "IMF", "FCA"].map((x) => (
+          {["ICA", "MCA", "FCA"].map((x) => (
             <option key={x}>{x}</option>
           ))}
         </select>
@@ -144,7 +144,7 @@ export function StudentListTable({
     >
       <table className="w-full min-w-[1050px] text-left text-sm">
         <caption className="sr-only">
-          Student details. IMF displays the existing MCA/IMF assessment score.
+          Student details. MCA displays the middle-assessment score, including legacy records.
         </caption>
         <thead className="sticky top-0 z-10 bg-muted">
           <tr>
@@ -158,7 +158,7 @@ export function StudentListTable({
               "Roll No.",
               "Attendance",
               "ICA",
-              "IMF",
+              "MCA",
               "FCA",
               "Actions",
             ].map((h) => (
@@ -229,7 +229,7 @@ export function StudentListTable({
                 </td>
                 {[row.ica, row.mca, row.fca].map((v, i) => (
                   <td key={i} className="px-3 py-2 tabular-nums">
-                    {v ?? "—"}
+                    {v == null ? "—" : i === 0 ? `${v}%` : v}
                   </td>
                 ))}
                 <td className="px-3 py-2">

@@ -1,3 +1,5 @@
+import { masterPageQueryOptions } from "@/lib/master-page-query";
+import { getAcademicYear } from "@/lib/academic-year";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getAccessToken } from "@/lib/app-access";
@@ -67,13 +69,7 @@ export function useMasterPage<T>(
       team,
     ],
   );
-  const query = useQuery({
-    queryKey: [table === "clicker_records" ? "clicker" : table, "page", args],
-    queryFn: () =>
-      listMasterPage({ data: { token: getAccessToken(), table, ...args } }) as Promise<
-        PageResult<T>
-      >,
-  });
+  const query = useQuery(masterPageQueryOptions<T>(table, args));
   useEffect(() => {
     if (query.data && request.page > 0 && request.page * request.pageSize >= query.data.total)
       setRequest((r) => ({
@@ -92,7 +88,14 @@ export function useMasterPage<T>(
         // Export uses the same server filters and ordering, not just the visible page.
         for (let page = 0; ; page++) {
           const result = (await listMasterPage({
-            data: { token: getAccessToken(), table, ...args, page, pageSize: batch },
+            data: {
+              token: getAccessToken(),
+              academicYear: getAcademicYear(),
+              table,
+              ...args,
+              page,
+              pageSize: batch,
+            },
           })) as PageResult<T>;
           rows.push(...result.rows);
           if (result.rows.length < batch || rows.length >= result.total) break;

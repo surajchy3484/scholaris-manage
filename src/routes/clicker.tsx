@@ -1,3 +1,5 @@
+import { clickerImportPayload } from "@/lib/clicker-import-payload";
+import { getAcademicYear } from "@/lib/academic-year";
 import {
   fetchExamTypes,
   normalizeClass,
@@ -16,7 +18,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2, Upload } from "lucide-react";
 
-import { supabase } from "@/lib/private-data";
+import { supabase } from "@/lib/academic-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,7 +44,7 @@ import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sh
 import {
   clickerQuestionColumns,
   deleteRowsByIds,
-  fetchAssessments,
+  fetchEvaluationAssessments,
   fetchClickerRecords,
   fetchQuestions,
   type ClickerRecord,
@@ -52,6 +54,7 @@ import {
 import { clickerSample } from "@/lib/sample-templates";
 import { RequireModule } from "@/components/require-module";
 import { fetchAllRows } from "@/lib/fetch-all";
+import { createStudentFromClicker } from "@/lib/performance.functions";
 
 export const Route = createFileRoute("/clicker")({
   head: () => ({
@@ -92,6 +95,9 @@ type ParsedClicker = ParsedBase & {
   correct_rate: number;
   ranking: number | null;
   answers: Record<string, string>;
+  _existingId?: string | null;
+  _importSaved?: boolean;
+  _match?: "matched" | "create" | "created" | "update" | "unmatched" | "duplicate";
 };
 
 function sameValue(left: string | null | undefined, right: string | null | undefined) {
@@ -106,7 +112,7 @@ function sameValue(left: string | null | undefined, right: string | null | undef
 
 function resolveAssessmentId(
   row: ParsedClicker,
-  available: Awaited<ReturnType<typeof fetchAssessments>>,
+  available: Awaited<ReturnType<typeof fetchEvaluationAssessments>>,
 ) {
   const matches = available.filter(
     (a) =>
@@ -120,6 +126,7 @@ function resolveAssessmentId(
 
 type StudentLookup = {
   id: string;
+  student_code: string;
   name: string;
   roll_number: string;
   class: string;
@@ -142,8 +149,9 @@ async function fetchStudentLookup(schoolIds: string[]) {
       const rows = await fetchAllRows<StudentLookup>((from, to) =>
         supabase
           .from("students")
-          .select("id,name,roll_number,class,division,school_id")
+          .select("id,student_code,name,roll_number,class,division,school_id")
           .eq("school_id", schoolId)
+          .order("id")
           .range(from, to),
       );
       return [schoolId, rows] as const;
@@ -152,12 +160,26 @@ async function fetchStudentLookup(schoolIds: string[]) {
   return new Map(entries);
 }
 
+/**
+ * Student Master is the identity source. Student ID (internal id or the
+ * printed student code) wins; otherwise Name + Roll + Class + Section must
+ * point to exactly one student in the assessment's school. Never guesses.
+ */
 function resolveStudentId(row: ParsedClicker, students: StudentLookup[]) {
-  if (row.student_id) return row.student_id;
+  const sid = normalizeMatch(row.student_id);
+  if (sid) {
+    const hit = students.find(
+      (s) => s.id.toLowerCase() === sid || normalizeMatch(s.student_code) === sid,
+    );
+    if (hit) return hit.id;
+    // A stale Student ID should not block a safe fallback match using the
+    // unique Roll Number + Class + Section identity below.
+  }
   const name = normalizeMatch(row.student_name);
   const roll = normalizeMatch(row.roll_number);
   const cls = normalizeMatch(row.class);
   const section = normalizeMatch(row.section);
+  if (!name && !roll) return null;
   const matches = students.filter((student) => {
     if (name && normalizeMatch(student.name) !== name) return false;
     if (roll && normalizeMatch(student.roll_number) !== roll) return false;
@@ -165,7 +187,175 @@ function resolveStudentId(row: ParsedClicker, students: StudentLookup[]) {
     if (section && normalizeMatch(student.division) !== section) return false;
     return true;
   });
-  return matches.length === 1 ? matches[0].id : null;
+  if (matches.length === 1) return matches[0].id;
+
+  // Roll Number is unique within a school/class/section. Use it as a safe
+  // fallback when the spreadsheet contains a different name spelling or
+  // punctuation from Student Master.
+  if (roll && cls && section) {
+    const rollMatches = students.filter(
+      (student) =>
+        normalizeMatch(student.roll_number) === roll &&
+        normalizeMatch(student.class) === cls &&
+        normalizeMatch(student.division) === section,
+    );
+    if (rollMatches.length === 1) return rollMatches[0].id;
+  }
+  return null;
+}
+
+/**
+ * Links every parsed row to an assessment and a Student Master record, and
+ * flags rows that would update an existing result or repeat one in the file.
+ * Unmatched rows get an error so they can be reviewed and are never imported.
+ */
+async function linkStudents(
+  rows: ParsedClicker[],
+  available: Awaited<ReturnType<typeof fetchEvaluationAssessments>>,
+): Promise<ParsedClicker[]> {
+  for (const row of rows) {
+    if (row.errors.length) continue;
+    const aid = resolveAssessmentId(row, available);
+    if (!aid) {
+      row.errors.push(
+        `No unique assessment for ${row.exam_type}, Class ${row.class ?? "—"}, Section ${row.section ?? "—"}`,
+      );
+      row._match = "unmatched";
+    }
+    row.assessment_id = aid;
+  }
+  const byAid = new Map(available.map((a) => [a.assessment_id, a]));
+  const aids = [...new Set(rows.map((r) => r.assessment_id).filter(Boolean))] as string[];
+  const schoolIds = [
+    ...new Set(aids.map((id) => byAid.get(id)?.school_id).filter((id): id is string => !!id)),
+  ];
+  const [lookup, existingLists] = await Promise.all([
+    fetchStudentLookup(schoolIds),
+    Promise.all(aids.map((id) => fetchClickerRecords(id))),
+  ]);
+  const existing = existingLists.flat();
+  const seen = new Set<string>();
+  const rollOwners = new Map<string, string>();
+  for (const [schoolId, students] of lookup) {
+    for (const student of students) {
+      const key = [
+        schoolId,
+        normalizeMatch(student.class),
+        normalizeMatch(student.division),
+        normalizeMatch(student.roll_number),
+      ].join("|");
+      if (student.roll_number) rollOwners.set(key, student.id);
+    }
+  }
+  const keypadOwners = new Map<string, string>();
+  for (const record of existing) {
+    const key = `${record.assessment_id}|${normalizeMatch(record.keypad_id)}`;
+    if (record.keypad_id) keypadOwners.set(key, record.student_id ?? record.id);
+  }
+  for (const row of rows) {
+    if (!row.assessment_id || row.errors.length) {
+      row._match ??= "unmatched";
+      continue;
+    }
+    const school = byAid.get(row.assessment_id)?.school_id;
+    const rollKey =
+      school && row.class && row.section && row.roll_number
+        ? [
+            school,
+            normalizeMatch(row.class),
+            normalizeMatch(row.section),
+            normalizeMatch(row.roll_number),
+          ].join("|")
+        : null;
+    const keypadKey = `${row.assessment_id}|${normalizeMatch(row.keypad_id)}`;
+    const studentId = resolveStudentId(row, school ? (lookup.get(school) ?? []) : []);
+    if (!studentId) {
+      if (school && row.student_name && row.class && row.section && row.roll_number) {
+        const createKey = [
+          school,
+          normalizeMatch(row.student_name),
+          normalizeMatch(row.class),
+          normalizeMatch(row.section),
+          normalizeMatch(row.roll_number),
+        ].join("|");
+        if (rollKey && rollOwners.has(rollKey)) {
+          row.errors.push(
+            `Roll number "${row.roll_number}" already exists in Class ${row.class} Section ${row.section}`,
+          );
+          row._match = "unmatched";
+          continue;
+        }
+        const keypadOwner = keypadOwners.get(keypadKey);
+        if (keypadOwner) {
+          row.errors.push(`Keypad ID "${row.keypad_id}" is already used in this assessment`);
+          row._match = "unmatched";
+          continue;
+        }
+        if (seen.has(`create|${createKey}`)) {
+          row.duplicate = true;
+          row.errors.push("Duplicate new student details in the selected files");
+          row._match = "duplicate";
+          continue;
+        }
+        seen.add(`create|${createKey}`);
+        if (rollKey) rollOwners.set(rollKey, `pending:${createKey}`);
+        keypadOwners.set(keypadKey, `pending:${createKey}`);
+        row._match = "create";
+        continue;
+      }
+      row.errors.push(
+        row.student_id
+          ? `Student ID "${row.student_id}" not found in this school's Student Master`
+          : `Unmatched student "${row.student_name}". Name, Roll, Class and Section are required to create the student`,
+      );
+      row._match = "unmatched";
+      continue;
+    }
+    row.student_id = studentId;
+    if (rollKey) {
+      const rollOwner = rollOwners.get(rollKey);
+      if (rollOwner && rollOwner !== studentId) {
+        row.errors.push(
+          `Roll number "${row.roll_number}" is already assigned in Class ${row.class} Section ${row.section}`,
+        );
+        row._match = "unmatched";
+        continue;
+      }
+      rollOwners.set(rollKey, studentId);
+    }
+    const keypadOwner = keypadOwners.get(keypadKey);
+    if (keypadOwner && keypadOwner !== studentId) {
+      row.errors.push(
+        `Keypad ID "${row.keypad_id}" is already used by another student in this assessment`,
+      );
+      row._match = "unmatched";
+      continue;
+    }
+    keypadOwners.set(keypadKey, studentId);
+    const key = `${row.assessment_id}|${studentId}`;
+    if (seen.has(key)) {
+      row.duplicate = true;
+      row.errors.push("Duplicate record for this student and assessment in the file");
+      row._match = "duplicate";
+      continue;
+    }
+    seen.add(key);
+    const prior = existing.find(
+      (e) =>
+        e.assessment_id === row.assessment_id &&
+        (e.student_id === studentId || e.keypad_id === row.keypad_id),
+    );
+    if (prior && prior.student_id && prior.student_id !== studentId) {
+      row.errors.push(
+        `Keypad ${row.keypad_id} is already used by another student in this assessment`,
+      );
+      row._match = "unmatched";
+      continue;
+    }
+    row._existingId = prior?.id ?? null;
+    row._match = prior ? "update" : "matched";
+  }
+  return rows;
 }
 
 /** Answer cell that supports inline edit, keyboard save/cancel and undo. */
@@ -253,10 +443,11 @@ function ClickerPage() {
   const [confirm, setConfirm] = useState<"single" | "bulk" | null>(null);
   const [target, setTarget] = useState<ClickerRecord | null>(null);
 
-  const assessments = useQuery({ queryKey: ["assessments"], queryFn: fetchAssessments });
+  const assessments = useQuery({ queryKey: ["evaluation-assessments"], queryFn: fetchEvaluationAssessments });
   const facets = useQuery({
     queryKey: ["clicker-filter-options"],
-    queryFn: () => clickerFacets({ data: { token: getAccessToken() } }),
+    queryFn: () =>
+      clickerFacets({ data: { token: getAccessToken(), academicYear: getAcademicYear() } }),
     staleTime: 60_000,
   });
   const sortedAssessments = useMemo(
@@ -282,7 +473,11 @@ function ClickerPage() {
     enabled: visibleAssessmentIds.length > 0,
     queryFn: async () => {
       const questions = await listClickerQuestionKeys({
-        data: { token: getAccessToken(), assessmentIds: visibleAssessmentIds },
+        data: {
+          token: getAccessToken(),
+          academicYear: getAcademicYear(),
+          assessmentIds: visibleAssessmentIds,
+        },
       });
       const grouped = new Map<string, typeof questions>();
       for (const question of questions) {
@@ -354,6 +549,11 @@ function ClickerPage() {
 
   const columns = useMemo<GridColumn<ClickerRecord>[]>(() => {
     const base: GridColumn<ClickerRecord>[] = [
+      {
+        key: "academic_year",
+        label: "Academic Year",
+        value: (r) => r.academic_year ?? "Unassigned",
+      },
       { key: "exam_type", label: "Exam Type", value: (r) => r.exam_type ?? "Unassigned" },
       { key: "keypad_id", label: "Keypad ID", value: (r) => r.keypad_id },
       { key: "student_name", label: "Student Name", value: (r) => r.student_name },
@@ -378,6 +578,7 @@ function ClickerPage() {
         <AnswerCell
           value={r.answers[c] ?? ""}
           correctAnswer={
+            r.question_snapshot?.length ||
             types.data?.some((t) => t.name === r.exam_type && t.visible)
               ? (r.question_snapshot?.find(
                   (q) =>
@@ -578,7 +779,8 @@ function ClickerPage() {
         onOpenChange={setImportOpen}
         title="Import clicker data"
         sample={clickerSample(questionCols)}
-        description="Include Exam Type and Class. Include Assessment ID to identify the school/session; ambiguous matches are rejected. Use S1 or 1-S1 answer columns. Scores and rankings are calculated on the server; uploaded totals are ignored."
+        multiple
+        description="Include Exam Type, Class, Section, Roll and Student Name. Missing students are created in the assessment school without a photo. Include Assessment ID to identify the school/session; ambiguous matches are rejected. Use S1 or 1-S1 answer columns. Scores and rankings are calculated on the server; uploaded totals are ignored."
         parse={(raw) => {
           const known = new Set([
             "assessment id",
@@ -599,10 +801,13 @@ function ClickerPage() {
             "correct rate",
             "ranking",
           ]);
-          return raw.map((row, i) => {
+          const parsed = raw.map((row, i) => {
             const keypad = pick(row, "Keypad ID", "keypad_id", "Keypad");
             const name = pick(row, "Student Name", "student_name", "Student", "Name");
             const errors: string[] = [];
+            const importedYear = pick(row, "Academic Year", "academic_year");
+            if (importedYear && importedYear !== getAcademicYear())
+              errors.push("Academic Year must match the selected year");
             if (!keypad) errors.push("Keypad ID required");
             if (!name) errors.push("Student name required");
             const answers: Record<string, string> = {};
@@ -649,86 +854,127 @@ function ClickerPage() {
               correct_rate: Number(pick(row, "Correct Rate", "correct_rate")) || 0,
               ranking: Number(pick(row, "Ranking", "ranking")) || null,
               answers,
-            };
+            } as ParsedClicker;
           });
+          return linkStudents(parsed, assessments.data ?? []);
         }}
         columns={[
           { label: "Exam Type", get: (r) => r.exam_type },
           { label: "Keypad", get: (r) => r.keypad_id },
           { label: "Student", get: (r) => r.student_name },
           { label: "Class", get: (r) => r.class ?? "—" },
+          {
+            label: "Match",
+            get: (r) =>
+              r._match === "update"
+                ? "Updates score"
+                : r._match === "create"
+                  ? "Creates student"
+                  : r._match === "created"
+                    ? "Student created"
+                    : r._match === "matched"
+                      ? "Matched"
+                      : r._match === "duplicate"
+                        ? "Duplicate"
+                        : "Unmatched",
+          },
         ]}
-        commit={async (valid) => {
-          const resolved = valid.map((row) => ({
-            ...row,
-            assessment_id: resolveAssessmentId(row, assessments.data ?? []),
-          }));
-          const unresolved = resolved.find((r) => !r.assessment_id);
-          if (unresolved) {
-            throw new Error(
-              `No unique assessment for ${unresolved.exam_type}, Class ${unresolved.class ?? "—"}, Section ${unresolved.section ?? "—"}. Select the exact Assessment ID; other exam types are never used.`,
-            );
-          }
-          const assessmentIds = [
-            ...new Set(resolved.map((r) => r.assessment_id).filter(Boolean)),
-          ] as string[];
-          const knownAssessments = new Set((assessments.data ?? []).map((a) => a.assessment_id));
-          const invalidAssessment = assessmentIds.find((id) => !knownAssessments.has(id));
-          if (invalidAssessment)
-            throw new Error(`Assessment ID not found in Assessment Master: ${invalidAssessment}`);
-          const schoolIds = [
-            ...new Set(
-              assessmentIds
-                .map(
-                  (id) => (assessments.data ?? []).find((a) => a.assessment_id === id)?.school_id,
-                )
-                .filter((id): id is string => !!id),
-            ),
-          ];
-          const studentLookup = await fetchStudentLookup(schoolIds);
-          const linked = resolved.map((row) => {
-            const assessmentInfo = (assessments.data ?? []).find(
-              (a) => a.assessment_id === row.assessment_id,
-            );
-            const schoolStudents = assessmentInfo?.school_id
-              ? (studentLookup.get(assessmentInfo.school_id) ?? [])
-              : [];
-            return {
-              ...row,
-              student_id: resolveStudentId(row, schoolStudents),
-            };
-          });
-          const unresolvedStudent = linked.find((row) => !row.student_id);
-          if (unresolvedStudent) {
-            throw new Error(
-              `Could not match student "${unresolvedStudent.student_name}". Include Student ID or an exact Student Name + Roll + Class + Section.`,
-            );
-          }
+        stats={(rows) => {
+          const count = (m: ParsedClicker["_match"]) => rows.filter((r) => r._match === m).length;
+          const updated = count("update");
+          const fresh = count("matched");
+          const created = count("create") + count("created");
+          return (
+            <div className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs sm:grid-cols-6">
+              <span>
+                <b>Matched Students:</b> {fresh + updated}
+              </span>
+              <span>
+                <b>New Results:</b> {fresh}
+              </span>
+              <span>
+                <b>New Students:</b> {created}
+              </span>
+              <span>
+                <b>Updated Scores:</b> {updated}
+              </span>
+              <span>
+                <b>Unmatched Students:</b> {count("unmatched")}
+              </span>
+              <span>
+                <b>Duplicate Records:</b> {count("duplicate")}
+              </span>
+            </div>
+          );
+        }}
+        commit={async (valid, onProgress) => {
           const availableTypes = await fetchExamTypes();
-          for (const row of linked) {
+          for (const row of valid) {
             if (!availableTypes.some((t) => t.name === row.exam_type && t.visible))
               throw new Error(
                 "Question Set Inactive: This Exam Type is currently hidden in Question Master and cannot be used for Clicker evaluation.",
               );
           }
-          const clickerRows = linked.map(
-            ({ _row, errors, score, correct_rate, ranking, ...row }) => {
-              const a = (assessments.data ?? []).find((a) => a.assessment_id === row.assessment_id);
-              return {
-                ...row,
-                class: normalizeClass(row.class),
-                school_id: a?.school_id ?? null,
-                school_name: a?.school_name ?? null,
-              };
-            },
+          const toPayload = (row: ParsedClicker) => clickerImportPayload(
+            row,
+            (assessments.data ?? []).find((a) => a.assessment_id === row.assessment_id),
+            normalizeClass(row.class),
           );
-          await insertRows("clicker_records", clickerRows, 300);
+          const toCreate = valid.filter((r) => r._match === "create");
+          let done = 0;
+          for (const row of toCreate) {
+            const assessmentRow = (assessments.data ?? []).find(
+              (a) => a.assessment_id === row.assessment_id,
+            );
+            if (!assessmentRow?.school_id || !row.class || !row.section || !row.roll_number)
+              throw new Error(
+                `Cannot create student "${row.student_name}": missing school or student details`,
+              );
+            const created = await createStudentFromClicker({
+              data: {
+                token: getAccessToken(),
+                academicYear: getAcademicYear(),
+                schoolId: assessmentRow.school_id,
+                name: row.student_name,
+                class: row.class,
+                division: row.section,
+                roll_number: row.roll_number,
+              },
+            });
+            row.student_id = created.id;
+            row._match = "created";
+            done++;
+            onProgress?.(done);
+          }
+          const inserts = valid.filter((r) => !r._existingId);
+          const updates = valid.filter((r) => r._existingId);
+          done = valid.filter((r) => r._importSaved).length;
+          onProgress?.(done);
+          // Small sequential transactions avoid timeout and lock contention.
+          // Mark only acknowledged rows so retrying this preview skips saved batches.
+          const pending = inserts.filter((r) => !r._importSaved);
+          try {
+            for (let i = 0; i < pending.length; i += 25) {
+              const batch = pending.slice(i, i + 25);
+              await insertRows("clicker_records", batch.map(toPayload), 25);
+              batch.forEach((r) => { r._importSaved = true; });
+              done += batch.length;
+              onProgress?.(done);
+            }
+            for (const row of updates.filter((r) => !r._importSaved)) {
+              await updateRowsByIds("clicker_records", [row._existingId!], toPayload(row));
+              row._importSaved = true;
+              onProgress?.(++done);
+            }
+          } catch (error) {
+            await qc.invalidateQueries({ queryKey: ["clicker"] });
+            throw new Error(`${done} of ${valid.length} results saved. ${error instanceof Error ? error.message : "Import failed"} Confirmed batches will be skipped on retry. If the connection was lost, reopen the import to check saved records first.`);
+          }
           await qc.invalidateQueries({ queryKey: ["visual-analytics-source"] });
           await qc.invalidateQueries({ queryKey: ["exam-data"] });
           qc.invalidateQueries({ queryKey: ["clicker"] });
-          const detected = new Set<string>();
-          for (const v of valid) for (const k of Object.keys(v.answers)) detected.add(k);
-          return `Imported ${valid.length} record(s) with ${detected.size} question column(s).`;
+          qc.invalidateQueries({ queryKey: ["student-history"] });
+          return `Saved ${inserts.length} new result(s) and updated ${updates.length} existing score(s). Scores now appear in every report.`;
         }}
       />
 

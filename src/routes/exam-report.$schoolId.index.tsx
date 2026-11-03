@@ -36,7 +36,7 @@ import {
   STATUS_COLORS,
   avg,
   buildClassReports,
-  fetchExamData,
+  examDataQueryOptions,
   type PerfStatus,
 } from "@/lib/exam";
 import { RequireModule } from "@/components/require-module";
@@ -69,7 +69,7 @@ function SchoolExamDashboard() {
   const [cls, setCls] = useState("all");
   const [division, setDivision] = useState("all");
 
-  const { data, isLoading } = useQuery({ queryKey: ["exam-data"], queryFn: fetchExamData });
+  const { data, isLoading } = useQuery(examDataQueryOptions());
 
   const school = data?.schools.find((s) => s.id === schoolId);
   const students = useMemo(

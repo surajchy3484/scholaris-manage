@@ -10,14 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AcademicYearsRouteImport } from './routes/academic-years'
 import { Route as AssessmentsRouteImport } from './routes/assessments'
 import { Route as ClickerRouteImport } from './routes/clicker'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as OverallReportRouteImport } from './routes/overall-report'
 import { Route as QuestionsRouteImport } from './routes/questions'
+import { Route as SchoolDashboardRouteImport } from './routes/school-dashboard'
 import { Route as SessionStatusRouteImport } from './routes/session-status'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SupportRouteImport } from './routes/support'
+import { Route as SupportTicketsRouteImport } from './routes/support-tickets'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
@@ -31,6 +35,11 @@ import { Route as ExamReportSchoolIdStudentsRouteImport } from './routes/exam-re
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AcademicYearsRoute = AcademicYearsRouteImport.update({
+  id: '/academic-years',
+  path: '/academic-years',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AssessmentsRoute = AssessmentsRouteImport.update({
@@ -63,6 +72,11 @@ const QuestionsRoute = QuestionsRouteImport.update({
   path: '/questions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SchoolDashboardRoute = SchoolDashboardRouteImport.update({
+  id: '/school-dashboard',
+  path: '/school-dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SessionStatusRoute = SessionStatusRouteImport.update({
   id: '/session-status',
   path: '/session-status',
@@ -71,6 +85,16 @@ const SessionStatusRoute = SessionStatusRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportTicketsRoute = SupportTicketsRouteImport.update({
+  id: '/support-tickets',
+  path: '/support-tickets',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UsersRoute = UsersRouteImport.update({
@@ -125,14 +149,18 @@ const ExamReportSchoolIdStudentsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/academic-years': typeof AcademicYearsRoute
   '/assessments': typeof AssessmentsRoute
   '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/overall-report': typeof OverallReportRoute
   '/questions': typeof QuestionsRoute
+  '/school-dashboard': typeof SchoolDashboardRoute
   '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
+  '/support-tickets': typeof SupportTicketsRoute
   '/users': typeof UsersRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -145,14 +173,18 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/academic-years': typeof AcademicYearsRoute
   '/assessments': typeof AssessmentsRoute
   '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/overall-report': typeof OverallReportRoute
   '/questions': typeof QuestionsRoute
+  '/school-dashboard': typeof SchoolDashboardRoute
   '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
+  '/support-tickets': typeof SupportTicketsRoute
   '/users': typeof UsersRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -166,14 +198,18 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/academic-years': typeof AcademicYearsRoute
   '/assessments': typeof AssessmentsRoute
   '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/overall-report': typeof OverallReportRoute
   '/questions': typeof QuestionsRoute
+  '/school-dashboard': typeof SchoolDashboardRoute
   '/session-status': typeof SessionStatusRoute
   '/settings': typeof SettingsRoute
+  '/support': typeof SupportRoute
+  '/support-tickets': typeof SupportTicketsRoute
   '/users': typeof UsersRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -188,14 +224,18 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/academic-years'
     | '/assessments'
     | '/clicker'
     | '/login'
     | '/mcp'
     | '/overall-report'
     | '/questions'
+    | '/school-dashboard'
     | '/session-status'
     | '/settings'
+    | '/support'
+    | '/support-tickets'
     | '/users'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -208,14 +248,18 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/academic-years'
     | '/assessments'
     | '/clicker'
     | '/login'
     | '/mcp'
     | '/overall-report'
     | '/questions'
+    | '/school-dashboard'
     | '/session-status'
     | '/settings'
+    | '/support'
+    | '/support-tickets'
     | '/users'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -228,14 +272,18 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/academic-years'
     | '/assessments'
     | '/clicker'
     | '/login'
     | '/mcp'
     | '/overall-report'
     | '/questions'
+    | '/school-dashboard'
     | '/session-status'
     | '/settings'
+    | '/support'
+    | '/support-tickets'
     | '/users'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -249,14 +297,18 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AcademicYearsRoute: typeof AcademicYearsRoute
   AssessmentsRoute: typeof AssessmentsRoute
   ClickerRoute: typeof ClickerRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
   OverallReportRoute: typeof OverallReportRoute
   QuestionsRoute: typeof QuestionsRoute
+  SchoolDashboardRoute: typeof SchoolDashboardRoute
   SessionStatusRoute: typeof SessionStatusRoute
   SettingsRoute: typeof SettingsRoute
+  SupportRoute: typeof SupportRoute
+  SupportTicketsRoute: typeof SupportTicketsRoute
   UsersRoute: typeof UsersRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -275,6 +327,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/academic-years': {
+      id: '/academic-years'
+      path: '/academic-years'
+      fullPath: '/academic-years'
+      preLoaderRoute: typeof AcademicYearsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/assessments': {
@@ -319,6 +378,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QuestionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/school-dashboard': {
+      id: '/school-dashboard'
+      path: '/school-dashboard'
+      fullPath: '/school-dashboard'
+      preLoaderRoute: typeof SchoolDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/session-status': {
       id: '/session-status'
       path: '/session-status'
@@ -331,6 +397,20 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support': {
+      id: '/support'
+      path: '/support'
+      fullPath: '/support'
+      preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support-tickets': {
+      id: '/support-tickets'
+      path: '/support-tickets'
+      fullPath: '/support-tickets'
+      preLoaderRoute: typeof SupportTicketsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/users': {
@@ -401,14 +481,18 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AcademicYearsRoute: AcademicYearsRoute,
   AssessmentsRoute: AssessmentsRoute,
   ClickerRoute: ClickerRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
   OverallReportRoute: OverallReportRoute,
   QuestionsRoute: QuestionsRoute,
+  SchoolDashboardRoute: SchoolDashboardRoute,
   SessionStatusRoute: SessionStatusRoute,
   SettingsRoute: SettingsRoute,
+  SupportRoute: SupportRoute,
+  SupportTicketsRoute: SupportTicketsRoute,
   UsersRoute: UsersRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:

@@ -110,7 +110,7 @@ assert.equal((await page({ search: "Other" })).total, 0);
 assert.equal((await page({ search: "%' OR true --" })).total, 0);
 assert.equal((await page({ status: "recorded", min: 0, max: 0 })).total, 1);
 assert.equal((await page({ status: "missing" })).total, 9999);
-assert.equal((await page({ exam: "IMF", min: 70 })).total, 1);
+assert.equal((await page({ exam: "MCA", min: 70 })).total, 1);
 assert.equal((await page({ attendance: "below75" })).total, 1);
 assert.equal((await page({ attendance: "missing" })).total, 9999);
 await db.query(
@@ -135,5 +135,5 @@ assert.equal(
 );
 await db.close();
 console.log(
-  "PASS: 10,000 students, page boundaries, zero/missing scores, IMF fallback and MCA priority, attendance and override filters, escaped search, school isolation, RPC role denial and atomic score cleanup",
+  "PASS: 10,000 students, page boundaries, zero/missing scores, legacy middle-assessment fallback and MCA priority, attendance and override filters, escaped search, school isolation, RPC role denial and atomic score cleanup",
 );

@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { AcademicYearSelect } from "@/components/academic-year-select";
+import { useEffect, useState, useRef, type SyntheticEvent } from "react";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import {
   BarChart3,
@@ -10,6 +12,8 @@ import {
   GraduationCap,
   HelpCircle,
   LayoutDashboard,
+  LifeBuoy,
+  School,
   LogOut,
   Moon,
   MousePointerClick,
@@ -47,11 +51,18 @@ const SCHOLARS_KEY = "scholaris:scholars-menu-open";
 
 const SCHOLARS_ITEMS = [
   {
-    to: "/",
+    to: "/academic-years",
+    label: "Academic Year",
+    icon: CalendarCheck,
+    module: "students" as AppModule,
+    match: (p: string) => p.startsWith("/academic-years"),
+  },
+  {
+    to: "/school-dashboard",
     label: "Student Management",
     icon: Users,
     module: "students" as AppModule,
-    match: (p: string) => p === "/" || p.startsWith("/schools"),
+    match: (p: string) => p.startsWith("/schools/"),
   },
   {
     to: "/exam-report",
@@ -96,6 +107,28 @@ const SCHOLARS_ITEMS = [
  * state remembered in localStorage and the active route highlighted.
  */
 export function AppSidebar() {
+  const queryClient = useQueryClient();
+  const warmTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const cancelWarm = () => {
+    if (warmTimer.current !== undefined) clearTimeout(warmTimer.current);
+  };
+  useEffect(
+    () => () => {
+      if (warmTimer.current !== undefined) clearTimeout(warmTimer.current);
+    },
+    [],
+  );
+  const warm = (event: SyntheticEvent) => {
+    cancelWarm();
+    const anchor = event.target instanceof Element ? event.target.closest("a") : null;
+    const path = anchor?.getAttribute("href");
+    if (!path) return;
+    warmTimer.current = setTimeout(() => {
+      void import("@/lib/navigation-prefetch")
+        .then(({ prefetchSidebarData }) => prefetchSidebarData(queryClient, path))
+        .catch(() => {});
+    }, 100);
+  };
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const router = useRouter();
   const { theme, toggle } = useTheme();
@@ -158,17 +191,33 @@ export function AppSidebar() {
         </Link>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent onPointerOver={warm} onFocusCapture={warm} onPointerLeave={cancelWarm}>
+        <AcademicYearSelect />
         <SidebarGroup>
           <SidebarGroupLabel>Overview</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {can("dashboard") && (
+              {can("main_dashboard") && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={pathname === "/"} tooltip="Dashboard">
+                  <SidebarMenuButton asChild isActive={pathname === "/"} tooltip="Main Dashboard">
                     <Link to="/" onClick={close}>
                       <LayoutDashboard />
-                      <span>Dashboard</span>
+                      <span>Main Dashboard</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+
+              {can("dashboard") && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === "/school-dashboard"}
+                    tooltip="School Dashboard"
+                  >
+                    <Link to="/school-dashboard" onClick={close}>
+                      <School />
+                      <span>School Dashboard</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -250,6 +299,21 @@ export function AppSidebar() {
                     <Link to="/settings" onClick={close}>
                       <SettingsIcon />
                       <span>Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+
+              {(can("support", "raise") || can("support", "view") || can("support", "manage")) && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith("/support")}
+                    tooltip="Help & Support"
+                  >
+                    <Link to="/support" search={{ ticket: undefined }} onClick={close}>
+                      <LifeBuoy />
+                      <span>Help &amp; Support</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

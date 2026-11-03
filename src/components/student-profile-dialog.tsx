@@ -1,4 +1,4 @@
-import { PrivatePhoto } from "@/components/private-photo";
+import { StudentHistory } from "@/components/student-history";
 import {
   Bar,
   BarChart,
@@ -36,7 +36,7 @@ export function StudentProfileDialog({
   const chart = [
     { name: "Attendance", value: student.attendance_pct },
     { name: "ICA", value: student.ica ?? 0 },
-    { name: "IMF", value: student.mca ?? 0 },
+    { name: "MCA", value: student.mca ?? 0 },
     { name: "FCA", value: student.fca ?? 0 },
     { name: "Overall", value: student.performance },
   ];
@@ -47,10 +47,11 @@ export function StudentProfileDialog({
           <DialogTitle>Student profile</DialogTitle>
         </DialogHeader>
         <div className="space-y-5 py-2">
+          <StudentHistory studentId={student.id} />
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
             <div className="h-28 w-28 shrink-0 overflow-hidden rounded-2xl bg-muted ring-4 ring-accent">
               {student.photo_url ? (
-                <PrivatePhoto
+                <img
                   src={toDisplayablePhotoUrl(student.photo_url) ?? ""}
                   alt={student.name}
                   loading="lazy"

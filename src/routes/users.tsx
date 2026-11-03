@@ -30,10 +30,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getAccessToken } from "@/lib/app-access";
 import { useAuth } from "@/lib/auth";
 import {
+  APP_ROLES,
+  ROLE_LABELS,
+  normalizeRole,
   ACTIONS,
   ACTION_LABELS,
   MODULES,
   MODULE_LABELS,
+  TICKET_ACTIONS,
   TRAINER_PERMISSIONS,
   type AppAction,
   type AppModule,
@@ -58,12 +62,12 @@ export const Route = createFileRoute("/users")({
       {
         name: "description",
         content:
-          "Create STEM Trainer logins, choose what each person can do, and assign the schools they work with.",
+          "Create staff logins, choose what each person can do, and assign the schools they work with.",
       },
       { property: "og:title", content: "User Access — SchoolRise" },
       {
         property: "og:description",
-        content: "Create STEM Trainer logins and control access per module and school.",
+        content: "Create staff logins and control access per module and school.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -89,6 +93,8 @@ type FormState = {
   schoolIds: string[];
   permissions: Permissions;
 };
+
+const permissionActions: AppAction[] = [...ACTIONS, ...TICKET_ACTIONS];
 
 const emptyForm = (): FormState => ({
   username: "",
@@ -197,7 +203,7 @@ function UsersPage() {
       fullName: u.full_name ?? "",
       email: u.email ?? "",
       phone: u.phone ?? "",
-      role: u.role === "admin" ? "admin" : "trainer",
+      role: normalizeRole(u.role),
       password: "",
       isActive: u.is_active,
       allSchools: u.all_schools,
@@ -235,7 +241,7 @@ function UsersPage() {
             User Access
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create STEM Trainer logins, pick what they can do, and assign their schools.
+            Create staff logins, pick what they can do, and assign their schools.
           </p>
         </div>
         <Button onClick={startAdd} disabled={!canManage} className="gap-1.5">
@@ -258,7 +264,7 @@ function UsersPage() {
         )}
         {usersQ.data?.length === 0 && (
           <Card className="p-6 text-sm text-muted-foreground">
-            No accounts yet. Add your first STEM Trainer.
+            No accounts yet. Add your first user.
           </Card>
         )}
         {(usersQ.data ?? []).map((u) => {
@@ -274,7 +280,7 @@ function UsersPage() {
                       {u.full_name || u.username}
                     </span>
                     <Badge variant={u.role === "admin" ? "default" : "secondary"}>
-                      {u.role === "admin" ? "Administrator" : "STEM Trainer"}
+                      {ROLE_LABELS[normalizeRole(u.role)]}
                     </Badge>
                     {!u.is_active && <Badge variant="destructive">Disabled</Badge>}
                   </div>
@@ -406,7 +412,7 @@ function UsersPage() {
                     setForm({
                       ...form,
                       role: v as AppRole,
-                      permissions: v === "trainer" ? TRAINER_PERMISSIONS : {},
+                      permissions: v === "admin" ? {} : form.permissions,
                     })
                   }
                 >
@@ -414,8 +420,11 @@ function UsersPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="trainer">STEM Trainer</SelectItem>
-                    <SelectItem value="admin">Administrator</SelectItem>
+                    {APP_ROLES.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {ROLE_LABELS[role]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -439,7 +448,7 @@ function UsersPage() {
               <span>Account enabled</span>
             </label>
 
-            {form.role === "trainer" && (
+            {form.role !== "admin" && (
               <>
                 <div>
                   <Label className="text-sm font-semibold">What they can do</Label>
@@ -448,7 +457,7 @@ function UsersPage() {
                       <thead className="bg-muted/50">
                         <tr>
                           <th className="p-2 text-left font-medium">Module</th>
-                          {ACTIONS.map((a) => (
+                          {permissionActions.map((a) => (
                             <th key={a} className="p-2 text-center font-medium">
                               {ACTION_LABELS[a]}
                             </th>
@@ -459,9 +468,14 @@ function UsersPage() {
                         {MODULES.map((m) => (
                           <tr key={m} className="border-t border-border/60">
                             <td className="p-2">{MODULE_LABELS[m]}</td>
-                            {ACTIONS.map((a) => (
+                            {permissionActions.map((a) => (
                               <td key={a} className="p-2 text-center">
                                 <Checkbox
+                                  disabled={
+                                    (m === "main_dashboard" && a !== "view") ||
+                                    (m !== "support" &&
+                                      TICKET_ACTIONS.includes(a as (typeof TICKET_ACTIONS)[number]))
+                                  }
                                   checked={(form.permissions[m] ?? []).includes(a)}
                                   onCheckedChange={() => togglePerm(m, a)}
                                   aria-label={`${MODULE_LABELS[m]} ${ACTION_LABELS[a]}`}

@@ -2,7 +2,7 @@ import type { StudentReport } from "./exam";
 export type StudentListRow = StudentReport & { attendance_recorded: boolean };
 export type ScoreFilters = {
   attendance: "all" | "recorded" | "missing" | "below75" | "atleast75";
-  exam: "ICA" | "IMF" | "FCA";
+  exam: "ICA" | "MCA" | "FCA";
   status: "all" | "recorded" | "missing";
   min: string;
   max: string;

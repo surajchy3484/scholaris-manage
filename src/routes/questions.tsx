@@ -1,3 +1,4 @@
+import { QuestionSetVersions } from "@/components/question-set-versions";
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -55,7 +56,11 @@ function QuestionsPage() {
   const list = useMasterPage<BankQuestion>("questions", { examType: exam, className: cls });
   const classOptions = useMemo(
     () =>
-      [...new Set((availableQuestions.data ?? []).map((question) => normalizeClass(question.class)))]
+      [
+        ...new Set(
+          (availableQuestions.data ?? []).map((question) => normalizeClass(question.class)),
+        ),
+      ]
         .filter(Boolean)
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
     [availableQuestions.data],
@@ -80,7 +85,6 @@ function QuestionsPage() {
     { key: "exam_type", label: "Exam Type", value: (r) => r.exam_type },
     { key: "class", label: "Class", value: (r) => r.class },
     { key: "question_no", label: "Question Number", value: (r) => r.question_no },
-    { key: "question_text", label: "Question", value: (r) => r.question_text ?? "" },
     { key: "correct_answer", label: "Answer Key", value: (r) => r.correct_answer },
     { key: "parameter", label: "Parameter", value: (r) => r.parameter ?? "" },
     { key: "chapter", label: "Chapter", value: (r) => r.chapter ?? "" },
@@ -162,7 +166,40 @@ function QuestionsPage() {
                   size="sm"
                   variant="outline"
                   disabled={busy}
-                  onClick={() => void action(() => saveExamType(t.name, !t.visible))}
+                  onClick={() =>
+                    void action(async () => {
+                      const examTypes = types.data ?? [];
+                      if (!t.visible) {
+                        // Only one exam type may be active at a time.
+                        for (const other of examTypes) {
+                          if (other.name !== t.name && other.visible) {
+                            await saveExamType(other.name, false);
+                          }
+                        }
+                        await saveExamType(t.name, true);
+                        return;
+                      }
+
+                      // When hiding the active type, automatically activate the next
+                      // available type in the ICA → MCA → FCA cycle.
+                      const priority = ["ICA", "MCA", "FCA"];
+                      const ordered = [...examTypes].sort((a, b) => {
+                        const ai = priority.indexOf(a.name.toUpperCase());
+                        const bi = priority.indexOf(b.name.toUpperCase());
+                        return (ai < 0 ? priority.length : ai) - (bi < 0 ? priority.length : bi) ||
+                          a.name.localeCompare(b.name);
+                      });
+                      const currentIndex = ordered.findIndex(
+                        (item) => item.name === t.name,
+                      );
+                      const next = ordered
+                        .slice(currentIndex + 1)
+                        .concat(ordered.slice(0, currentIndex))
+                        .find((item) => item.name !== t.name);
+                      await saveExamType(t.name, false);
+                      if (next) await saveExamType(next.name, true);
+                    })
+                  }
                 >
                   {t.visible ? "Hide" : "Make visible"}
                 </Button>
@@ -228,6 +265,7 @@ function QuestionsPage() {
           {list.error.message}
         </p>
       )}
+      <QuestionSetVersions />
       <DataGrid
         title="Universal questions"
         description={`${list.data?.total ?? 0} questions`}
@@ -378,7 +416,7 @@ function QuestionsPage() {
         commit={async (valid, onProgress) => {
           for (let i = 0; i < valid.length; i += 500) {
             await saveBankQuestions(
-              valid.slice(i, i + 500).map(({ _row, errors, duplicate, ...q }) => q),
+              valid.slice(i, i + 500).map(({ _row, _file, errors, duplicate, ...q }) => q),
             );
             onProgress?.(Math.min(i + 500, valid.length));
           }

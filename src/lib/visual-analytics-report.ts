@@ -1,8 +1,9 @@
 import {
   classify,
+  summarize,
+  parameterPerformance,
+  parameterPractice,
   buildSchoolComparison,
-  distribution,
-  mean,
   type AnalyticsView,
   type Area,
   type Thresholds,
@@ -18,6 +19,10 @@ export const pct = (v: number | null) => (v == null ? "Not assessed" : `${v.toFi
 export type SessionSummary = { unit: string; complete: number; total: number };
 export type ReportOptions = {
   school: string;
+  schoolCode?: string;
+  location?: string;
+  academicYear?: string;
+  generatedAt?: string;
   classLabel: string;
   thresholds: Thresholds;
   remarks: string;
@@ -106,7 +111,7 @@ function trendChart(view: Pick<AnalyticsView, "trend">) {
 }
 function areaTable(rows: Area[], thresholds: Thresholds) {
   return table(
-    ["Area", "Questions", "Responses", "Correct rate", "Status", "Improvement"],
+    ["Area", "Questions", "Responses", "Correct rate", "Status", "Priority"],
     rows.map((a) => [
       a.name,
       a.questions,
@@ -127,258 +132,281 @@ function areaSection(title: string, rows: Area[], t: Thresholds) {
     ) + areaTable(rows, t),
   );
 }
-export function analyticsReport(view: AnalyticsView, options: ReportOptions) {
-  const { thresholds: t } = options;
-  const allAreas = [
-    ...view.subjects.map((a) => ({ ...a, name: `Subject: ${a.name}` })),
-    ...view.parameters.map((a) => ({ ...a, name: `Parameter: ${a.name}` })),
-    ...view.topics.map((a) => ({ ...a, name: `Topic: ${a.name}` })),
-    ...view.chapters.map((a) => ({ ...a, name: `Chapter: ${a.name}` })),
-  ].filter((a) => !/Unspecified (subject|parameter|topic|chapter)$/.test(a.name));
-  const focus = (label: string, rows: Area[], color: string) =>
-    `<div class="va-focus" style="border-color:${color}"><h4>${escape(label)}</h4>${rows.length ? rows.map((a) => `<p>${escape(a.name)} — ${pct(a.rate)} · ${classify(a.rate, t).priority}</p>`).join("") : "<p>No assessed areas in this band.</p>"}</div>`;
-  const dist = (title: string, values: (number | null)[]) =>
+function studentParameterSections(view: AnalyticsView, thresholds: Thresholds) {
+  const rows = parameterPerformance(view.attempts);
+  const note =
+    '<p class="va-muted">Correct rate = correct answers ÷ all recorded question responses × 100. Unanswered questions are included. These results describe the selected assessments, not a diagnosis of ability.</p>';
+  const breakdown = rows.length
+    ? bars(
+        "Parameter correct rate",
+        rows.map((row) => ({
+          name: row.name,
+          value: row.rate,
+          color: classify(row.rate, thresholds).color,
+        })),
+      ) +
+      table(
+        ["Parameter", "Total", "Correct", "Incorrect", "Unanswered", "Correct rate", "Status"],
+        rows.map((row) => [
+          row.name,
+          row.total,
+          row.correct,
+          row.incorrect,
+          row.unanswered,
+          pct(row.rate),
+          row.mapped ? classify(row.rate, thresholds).status : "Label missing",
+        ]),
+      ) +
+      note
+    : '<p class="va-note">Parameter-wise performance is unavailable: no linked question-level answers were recorded for this student. Summary scores alone cannot identify improvement areas.</p>';
+  const priorities = rows.filter((row) => row.mapped && row.rate < thresholds.good);
+  let advice = priorities.length
+    ? table(
+        ["Parameter / priority", "Evidence", "Topics to review", "Suggested next step"],
+        priorities.map((row) => [
+          `${row.name} — ${classify(row.rate, thresholds).priority}`,
+          `${row.correct}/${row.total} correct (${pct(row.rate)}); ${row.incorrect} incorrect; ${row.unanswered} unanswered`,
+          row.topics.join("; ") || "Topic labels not recorded; review the missed questions below.",
+          `${parameterPractice(row.name)}${row.unanswered ? " Revisit unanswered questions with guidance before a short follow-up check." : " Complete a short follow-up check after practice."}`,
+        ]),
+      )
+    : `<p class="va-muted">${rows.some((row) => row.mapped) ? "No recorded parameter falls below the selected Good threshold. Continue practice and review any missed questions." : "There is not enough labelled question data to suggest parameter-specific improvement areas."}</p>`;
+  if (rows.some((row) => !row.mapped))
+    advice +=
+      '<p class="va-note">Some question parameters are missing. Ask the teacher to review their labels; no parameter-specific weakness is inferred from these rows.</p>';
+  if (rows.length)
+    advice += `<p class="va-muted">Priority is based on the selected thresholds: Strong ≥ ${thresholds.strong}%, Good ≥ ${thresholds.good}%, Needs Attention ≥ ${thresholds.attention}%; below that is Weak. Small question counts provide limited evidence; teacher review is recommended.</p>`;
+  return (
+    section("2. Parameter-wise Performance", breakdown) +
+    section("3. Areas for Improvement", advice)
+  );
+}
+
+function reportMetadata(options: Partial<ReportOptions>, scope: string) {
+  return table(
+    ["Report field", "Details"],
+    [
+      ["Scope", scope],
+      ["School", options.school || "All authorized schools"],
+      ["School code", options.schoolCode || "Not recorded / multiple schools"],
+      ["Location", options.location || "Not recorded / multiple locations"],
+      ["Academic year", options.academicYear || "Not supplied"],
+      [
+        "Generated on (IST)",
+        options.generatedAt || new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+      ],
+      ["Purpose", "Review assessment coverage, learning outcomes and follow-up priorities."],
+    ],
+  );
+}
+
+function cohortReportSections(view: AnalyticsView, options: ReportOptions) {
+  const t = options.thresholds;
+  const coverage = view.summary.students
+    ? (view.summary.assessed / view.summary.students) * 100
+    : null;
+  const missing = view.summary.students - view.summary.assessed;
+  const groups = new Map<string, typeof view.students>();
+  for (const student of view.students) {
+    const key = JSON.stringify([student.class, student.division]);
+    const group = groups.get(key) ?? [];
+    group.push(student);
+    groups.set(key, group);
+  }
+  const groupedAttempts = new Map<string, typeof view.attempts>();
+  for (const a of view.attempts) {
+    const key = JSON.stringify([a.student.class, a.student.division]);
+    const group = groupedAttempts.get(key) ?? [];
+    group.push(a);
+    groupedAttempts.set(key, group);
+  }
+  const classRows = [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+    .map(([key, students]) => {
+      const summary = summarize(students, groupedAttempts.get(key) ?? []);
+      return [
+        students[0].class,
+        students[0].division || "Not recorded",
+        summary.students,
+        summary.assessed,
+        summary.students - summary.assessed,
+        pct(summary.score),
+        pct(summary.rate),
+      ];
+    });
+  const dates = view.trend
+    .map((r) => r.assessment.date)
+    .filter((date): date is string => !!date)
+    .sort();
+  let body = section(
+    "2. Executive Summary & Coverage",
+    `<p>${view.summary.assessed} of ${view.summary.students} enrolled students have linked assessment results (${pct(coverage)} coverage). ${missing} have no linked result in this selection.</p><p>Average recorded score: <b>${pct(view.summary.score)}</b>. ${view.summary.score == null ? "There are no valid scores to classify." : `The overall category is ${escape(classify(view.summary.score, t).status)} using the selected thresholds.`}</p>` +
+      table(
+        ["Measure", "Value", "Meaning"],
+        [
+          [
+            "Assessment date range",
+            dates.length ? `${dates[0]} to ${dates[dates.length - 1]}` : "Dates not recorded",
+            "Dated assessments with linked results; undated results remain included",
+          ],
+          [
+            "Enrolled students",
+            view.summary.students,
+            "Students in the selected school/class roster",
+          ],
+          [
+            "Students with results",
+            view.summary.assessed,
+            "Unique students with at least one linked assessment record",
+          ],
+          [
+            "No linked result",
+            missing,
+            "Follow up on assessment coverage; not evidence of low ability",
+          ],
+          [
+            "Assessments with results",
+            view.summary.assessments,
+            "Distinct assessment IDs represented by linked results",
+          ],
+          [
+            "Response records analysed",
+            view.attempts.reduce((n, a) => n + a.responses.length, 0),
+            "Question responses with an available answer key",
+          ],
+        ],
+      ),
+  );
+  body += section(
+    "3. Class & Division Comparison",
+    table(
+      ["Class", "Division", "Enrolled", "With results", "No result", "Avg. score", "Correct rate"],
+      classRows,
+    ),
+  );
+  body += section(
+    "4. Assessment-wise Results & Trend",
+    table(
+      [
+        "Assessment ID / name",
+        "Exam type",
+        "Date",
+        "Students with results",
+        "Avg. score",
+        "Correct rate",
+      ],
+      view.trend.map((r) => [
+        `${r.assessment.assessment_id} / ${r.assessment.name}`,
+        r.assessment.exam_type || "Not recorded",
+        r.assessment.date || "Not recorded",
+        r.assessed,
+        pct(r.score),
+        pct(r.rate),
+      ]),
+    ) +
+      trendChart(view) +
+      '<p class="va-muted">Trend points show different assessments. Differences are not a matched-student learning-gain calculation; question difficulty and participation may differ.</p>',
+  );
+  const levels = ["Strong", "Good", "Needs Attention", "Weak", "No data"];
+  body += section(
+    "5. Student Performance Distribution",
     bars(
-      title,
-      distribution(values).map((r) => ({ name: r.name, value: r.count })),
+      "Students by average assessment score",
+      levels.map((name) => ({
+        name,
+        value: view.compare.filter((r) => classify(r.score, t).status === name).length,
+      })),
       "#0891b2",
       false,
+    ),
+  );
+  body += areaSection("6. Subject-wise Performance", view.subjects, t);
+  body += areaSection("7. Parameter-wise Performance", view.parameters, t);
+  body += areaSection("8. Topic & Chapter Review", view.topics, t);
+  const priorities = view.parameters
+    .filter((r) => r.rate < t.good && !/^Unspecified parameter$/i.test(r.name))
+    .sort((a, b) => a.rate - b.rate);
+  body += section(
+    "9. Improvement Priorities & Action Plan",
+    table(
+      ["Parameter", "Evidence", "Priority", "Suggested teaching action", "Follow-up"],
+      priorities.map((r) => [
+        r.name,
+        `${r.correct}/${r.responses} correct (${pct(r.rate)})`,
+        classify(r.rate, t).priority,
+        parameterPractice(r.name),
+        "Teacher: set a review date, provide guided practice, then reassess with comparable questions.",
+      ]),
     ) +
-    `<p class="va-muted">${values.filter((v) => v == null).length} students have no valid value and are excluded from these ranges.</p>`;
-  const studentName = (s: AnalyticsView["students"][number]) =>
-    `${s.name} · Roll ${s.roll_number} · ${s.class}/${s.division}`;
+      (priorities.length
+        ? ""
+        : '<p class="va-muted">No named parameter below the selected Good threshold, or insufficient parameter data. Review coverage and missing labels before drawing conclusions.</p>') +
+      `<p>${missing} student(s) without results need a coverage check. Students below the Good threshold should receive targeted support based on their individual report.</p>`,
+  );
+  body += section(
+    "10. Session Delivery Context",
+    options.sessions?.length
+      ? table(
+          ["Unit", "Completed", "Listed sessions", "Completion"],
+          options.sessions.map((r) => [
+            r.unit,
+            r.complete,
+            r.total,
+            r.total ? pct((r.complete / r.total) * 100) : "Not planned",
+          ]),
+        ) +
+          '<p class="va-muted">Session delivery is teaching coverage, not evidence of student mastery.</p>'
+      : `<p class="va-muted">${escape(options.sessionMessage || "Session delivery data is not included in this report selection. Review Session Status for the school.")}</p>`,
+  );
+  body += section(
+    "11. Student Performance Register",
+    table(
+      [
+        "Student ID / name",
+        "Roll",
+        "Class / division",
+        "Assessments",
+        "Avg. score",
+        "Correct rate",
+        "Follow-up",
+      ],
+      view.compare.map((r) => [
+        `${r.student.student_code || r.student.id} / ${r.student.name}`,
+        r.student.roll_number,
+        `${r.student.class} / ${r.student.division || "—"}`,
+        r.assessments,
+        pct(r.score),
+        pct(r.rate),
+        r.score == null ? "Check missing results" : classify(r.score, t).status,
+      ]),
+    ),
+  );
+  body += section(
+    "12. Calculation Rules & Data Quality",
+    `<p>Average score is the mean of valid assessment-attempt score percentages (correct answers ÷ total questions). Average correct rate is the mean of recorded valid correct rates. Parameter/subject/topic rates pool correct responses ÷ all linked responses; blank answers count as unanswered and remain in the denominator. Summary-only scores do not produce a question breakdown.</p><p>Strong ≥ ${t.strong}%; Good ≥ ${t.good}%; Needs Attention ≥ ${t.attention}%; Weak below ${t.attention}%. No data is kept separate from zero performance. Latest duplicate student/assessment records are used; saved answer-key snapshots take precedence.</p><p>Source-load quality: ${options.excluded} unlinked records excluded; ${options.duplicates} duplicate records resolved across the loaded authorized dataset (these counts are not limited to this class). Assessments without linked results are not listed above. Missing dates and labels are shown explicitly. Attendance is not inferred from assessment participation; use the attendance report for attendance totals.</p>`,
+  );
+  return body;
+}
+
+export function analyticsReport(view: AnalyticsView, options: ReportOptions) {
   const overviewLabel = options.student
     ? "Student Overview"
     : options.classLabel === "All classes"
       ? "School Overview"
       : "Class Overview";
-  let body = `<style>${analyticsStyles}</style><div class="va"><h2>Visual Analytics &amp; Improvement</h2><p><b>${escape(options.school)}</b> · ${escape(options.classLabel)}${options.student && view.students[0] ? ` · ${escape(view.students[0].name)}` : ""}</p><p class="va-note">Based on linked Clicker assessment results. Score % = stored correct-answer score / assessment question count × 100. Correct rate uses the stored Clicker percentage; question breakdowns use the answer-key snapshot saved during evaluation (legacy rows use their original assessment key). Averages include recorded results only. Questions = unique questions; responses = student-question opportunities. Latest record per student/assessment is used. Blank responses are unattempted and add zero correct answers when question answers are supplied; summary-only imports have no question breakdown. Rankings use competition ties within school/class/section for each assessment (lower is better).</p>`;
-  body += `<p class="va-muted">Question breakdown coverage: ${view.attempts.filter((a) => a.responses.length).length} / ${view.attempts.length} results. Missing or invalid score: ${view.attempts.filter((a) => a.score == null).length}; missing or invalid correct rate: ${view.attempts.filter((a) => a.rate == null).length}. Summary-only results contribute to overall averages, but not question breakdowns.</p>`;
-  if (options.excluded || options.duplicates)
-    body += `<p class="va-note">Dataset quality: ${options.excluded} unlinked or inconsistent records excluded; ${options.duplicates} repeated student/assessment records replaced by their latest record. These counts cover the loaded dataset.</p>`;
+  const title = options.student
+    ? "Student Performance Report"
+    : options.classLabel === "All classes"
+      ? "School-wise Performance Report"
+      : "Class-wise Performance Report";
+  let body = `<style>${analyticsStyles}</style><div class="va"><h2>${title}</h2><p><b>${escape(options.school)}</b> · ${escape(options.classLabel)}${options.student && view.students[0] ? ` · ${escape(view.students[0].name)}` : ""}</p>`;
+  if (!options.student) body += reportMetadata(options, options.classLabel);
   body += section(`1. ${overviewLabel}`, stats(view.summary));
-  const schoolByStudent = new Map<string, { score: (number | null)[]; rate: (number | null)[] }>();
-  for (const a of view.schoolAttempts) {
-    const g = schoolByStudent.get(a.student.id) ?? { score: [], rate: [] };
-    g.score.push(a.score);
-    g.rate.push(a.rate);
-    schoolByStudent.set(a.student.id, g);
-  }
-  body += section(
-    "2. School-wise Performance Context",
-    stats(view.school) +
-      trendChart({ trend: view.schoolTrend }) +
-      bars("Overall school performance", [
-        { name: "Average score", value: view.school.score },
-        { name: "Average correct rate", value: view.school.rate },
-      ]) +
-      dist(
-        "School score distribution · students",
-        view.schoolStudents.map((s) => mean(schoolByStudent.get(s.id)?.score ?? [])),
-      ) +
-      dist(
-        "School correct-rate distribution · students",
-        view.schoolStudents.map((s) => mean(schoolByStudent.get(s.id)?.rate ?? [])),
-      ),
-  );
-  body += section(
-    "3. Class-wise Comparison",
-    bars(
-      "Average score by class",
-      view.classes.map((c) => ({ name: `Class ${c.name}`, value: c.score })),
-    ) +
-      bars(
-        "Correct rate by class",
-        view.classes.map((c) => ({ name: `Class ${c.name}`, value: c.rate })),
-        "#0891b2",
-      ) +
-      table(
-        ["Class", "Students", "Assessed", "Avg. score", "Correct rate", "Assessments"],
-        view.classes.map((c) => [
-          c.name,
-          c.students,
-          c.assessed,
-          pct(c.score),
-          pct(c.rate),
-          c.assessments,
-        ]),
-        view.classes.findIndex((c) => options.classLabel.startsWith(`Class ${c.name} ·`)),
-      ),
-  );
-  body += section(
-    "4. Individual Student Performance",
-    bars(
-      "Student vs average score",
-      view.compare.map((s) => ({ name: studentName(s.student), value: s.score })),
-    ) +
-      bars(
-        "Student vs correct rate",
-        view.compare.map((s) => ({ name: studentName(s.student), value: s.rate })),
-        "#0891b2",
-      ) +
-      table(
-        ["Student", "Roll", "Section", "Assessments", "Avg. score", "Correct rate"],
-        view.compare.map((s) => [
-          s.student.name,
-          s.student.roll_number,
-          s.student.division,
-          s.assessments,
-          pct(s.score),
-          pct(s.rate),
-        ]),
-      ),
-  );
-  body += section(
-    "5. Assessment Trend",
-    trendChart(view) +
-      (options.student
-        ? bars(
-            "Ranking across assessments · lower is better",
-            view.trend.map((r) => ({ name: r.assessment.name, value: r.rank })),
-            "#d97706",
-            false,
-          )
-        : "") +
-      table(
-        [
-          "Assessment",
-          "Date",
-          "Score",
-          "Correct rate",
-          "Rank",
-          "Score Δ (pp)",
-          "Rate Δ (pp)",
-          "Rank improvement",
-        ],
-        view.trend.map((r, i) => {
-          const previous = view.trend[i - 1];
-          const change =
-            previous?.assessment.date &&
-            r.assessment.date &&
-            r.score != null &&
-            previous.score != null
-              ? r.score - previous.score
-              : null;
-          const rateChange =
-            previous?.assessment.date &&
-            r.assessment.date &&
-            r.rate != null &&
-            previous.rate != null
-              ? r.rate - previous.rate
-              : null;
-          const rankChange =
-            previous?.assessment.date &&
-            r.assessment.date &&
-            r.rank != null &&
-            previous.rank != null
-              ? previous.rank - r.rank
-              : null;
-          const delta = (n: number | null) =>
-            n == null ? "—" : `${n > 0 ? "+" : ""}${n.toFixed(1)}`;
-          return [
-            r.assessment.name,
-            r.assessment.date ?? "Undated",
-            pct(r.score),
-            pct(r.rate),
-            r.rank ?? "—",
-            delta(change),
-            delta(rateChange),
-            delta(rankChange),
-          ];
-        }),
-      ) +
-      '<p class="va-muted">Undated assessments are listed last and excluded from the chronological chart. Changes use percentage points (pp).</p>',
-  );
-  body +=
-    areaSection("6. Subject-wise Performance", view.subjects, t) +
-    areaSection("7. Parameter-wise Performance", view.parameters, t) +
-    section(
-      "8. Topic / Chapter Analysis",
-      bars(
-        "Topics · highest to lowest",
-        view.topics.map((a) => ({ name: a.name, value: a.rate })),
-        "#059669",
-      ) +
-        areaTable(view.topics, t) +
-        bars(
-          "Chapters · highest to lowest",
-          view.chapters.map((a) => ({ name: a.name, value: a.rate })),
-          "#0891b2",
-        ) +
-        areaTable(view.chapters, t),
-    );
-  body +=
-    section(
-      "9. Improvement Required – Subject-wise",
-      areaTable(
-        view.subjects
-          .filter((a) => a.rate < t.strong)
-          .slice()
-          .reverse(),
-        t,
-      ),
-    ) +
-    section(
-      "10. Improvement Required – Parameter-wise",
-      areaTable(
-        view.parameters
-          .filter((a) => a.rate < t.strong)
-          .slice()
-          .reverse(),
-        t,
-      ),
-    );
-  body += section(
-    "11. Student Performance Distribution",
-    dist(
-      "Average score ranges · students",
-      view.compare.map((s) => s.score),
-    ) +
-      dist(
-        "Correct-rate ranges · students",
-        view.compare.map((s) => s.rate),
-      ),
-  );
-  body += section(
-    "12. Session Progress",
-    options.sessions
-      ? table(
-          ["Unit", "Completed", "Pending", "Total", "Progress"],
-          options.sessions.map((s) => [
-            s.unit,
-            s.complete,
-            s.total - s.complete,
-            s.total,
-            s.total ? pct((s.complete / s.total) * 100) : "No sessions",
-          ]),
-        )
-      : `<p class="va-muted">${escape(options.sessionMessage ?? "Select a class and section to view session progress.")}</p>`,
-  );
-  body += section(
-    "13. Strong Areas",
-    focus(
-      "Strong areas",
-      allAreas.filter((a) => a.rate >= t.strong),
-      "#059669",
-    ),
-  );
-  body += section(
-    "14. Focus Areas / Improvement Required",
-    `<p>Thresholds: Strong ≥ ${t.strong}%; Good ≥ ${t.good}%; Needs Attention ≥ ${t.attention}%; Weak &lt; ${t.attention}%.</p>` +
-      focus(
-        "High priority",
-        allAreas.filter((a) => a.rate < t.good).sort((a, b) => a.rate - b.rate),
-        "#dc2626",
-      ) +
-      focus(
-        "Moderate priority",
-        allAreas.filter((a) => a.rate >= t.good && a.rate < t.strong),
-        "#d97706",
-      ),
-  );
+  if (!options.student) body += cohortReportSections(view, options);
+  if (options.student) body += studentParameterSections(view, options.thresholds);
   if (options.student)
     body += section(
-      "Question-level Detail",
+      "4. Question Details",
       table(
         ["Assessment", "Question", "Subject", "Parameter", "Response", "Correct answer", "Result"],
         view.attempts.flatMap((a) =>
@@ -389,18 +417,20 @@ export function analyticsReport(view: AnalyticsView, options: ReportOptions) {
             r.question.parameter || "Unspecified",
             r.answer || "Blank",
             r.question.correct_answer,
-            r.correct ? "Correct" : "Incorrect",
+            !r.answer ? "Unanswered" : r.correct ? "Correct" : "Incorrect",
           ]),
         ),
       ),
     );
   body += section(
-    "15. Teacher Remarks",
+    options.student ? "5. Teacher Remarks" : "13. Teacher Remarks & Review",
     `<div class="va-remarks">${escape(options.remarks || "Teacher / trainer remarks:")}</div>`,
   );
-  if (!view.attempts.some((a) => a.responses.length))
-    body +=
-      '<p class="va-note">No linked question responses are available. Import S1, S2, … answers and matching Question Master rows to calculate subject, parameter, topic, and chapter performance.</p>';
+  if (!options.student)
+    body += table(
+      ["Prepared by", "Reviewed by", "Review date"],
+      [["________________", "________________", "________________"]],
+    );
   return body + "</div>";
 }
 
@@ -409,13 +439,15 @@ export function schoolPerformanceReport(
   rows: ReturnType<typeof buildSchoolComparison>,
   thresholds: Thresholds,
   remarks: string,
+  metadata: Partial<ReportOptions> = {},
 ) {
   const label = (r: (typeof rows)[number]) => `${r.school.name} (${r.school.code || r.school.id})`;
   const levels = ["Strong", "Good", "Needs Attention", "Weak", "No data"];
   const colors = ["#059669", "#d97706", "#ea580c", "#dc2626", "#64748b"];
   return `<style>${analyticsStyles}</style><div class="va"><h2>School-wise Performance Report</h2>
+    ${reportMetadata(metadata, "All authorized schools")}
+    ${section("Executive Summary & Assessment Coverage", `<p>${rows.reduce((n, r) => n + r.assessed, 0)} of ${rows.reduce((n, r) => n + r.students, 0)} enrolled students have linked results. Coverage is ${pct(rows.reduce((n, r) => n + r.students, 0) ? (rows.reduce((n, r) => n + r.assessed, 0) / rows.reduce((n, r) => n + r.students, 0)) * 100 : null)}. Schools with no results are shown as No data.</p>`)}
     <p>All schools · ${rows.length} schools · highest to lowest average score</p>
-    <p class="va-note">Based on linked Clicker assessment results. Average score is the mean of recorded score percentages (correct-answer score / assessment question count × 100). Average correct rate uses recorded Clicker percentages. Missing results are excluded from averages; schools without results remain visible as No data. Class and student-search filters do not narrow this school comparison.</p>
     <p class="va-muted">Performance colours: Strong ≥ ${thresholds.strong}%; Good ≥ ${thresholds.good}%; Needs Attention ≥ ${thresholds.attention}%; Weak below ${thresholds.attention}%. Categories use average score.</p>
     ${section(
       "Average score by school",
@@ -464,5 +496,21 @@ export function schoolPerformanceReport(
         ]),
       ),
     )}
+    ${section(
+      "School Follow-up Priorities",
+      table(
+        ["School", "No linked result", "Recommended next step"],
+        rows.map((r) => [
+          label(r),
+          r.students - r.assessed,
+          r.score == null
+            ? "Check assessment participation and missing results."
+            : r.score < thresholds.good
+              ? "Review the school parameter/topic report and plan targeted class support."
+              : "Sustain practice; review missing results and individual learning needs.",
+        ]),
+      ),
+    )}
+    ${section("Interpretation & Data Quality", "<p>School scores are averages of valid student-assessment percentages, not school rankings adjusted for difficulty. Coverage counts unique students with linked results. Missing results are not zero scores. Compare like-for-like assessments before concluding improvement. Open an individual school report for class, parameter, topic and student details.</p>")}
     ${section("Teacher Remarks", `<div class="va-remarks">${escape(remarks || "Teacher / trainer remarks:")}</div>`)}</div>`;
 }

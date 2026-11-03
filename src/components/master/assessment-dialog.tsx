@@ -1,4 +1,12 @@
-import { fetchExamTypes } from "@/lib/question-bank";
+import { getAcademicYear } from "@/lib/academic-year";
+import { listQuestionSetVersions } from "@/lib/academic.functions";
+import { getAccessToken } from "@/lib/app-access";
+import {
+  fetchBankQuestions,
+  fetchExamTypes,
+  normalizeClass,
+  normalizeExam,
+} from "@/lib/question-bank";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -50,6 +58,11 @@ export function AssessmentDialog({
 }) {
   const qc = useQueryClient();
   const examTypes = useQuery({ queryKey: ["exam-types"], queryFn: fetchExamTypes });
+  const versions = useQuery({
+    queryKey: ["question-versions"],
+    queryFn: () => listQuestionSetVersions({ data: { token: getAccessToken() } }),
+  });
+  const [version, setVersion] = useState("");
   const isEdit = !!assessment?.id && !defaultCode;
 
   const [code, setCode] = useState("");
@@ -60,7 +73,7 @@ export function AssessmentDialog({
   const [cls, setCls] = useState("");
   const [section, setSection] = useState("");
   const [total, setTotal] = useState("0");
-  const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [year, setYear] = useState(getAcademicYear() ?? "");
   const [subject, setSubject] = useState("");
   const [totalMarks, setTotalMarks] = useState("0");
   const [passMarks, setPassMarks] = useState("0");
@@ -78,12 +91,21 @@ export function AssessmentDialog({
     setCls(assessment?.class ?? "");
     setSection(assessment?.section ?? "");
     setTotal(String(assessment?.total_questions ?? 0));
-    setYear(assessment?.academic_year ?? String(new Date().getFullYear()));
+    setYear(isEdit ? (assessment?.academic_year ?? "") : (getAcademicYear() ?? ""));
+    setVersion(isEdit ? (assessment?.question_set_version_id ?? "") : "");
     setSubject(assessment?.subject ?? "");
     setTotalMarks(String(assessment?.total_marks ?? 0));
     setPassMarks(String(assessment?.passing_marks ?? 0));
     setStatus(assessment?.status ?? "Draft");
-  }, [open, assessment, defaultCode]);
+  }, [open, assessment, defaultCode, isEdit]);
+
+  // Question Master link: the universal answer key for the chosen exam type + class.
+  const bankKey = `${normalizeExam(examType)}|${normalizeClass(cls)}`;
+  const bank = useQuery({
+    queryKey: ["assessment-bank-link", bankKey],
+    queryFn: () => fetchBankQuestions(...bankKey.split("|")),
+    enabled: open && normalizeClass(cls) !== "",
+  });
 
   const save = useMutation({
     mutationFn: async () => {
@@ -98,7 +120,8 @@ export function AssessmentDialog({
         class: cls.trim() || null,
         section: section.trim().toUpperCase() || null,
         total_questions: Number(total) || 0,
-        academic_year: year.trim() || String(new Date().getFullYear()),
+        academic_year: year || getAcademicYear(),
+        question_set_version_id: version || null,
         subject: subject.trim() || null,
         total_marks: Number(totalMarks) || 0,
         passing_marks: Number(passMarks) || 0,
@@ -154,7 +177,17 @@ export function AssessmentDialog({
           </DialogTitle>
           <DialogDescription>
             Assessments group a question bank and its clicker responses.
+            {isEdit &&
+              " Saving corrections does not change existing marks or answers. Reports and Clicker entries retain the original evaluation settings; create a new assessment to grade with a different setup."}
           </DialogDescription>
+          {isEdit && assessment?.preserved_context && (
+            <p className="text-sm text-muted-foreground">
+              Saved evaluation: {assessment.preserved_context.exam_type || "Not recorded"} · Class{" "}
+              {assessment.preserved_context.class || "Not recorded"} · Section{" "}
+              {assessment.preserved_context.section || "Not recorded"} · Academic year{" "}
+              {assessment.preserved_context.academic_year || "Not recorded"}.
+            </p>
+          )}
         </DialogHeader>
 
         <div className="grid gap-3 py-2 sm:grid-cols-2">
@@ -210,7 +243,43 @@ export function AssessmentDialog({
             <Input value={total} onChange={(e) => setTotal(e.target.value)} inputMode="numeric" />
           </Field>
           <Field label="Academic Year">
-            <Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="2026" />
+            <Input value={year} onChange={(e) => setYear(e.target.value)} />
+          </Field>
+          <Field label="Question set version (optional)">
+            <select
+              value={version}
+              onChange={(e) => setVersion(e.target.value)}
+              className="w-full rounded border bg-background p-2"
+            >
+              <option value="">Current universal question bank</option>
+              {versions.data
+                ?.filter(
+                  (v) =>
+                    v.exam_type === normalizeExam(examType) &&
+                    v.class === normalizeClass(cls) &&
+                    (!v.academic_year || v.academic_year === year),
+                )
+                .map((v) => (
+                  <option value={v.id} key={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+            </select>
+            {!version && normalizeClass(cls) !== "" && (
+              <p
+                className={
+                  (bank.data?.length ?? 0) > 0
+                    ? "text-xs text-muted-foreground"
+                    : "text-xs text-destructive"
+                }
+              >
+                {isEdit && (assessment?.preserved_context || assessment?.question_snapshot)
+                  ? "Existing evaluations retain their original answer key. The selected Question Master link is saved as assessment metadata."
+                  : (bank.data?.length ?? 0) > 0
+                    ? `Linked to Question Master: ${normalizeExam(examType)} · Class ${normalizeClass(cls)} — ${bank.data?.length} question(s) will be used.`
+                    : `No Question Master answer key for ${normalizeExam(examType)} · Class ${normalizeClass(cls)} yet. Add questions in Question Master.`}
+              </p>
+            )}
           </Field>
           <Field label="Subject">
             <Input

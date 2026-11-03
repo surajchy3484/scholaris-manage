@@ -1,12 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { sanitizePermissions, type AccessProfile, type Permissions } from "./access-control";
+import { APP_ROLES, normalizeRole, sanitizePermissions, type AccessProfile, type Permissions } from "./access-control";
 import {
   adminDb,
   hashPassword,
   issueToken,
-  requireAdmin,
+  requirePermission,
   resolveAccess,
   verifyPassword,
 } from "./app-access.server";
@@ -16,6 +16,8 @@ import {
  * only reachable by privileged server code, so every read/write here is gated
  * by an admin session token.
  */
+
+const LEGACY_ADMIN_USERNAME = "reapstem";
 
 export type AppUserRow = {
   id: string;
@@ -46,21 +48,44 @@ export type LoginResult = { token: string; profile: AccessProfile };
 export const appLogin = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => loginSchema.parse(data))
   .handler(async ({ data }): Promise<LoginResult> => {
-    if (data.password === "123456")
-      throw new Error(
-        "The old default password is disabled. An administrator must reset this account password.",
-      );
     const username = data.username.trim().toLowerCase();
     const db = await adminDb();
 
     const { data: rows, error } = await db
       .from("app_users")
       .select(`${SELECT_COLS},password_hash`)
-      .ilike("username", username.replace(/[\\%_]/g, "\\$&"))
+      .ilike("username", username)
       .limit(1);
     if (error) throw new Error("Sign in failed. Please try again.");
 
-    const row = rows?.[0] as (AppUserRow & { password_hash: string }) | undefined;
+    let row = rows?.[0] as (AppUserRow & { password_hash: string }) | undefined;
+
+    // Bootstrap: the very first sign-in creates the admin account from the
+    // original shared operator credentials.
+    if (!row) {
+      const { count } = await db.from("app_users").select("id", { count: "exact", head: true });
+      const legacyPassword = process.env["APP_ACCESS_PASSWORD"] ?? "123456";
+      if (
+        (count ?? 0) === 0 &&
+        username === LEGACY_ADMIN_USERNAME &&
+        data.password === legacyPassword
+      ) {
+        const { data: created, error: insErr } = await db
+          .from("app_users")
+          .insert({
+            username: LEGACY_ADMIN_USERNAME,
+            full_name: "Administrator",
+            role: "admin",
+            password_hash: await hashPassword(data.password),
+            all_schools: true,
+            permissions: {},
+          })
+          .select(`${SELECT_COLS},password_hash`)
+          .single();
+        if (insErr || !created) throw new Error("Sign in failed. Please try again.");
+        row = created as AppUserRow & { password_hash: string };
+      }
+    }
 
     if (!row) throw new Error("Invalid username or password.");
     if (!row.is_active) throw new Error("This account has been disabled.");
@@ -73,9 +98,9 @@ export const appLogin = createServerFn({ method: "POST" })
       .update({ last_login_at: new Date().toISOString(), login_count: (row.login_count ?? 0) + 1 })
       .eq("id", row.id);
 
-    const role = row.role === "admin" ? "admin" : "trainer";
+    const role = normalizeRole(row.role);
     return {
-      token: await issueToken(row.id, row.password_hash),
+      token: await issueToken(row.id),
       profile: {
         userId: row.id,
         username: row.username,
@@ -98,7 +123,7 @@ export const currentProfile = createServerFn({ method: "POST" })
 export const listUsers = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => tokenSchema.parse(data))
   .handler(async ({ data }): Promise<AppUserRow[]> => {
-    await requireAdmin(data.token);
+    await requirePermission(data.token, "users", "view");
     const db = await adminDb();
     const { data: rows, error } = await db
       .from("app_users")
@@ -111,7 +136,7 @@ export const listUsers = createServerFn({ method: "POST" })
 export const listAssignableSchools = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => tokenSchema.parse(data))
   .handler(async ({ data }): Promise<{ id: string; name: string }[]> => {
-    await requireAdmin(data.token);
+    await requirePermission(data.token, "users", "view");
     const db = await adminDb();
     const { data: rows, error } = await db.from("schools").select("id,name").order("name");
     if (error) throw new Error("Failed to load schools for access assignment");
@@ -124,8 +149,8 @@ const upsertSchema = tokenSchema.extend({
   fullName: z.string().max(120).default(""),
   email: z.string().max(200).nullable().optional(),
   phone: z.string().max(40).nullable().optional(),
-  role: z.enum(["admin", "trainer"]),
-  password: z.string().min(12).max(200).optional(),
+  role: z.enum(APP_ROLES),
+  password: z.string().min(6).max(200).optional(),
   isActive: z.boolean().default(true),
   permissions: z.record(z.string(), z.array(z.string())).optional(),
   schoolIds: z.array(z.string().uuid()).max(500).default([]),
@@ -135,16 +160,14 @@ const upsertSchema = tokenSchema.extend({
 export const saveUser = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => upsertSchema.parse(data))
   .handler(async ({ data }) => {
-    const me = await requireAdmin(data.token);
+    const me = await requirePermission(data.token, "users", data.id ? "edit" : "add");
     // Only a full administrator may mint or edit administrator accounts, so
     // someone with User Access rights cannot promote themselves.
     if (data.role === "admin" && me.role !== "admin") {
       throw new Error("Only an administrator can create administrator accounts.");
     }
     const db = await adminDb();
-    const username = data.username.trim().toLowerCase();
-    if (data.id === me.userId && (!data.isActive || data.role !== "admin"))
-      throw new Error("You cannot disable or demote your own administrator account.");
+    const username = data.username.trim();
     const permissions = data.role === "admin" ? {} : sanitizePermissions(data.permissions ?? {});
 
     const base = {
@@ -161,7 +184,11 @@ export const saveUser = createServerFn({ method: "POST" })
 
     if (data.id) {
       const patch = data.password
-        ? { ...base, password_hash: await hashPassword(data.password) }
+        ? {
+            ...base,
+            password_hash: await hashPassword(data.password),
+            password_changed_at: new Date().toISOString(),
+          }
         : base;
       const { error } = await db.from("app_users").update(patch).eq("id", data.id);
       if (error) {
@@ -195,7 +222,7 @@ export const setUserActive = createServerFn({ method: "POST" })
     tokenSchema.extend({ id: z.string().uuid(), isActive: z.boolean() }).parse(data),
   )
   .handler(async ({ data }) => {
-    const me = await requireAdmin(data.token);
+    const me = await requirePermission(data.token, "users", "edit");
     if (me.userId === data.id && !data.isActive) {
       throw new Error("You cannot disable your own account.");
     }
@@ -210,16 +237,17 @@ export const setUserActive = createServerFn({ method: "POST" })
 
 export const resetUserPassword = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
-    tokenSchema
-      .extend({ id: z.string().uuid(), password: z.string().min(12).max(200) })
-      .parse(data),
+    tokenSchema.extend({ id: z.string().uuid(), password: z.string().min(6).max(200) }).parse(data),
   )
   .handler(async ({ data }) => {
-    await requireAdmin(data.token);
+    await requirePermission(data.token, "users", "edit");
     const db = await adminDb();
     const { error } = await db
       .from("app_users")
-      .update({ password_hash: await hashPassword(data.password) })
+      .update({
+        password_hash: await hashPassword(data.password),
+        password_changed_at: new Date().toISOString(),
+      })
       .eq("id", data.id);
     if (error) throw new Error("Failed to reset password");
     return { ok: true };
@@ -228,7 +256,7 @@ export const resetUserPassword = createServerFn({ method: "POST" })
 export const deleteUser = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => tokenSchema.extend({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data }) => {
-    const me = await requireAdmin(data.token);
+    const me = await requirePermission(data.token, "users", "delete");
     if (me.userId === data.id) throw new Error("You cannot delete your own account.");
     const db = await adminDb();
     const { error } = await db.from("app_users").delete().eq("id", data.id);

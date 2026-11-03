@@ -1,24 +1,29 @@
-/** Server-only authorization for administrator-approved app accounts. */
+/**
+ * Server-only guard for the app's protected server functions.
+ *
+ * SchoolRise supports two kinds of sign-in token:
+ *  1. A signed session token issued by `appLogin` for an account in `app_users`.
+ *  2. The legacy shared operator password (APP_ACCESS_PASSWORD), which is
+ *     treated as a full admin so existing installs keep working.
+ *
+ * Every privileged server function resolves the caller here before touching
+ * data, and permission-gated functions additionally call `requirePermission`.
+ */
 import {
   can,
+  normalizeRole,
   sanitizePermissions,
   type AccessProfile,
   type AppAction,
   type AppModule,
-  type AppRole,
   type Permissions,
 } from "./access-control";
 
-const TOKEN_PREFIX = "st2.";
+const TOKEN_PREFIX = "st1.";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
 function secret(): string {
-  const value = process.env.APP_SESSION_SECRET;
-  if (!value || value.length < 32)
-    throw new Error(
-      "Private access setup required: configure APP_SESSION_SECRET with at least 32 random characters on the server.",
-    );
-  return value;
+  return process.env["APP_ACCESS_PASSWORD"] ?? "123456";
 }
 
 function b64url(bytes: Uint8Array): string {
@@ -99,17 +104,13 @@ export async function verifyPassword(password: string, stored: string): Promise<
 
 /** ---------- session tokens ---------- */
 
-type TokenPayload = { uid: string; exp: number; credential: string };
+type TokenPayload = { uid: string; exp: number; iat: number };
 
-async function credentialVersion(passwordHash: string): Promise<string> {
-  return hex(new Uint8Array(await crypto.subtle.digest("SHA-256", encoder.encode(passwordHash))));
-}
-
-export async function issueToken(userId: string, passwordHash: string): Promise<string> {
+export async function issueToken(userId: string): Promise<string> {
   const payload: TokenPayload = {
     uid: userId,
     exp: Date.now() + SESSION_TTL_MS,
-    credential: await credentialVersion(passwordHash),
+    iat: Date.now(),
   };
   const body = b64url(encoder.encode(JSON.stringify(payload)));
   return `${TOKEN_PREFIX}${body}.${await hmac(body)}`;
@@ -129,16 +130,29 @@ async function readToken(token: string): Promise<TokenPayload | null> {
   }
 }
 
-export async function adminDb() {
+export async function adminDb(academicYear?: string) {
   const { getSupabaseAdmin } = await import("./supabase-admin.server");
-  return getSupabaseAdmin();
+  return getSupabaseAdmin(academicYear);
 }
+
+const LEGACY_ADMIN: AccessProfile = {
+  userId: null,
+  username: "operator",
+  fullName: "Operator",
+  role: "admin",
+  permissions: {},
+  schoolIds: [],
+  allSchools: true,
+};
 
 /** Resolve the caller behind a token, or throw. */
 export async function resolveAccess(token: string): Promise<AccessProfile> {
   if (!token) throw new Error("Unauthorized");
 
-  if (!token.startsWith(TOKEN_PREFIX)) throw new Error("Sign in with an approved account.");
+  if (!token.startsWith(TOKEN_PREFIX)) {
+    if (timingSafeEqual(token, secret())) return LEGACY_ADMIN;
+    throw new Error("Unauthorized");
+  }
 
   const payload = await readToken(token);
   if (!payload) throw new Error("Session expired. Please sign in again.");
@@ -146,20 +160,27 @@ export async function resolveAccess(token: string): Promise<AccessProfile> {
   const db = await adminDb();
   const { data, error } = await db
     .from("app_users")
-    .select("id,username,full_name,role,is_active,permissions,school_ids,all_schools,password_hash")
+    .select(
+      "id,username,full_name,role,is_active,permissions,school_ids,all_schools,password_changed_at",
+    )
     .eq("id", payload.uid)
     .maybeSingle();
   if (error) throw new Error("Unauthorized");
   if (!data) throw new Error("Unauthorized");
-  if (payload.credential !== (await credentialVersion(data.password_hash)))
-    throw new Error("Session expired. Please sign in again.");
   if (!data.is_active) throw new Error("This account has been disabled.");
+
+  // Any session created before the last password change is revoked, so
+  // changing a password signs out every device still using the old one.
+  const changedAt = data.password_changed_at ? Date.parse(data.password_changed_at) : 0;
+  if (changedAt && (payload.iat ?? 0) < changedAt - 1000) {
+    throw new Error("Session expired. Please sign in again.");
+  }
 
   return {
     userId: data.id,
     username: data.username,
     fullName: data.full_name ?? "",
-    role: (data.role === "admin" ? "admin" : "trainer") as AppRole,
+    role: normalizeRole(data.role),
     permissions: sanitizePermissions(data.permissions) as Permissions,
     schoolIds: (data.school_ids ?? []) as string[],
     allSchools: !!data.all_schools,

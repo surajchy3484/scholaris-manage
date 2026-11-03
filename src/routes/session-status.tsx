@@ -1,3 +1,5 @@
+import { refreshSessionQueries } from "@/lib/query-refresh";
+import { getAcademicYear, setAcademicYear as selectGlobalYear } from "@/lib/academic-year";
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,13 +11,15 @@ import {
   Clock,
   Download,
   Plus,
+  Pencil,
+  Wand2,
   School as SchoolIcon,
   Search,
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { supabase } from "@/lib/private-data";
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,15 +46,19 @@ import {
 import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
 import { SESSION_SAMPLE } from "@/lib/sample-templates";
 import { exportRowsToExcel } from "@/lib/exam-export";
-import { DIVISION_EXAMPLES, divisionsForClass, fetchSchoolDivisions } from "@/lib/divisions";
 import {
   UNITS,
   createSessions,
+  importSessionsForSchools,
+  fetchAssignmentContext,
   fetchDivisionSessions,
-  fetchSessions,
+  fetchSessionSchools,
+  fetchSessionRoster,
   fetchUnitCounts,
   normalizeClass,
+  normalizeStatus,
   removeSessions,
+  patchSessions,
   setSessionStatus,
   unitProgress,
   type DivisionSession,
@@ -59,8 +67,6 @@ import {
   type Unit,
 } from "@/lib/sessions";
 import { RequireModule } from "@/components/require-module";
-
-const DEFAULT_CLASSES = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
 
 export const Route = createFileRoute("/session-status")({
   head: () => ({
@@ -128,46 +134,73 @@ function StatusSelect({
 
 function SessionStatusPage() {
   const qc = useQueryClient();
+  const { profile, can } = useAuth();
+  const accessKey = JSON.stringify([
+    profile?.userId,
+    profile?.role,
+    profile?.allSchools,
+    profile?.schoolIds,
+    profile?.permissions,
+  ]);
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [unit, setUnit] = useState<Unit | null>(null);
   const [klass, setKlass] = useState<string | null>(null);
-  const [division, setDivision] = useState<string>("A");
+  const [division, setDivision] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<"all" | SessionStatus>("all");
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [addOpen, setAddOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<DivisionSession | null>(null);
   const [importOpen, setImportOpen] = useState(false);
 
   const schoolsQuery = useQuery({
-    queryKey: ["schools"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("schools")
-        .select("id, name, code, location")
-        .order("code");
-      if (error) throw new Error(error.message);
-      return data ?? [];
-    },
-    staleTime: 5 * 60_000,
+    queryKey: ["session-schools", accessKey],
+    queryFn: fetchSessionSchools,
+    staleTime: 60_000,
   });
 
+  const rosterQuery = useQuery({
+    queryKey: ["session-roster", schoolId, accessKey],
+    queryFn: () => fetchSessionRoster(schoolId!),
+    enabled: !!schoolId,
+    staleTime: 60_000,
+  });
+  const pairs = useMemo(() => rosterQuery.data ?? [], [rosterQuery.data]);
+  const classOptions = useMemo(() => [...new Set(pairs.map((p) => p.class))], [pairs]);
+  const divisionOptions = useMemo(
+    () => pairs.filter((p) => p.class === klass).map((p) => p.division),
+    [pairs, klass],
+  );
+
+  useEffect(() => {
+    if (schoolId && schoolsQuery.data && !schoolsQuery.data.some((s) => s.id === schoolId)) {
+      setSchoolId(null);
+      setUnit(null);
+      setKlass(null);
+      setSelected([]);
+    }
+  }, [schoolId, schoolsQuery.data]);
+  useEffect(() => {
+    if (
+      klass &&
+      rosterQuery.data &&
+      !pairs.some((p) => p.class === klass && p.division === division)
+    ) {
+      setKlass(null);
+      setDivision("");
+      setSelected([]);
+    }
+  }, [klass, division, pairs, rosterQuery.data]);
+
   const unitCounts = useQuery({
-    queryKey: ["session-unit-counts", schoolId],
+    queryKey: ["session-unit-counts", schoolId, accessKey],
     queryFn: () => fetchUnitCounts(schoolId!),
     enabled: !!schoolId,
     staleTime: 60_000,
   });
 
-  // Class options come from the master list of this school+unit only.
-  const classesQuery = useQuery({
-    queryKey: ["session-classes", schoolId, unit],
-    queryFn: () => fetchSessions(schoolId!, { unit: unit! }),
-    enabled: !!schoolId && !!unit,
-    staleTime: 60_000,
-  });
-
   const sessionsQuery = useQuery({
-    queryKey: ["division-sessions", schoolId, unit, klass, division],
+    queryKey: ["division-sessions", schoolId, unit, klass, division, accessKey],
     queryFn: () =>
       fetchDivisionSessions({
         schoolId: schoolId!,
@@ -179,36 +212,7 @@ function SessionStatusPage() {
     staleTime: 30_000,
   });
 
-  // Divisions / batches configured for this school (exact names, never normalised).
-  const divisionsQuery = useQuery({
-    queryKey: ["school-divisions", schoolId],
-    queryFn: () => fetchSchoolDivisions(schoolId!),
-    enabled: !!schoolId,
-    staleTime: 5 * 60_000,
-  });
-
-  const divisionOptions = useMemo(() => {
-    const names = divisionsForClass(divisionsQuery.data ?? [], klass);
-    return names.length ? names : DIVISION_EXAMPLES;
-  }, [divisionsQuery.data, klass]);
-
-  const hasConfiguredDivisions = divisionsForClass(divisionsQuery.data ?? [], klass).length > 0;
-
-  useEffect(() => {
-    if (!divisionOptions.includes(division)) {
-      setDivision(divisionOptions[0] ?? "A");
-      setSelected([]);
-    }
-  }, [divisionOptions, division]);
-
   const school = schoolsQuery.data?.find((s) => s.id === schoolId) ?? null;
-
-  const classOptions = useMemo(() => {
-    const found = new Set((classesQuery.data ?? []).map((r) => r.class).filter(Boolean));
-    return [...new Set([...found, ...DEFAULT_CLASSES])].sort((a, b) =>
-      a.localeCompare(b, undefined, { numeric: true }),
-    );
-  }, [classesQuery.data]);
 
   const rows = useMemo(() => sessionsQuery.data ?? [], [sessionsQuery.data]);
 
@@ -225,11 +229,7 @@ function SessionStatusPage() {
 
   const summary = unitProgress(rows);
 
-  const refresh = async () => {
-    await qc.invalidateQueries({ queryKey: ["division-sessions", schoolId, unit, klass] });
-    await qc.invalidateQueries({ queryKey: ["session-classes", schoolId, unit] });
-    await qc.invalidateQueries({ queryKey: ["session-unit-counts", schoolId] });
-  };
+  const refresh = () => refreshSessionQueries(qc);
 
   const setStatus = useMutation({
     mutationFn: ({ ids, status }: { ids: string[]; status: SessionStatus }) =>
@@ -268,6 +268,12 @@ function SessionStatusPage() {
   if (!schoolId) {
     return (
       <Shell title="Session Status" subtitle="Choose a school to begin">
+        <AssignmentPlanner />
+        {schoolsQuery.error && (
+          <p role="alert" className="text-destructive">
+            {schoolsQuery.error.message}
+          </p>
+        )}
         {schoolsQuery.isLoading ? (
           <GridSkeleton />
         ) : (
@@ -295,7 +301,7 @@ function SessionStatusPage() {
             ))}
             {schoolsQuery.data?.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                Add a school first from the dashboard.
+                No schools are assigned to your account.
               </p>
             )}
           </div>
@@ -311,6 +317,11 @@ function SessionStatusPage() {
         subtitle="Choose a unit"
         onBack={() => setSchoolId(null)}
       >
+        {unitCounts.error && (
+          <p role="alert" className="text-destructive">
+            {unitCounts.error.message}
+          </p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           {UNITS.map((u, i) => (
             <motion.button
@@ -348,24 +359,42 @@ function SessionStatusPage() {
     return (
       <Shell
         title={`${school?.name ?? "School"} · ${unit}`}
-        subtitle="Choose a class"
+        subtitle="Choose a class and division"
         onBack={() => setUnit(null)}
       >
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {classOptions.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => {
-                setKlass(c);
-                setSelected([]);
-              }}
-              className="rounded-2xl border border-border/60 bg-card p-5 text-center shadow-soft transition hover:border-primary/50 hover:shadow-elegant"
-            >
-              <p className="font-display text-lg font-bold">Class {c}</p>
-            </button>
-          ))}
-        </div>
+        {rosterQuery.error && (
+          <p role="alert" className="text-destructive">
+            {rosterQuery.error.message}
+          </p>
+        )}
+        {rosterQuery.isLoading ? (
+          <GridSkeleton />
+        ) : pairs.length === 0 ? (
+          <Card className="p-6 text-muted-foreground">
+            No student class/division combinations found. Add or upload students for this school.
+          </Card>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {pairs.map((pair) => (
+              <button
+                key={JSON.stringify([pair.class, pair.division])}
+                type="button"
+                onClick={() => {
+                  setKlass(pair.class);
+                  setDivision(pair.division);
+                  setQ("");
+                  setStatusFilter("all");
+                  setSelected([]);
+                }}
+                className="rounded-2xl border border-border/60 bg-card p-5 text-center shadow-soft transition hover:border-primary/50 hover:shadow-elegant"
+              >
+                <p className="font-display text-lg font-bold">
+                  Class {pair.class} – {pair.division || "No division"}
+                </p>
+              </button>
+            ))}
+          </div>
+        )}
       </Shell>
     );
   }
@@ -377,7 +406,7 @@ function SessionStatusPage() {
   return (
     <Shell
       title={`${school?.name ?? "School"} · ${unit}`}
-      subtitle={`Class ${klass} · Division ${division}`}
+      subtitle={`Class ${klass} · ${division ? `Division ${division}` : "No division"}`}
       onBack={() => setKlass(null)}
     >
       <Card className="space-y-3 p-4 shadow-soft">
@@ -399,16 +428,10 @@ function SessionStatusPage() {
                   : "border-border hover:bg-accent"
               }`}
             >
-              {d}
+              {d || "No division"}
             </button>
           ))}
         </div>
-        {!hasConfiguredDivisions && (
-          <p className="text-xs text-muted-foreground">
-            This school has no divisions / batches set up yet — showing examples. Add the real names
-            (e.g. “Batch 1”, “Morning Batch”) by editing the school on the dashboard.
-          </p>
-        )}
       </Card>
 
       <Card className="p-4 shadow-soft">
@@ -462,30 +485,36 @@ function SessionStatusPage() {
                 <SelectItem value="complete">🟢 Complete</SelectItem>
               </SelectContent>
             </Select>
-            <Button size="sm" onClick={() => setAddOpen(true)}>
-              <Plus className="h-4 w-4" /> Add Session
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-              <Upload className="h-4 w-4" /> Import Excel
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                exportRowsToExcel(
-                  `sessions-${unit}-class-${klass}-div-${division}`,
-                  visible.map((r) => ({
-                    "Session Name": r.session_name,
-                    Class: r.class,
-                    Topic: r.topic,
-                    Division: division,
-                    Status: r.status === "complete" ? "Complete" : "Pending",
-                  })),
-                )
-              }
-            >
-              <Download className="h-4 w-4" /> Export
-            </Button>
+            {can("session_status", "add") && (
+              <Button size="sm" onClick={() => setAddOpen(true)}>
+                <Plus className="h-4 w-4" /> Add Session
+              </Button>
+            )}
+            {can("session_status", "add") && (
+              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4" /> Import Excel
+              </Button>
+            )}
+            {can("session_status", "export") && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  exportRowsToExcel(
+                    `sessions-${unit}-class-${klass}-div-${division}`,
+                    visible.map((r) => ({
+                      "Session Name": r.session_name,
+                      Class: r.class,
+                      Topic: r.topic,
+                      Division: division,
+                      Status: r.status === "complete" ? "Complete" : "Pending",
+                    })),
+                  )
+                }
+              >
+                <Download className="h-4 w-4" /> Export
+              </Button>
+            )}
           </div>
         </div>
 
@@ -497,7 +526,7 @@ function SessionStatusPage() {
             <Button
               size="sm"
               className="bg-success text-success-foreground hover:bg-success/90"
-              disabled={setStatus.isPending}
+              disabled={setStatus.isPending || !can("session_status", "status")}
               onClick={() => setStatus.mutate({ ids: selected, status: "complete" })}
             >
               Mark Complete
@@ -505,24 +534,31 @@ function SessionStatusPage() {
             <Button
               size="sm"
               variant="outline"
-              disabled={setStatus.isPending}
+              disabled={setStatus.isPending || !can("session_status", "status")}
               onClick={() => setStatus.mutate({ ids: selected, status: "pending" })}
             >
               Mark Pending
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-destructive"
-              disabled={del.isPending}
-              onClick={() => del.mutate(selected)}
-            >
-              Delete
-            </Button>
+            {can("session_status", "delete") && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-destructive"
+                disabled={del.isPending}
+                onClick={() => del.mutate(selected)}
+              >
+                Delete
+              </Button>
+            )}
           </div>
         )}
       </Card>
 
+      {sessionsQuery.error && (
+        <p role="alert" className="text-destructive">
+          {sessionsQuery.error.message}
+        </p>
+      )}
       {sessionsQuery.isLoading ? (
         <GridSkeleton />
       ) : visible.length === 0 ? (
@@ -544,7 +580,7 @@ function SessionStatusPage() {
                         onCheckedChange={(c) => setSelected(c ? visible.map((r) => r.id) : [])}
                       />
                     </th>
-                    {["Session Name", "Class", "Topic", "Status"].map((h) => (
+                    {["Session Name", "Class", "Topic", "Status", "Actions"].map((h) => (
                       <th
                         key={h}
                         className="sticky top-0 z-10 bg-muted/95 px-3 py-2.5 text-left font-semibold backdrop-blur"
@@ -572,9 +608,16 @@ function SessionStatusPage() {
                       <td className="px-3 py-2">
                         <StatusSelect
                           value={r.status}
-                          disabled={setStatus.isPending}
+                          disabled={setStatus.isPending || !can("session_status", "status")}
                           onChange={(status) => setStatus.mutate({ ids: [r.id], status })}
                         />
+                      </td>
+                      <td className="px-3 py-2">
+                        {can("session_status", "edit") && (
+                          <Button size="sm" variant="ghost" onClick={() => setEditingSession(r)}>
+                            <Pencil className="h-4 w-4" /> Edit
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -597,12 +640,17 @@ function SessionStatusPage() {
                   </div>
                   <StatusBadge status={r.status} />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                  {can("session_status", "edit") && (
+                    <Button size="sm" variant="outline" onClick={() => setEditingSession(r)}>
+                      <Pencil className="h-4 w-4" /> Edit Session
+                    </Button>
+                  )}
                   <Button
                     size="lg"
                     className="h-11 flex-1"
                     variant={r.status === "complete" ? "outline" : "default"}
-                    disabled={setStatus.isPending}
+                    disabled={setStatus.isPending || !can("session_status", "status")}
                     onClick={() =>
                       setStatus.mutate({
                         ids: [r.id],
@@ -622,10 +670,24 @@ function SessionStatusPage() {
       <AddSessionDialog
         open={addOpen}
         onOpenChange={setAddOpen}
-        classOptions={classOptions}
         defaultClass={klass}
         onSave={async (row) => {
           await createSessions([{ ...row, school_id: schoolId, unit }]);
+          await refresh();
+        }}
+      />
+
+      <AddSessionDialog
+        open={!!editingSession}
+        onOpenChange={(open) => { if (!open) setEditingSession(null); }}
+        defaultClass={klass}
+        initialSession={editingSession}
+        onSave={async (row) => {
+          if (!editingSession) return;
+          await patchSessions([editingSession.id], {
+            session_name: row.session_name,
+            topic: row.topic,
+          });
           await refresh();
         }}
       />
@@ -676,33 +738,297 @@ function SessionStatusPage() {
   );
 }
 
+function AssignmentPlanner() {
+  const qc = useQueryClient();
+  const { can, profile } = useAuth();
+  const context = useQuery({
+    queryKey: ["session-assignment-context"],
+    queryFn: fetchAssignmentContext,
+    enabled: profile?.role === "admin" && can("session_status", "view"),
+  });
+  const [mode, setMode] = useState<"school" | "import">("school");
+  const [academicYear, setAcademicYear] = useState(getAcademicYear() ?? "");
+  const [unit, setUnit] = useState<Unit>("Unit-1");
+  const [klass, setKlass] = useState("");
+  const [classScope, setClassScope] = useState("all");
+  const [schoolId, setSchoolId] = useState("");
+  const [schoolScope, setSchoolScope] = useState("all");
+  const [importOpen, setImportOpen] = useState(false);
+  const [importMode, setImportMode] = useState<"add" | "update">("add");
+
+  useEffect(() => {
+    const years = context.data?.academicYears ?? [];
+    if (!academicYear && years[0]) setAcademicYear(years[0]);
+    if (!klass && context.data?.classes[0]) setKlass(context.data.classes[0]);
+    if (!schoolId && context.data?.schools[0]) setSchoolId(context.data.schools[0].id);
+  }, [context.data, academicYear, klass, schoolId]);
+
+  if (
+    profile?.role !== "admin" ||
+    !can("session_status", "add") ||
+    context.isLoading ||
+    !context.data
+  )
+    return null;
+
+  return (
+    <Card className="mb-5 space-y-4 border-primary/20 bg-primary/[0.03] p-5 shadow-soft">
+      <div className="flex items-start gap-3">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+          <Wand2 className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="font-display text-lg font-bold">Automatic session assignment</h2>
+          <p className="text-sm text-muted-foreground">
+            Set a target once, keep it isolated by academic year, and apply it only where the class
+            exists.
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={mode === "school" ? "default" : "outline"}
+          onClick={() => {
+            setMode("school");
+          }}
+        >
+          School-wise Assignment
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={mode === "import" ? "default" : "outline"}
+          onClick={() => {
+            setMode("import");
+          }}
+        >
+          Import from Excel
+        </Button>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="space-y-1.5">
+          <Label>Academic Year</Label>
+          <select
+            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            value={academicYear}
+            onChange={(e) => selectGlobalYear(e.target.value)}
+          >
+            {context.data.academicYears.map((year) => (
+              <option key={year}>{year}</option>
+            ))}
+          </select>
+        </div>
+        {mode === "school" && (
+          <div className="space-y-1.5">
+            <Label>School</Label>
+            <select
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              value={schoolId}
+              onChange={(e) => setSchoolId(e.target.value)}
+            >
+              {context.data.schools.map((school) => (
+                <option key={school.id} value={school.id}>
+                  {school.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        {mode === "import" && (
+          <div className="space-y-1.5">
+            <Label>School</Label>
+            <select
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              value={schoolScope}
+              onChange={(e) => setSchoolScope(e.target.value)}
+            >
+              <option value="all">All Schools</option>
+              {context.data.schools.map((school) => (
+                <option key={school.id} value={school.id}>
+                  {school.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <div className="space-y-1.5">
+          <Label>Unit</Label>
+          <select
+            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            value={unit}
+            onChange={(e) => setUnit(e.target.value as Unit)}
+          >
+            {UNITS.map((value) => (
+              <option key={value}>{value}</option>
+            ))}
+          </select>
+        </div>
+        {mode === "import" && (
+          <div className="space-y-1.5">
+            <Label>Class</Label>
+            <select
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              value={classScope}
+              onChange={(e) => setClassScope(e.target.value)}
+            >
+              <option value="all">All Classes</option>
+              {context.data.classes.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {mode === "school" && (
+          <div className="space-y-1.5">
+            <Label>Class</Label>
+            <select
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              value={klass}
+              onChange={(e) => setKlass(e.target.value)}
+            >
+              {context.data.classes.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          onClick={() => {
+            setImportMode("add");
+            setImportOpen(true);
+          }}
+          disabled={!academicYear}
+        >
+          <Upload className="h-4 w-4" /> Choose session Excel file
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setImportMode("update");
+            setImportOpen(true);
+          }}
+          disabled={!academicYear}
+        >
+          Update Existing Sessions
+        </Button>
+      </div>
+      <SheetImportDialog<ParsedSession>
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        title={`${importMode === "update" ? "Update" : "Import"} sessions — ${unit} · ${academicYear}`}
+        description={
+          importMode === "update"
+            ? "Update existing sessions by Session Name for the selected school scope, unit, academic year and class. New workbook rows are added; matching topics and statuses are updated without creating duplicates."
+            : "Required columns: Session Name, Class, Topic, Division and Status. All Schools and All Classes are selected by default; choose a specific class to import only that class. Each row is assigned only where its Class exists."
+        }
+        sample={SESSION_SAMPLE}
+        parse={(rows) => {
+          const seen = new Set<string>();
+          return rows.map((raw, index) => {
+            const session_name = pick(raw, "Session Name", "Session", "Name");
+            const rowClass = normalizeClass(pick(raw, "Class", "Grade"));
+            const topic = pick(raw, "Topic");
+            const division = pick(raw, "Division", "Section");
+            const rawStatus = pick(raw, "Status");
+            const parsedStatus = rawStatus ? normalizeStatus(rawStatus) : "pending";
+            const key = `${rowClass}\n${session_name.toLowerCase()}\n${topic.toLowerCase()}\n${division.toLowerCase()}`;
+            const errors: string[] = [];
+            if (!session_name) errors.push("Session Name is required");
+            if (!rowClass) errors.push("Class is required");
+            if (classScope !== "all" && rowClass !== classScope)
+              errors.push(`Class must be ${classScope}`);
+            if (rawStatus && !parsedStatus) errors.push("Status must be Pending or Complete");
+            const duplicate = seen.has(key);
+            if (duplicate) errors.push("Duplicate session in this file");
+            seen.add(key);
+            return {
+              _row: index + 2,
+              errors,
+              duplicate,
+              session_name,
+              class: rowClass,
+              topic,
+              division,
+              status: parsedStatus ?? "pending",
+            };
+          });
+        }}
+        columns={[
+          { label: "Session Name", get: (row) => row.session_name },
+          { label: "Class", get: (row) => row.class },
+          { label: "Topic", get: (row) => row.topic },
+          { label: "Division", get: (row) => row.division },
+          { label: "Status", get: (row) => row.status },
+        ]}
+        commit={async (valid) => {
+          const result = await importSessionsForSchools({
+            academicYear,
+            unit,
+            schoolIds: schoolScope === "all" ? undefined : [schoolScope],
+            updateExisting: importMode === "update",
+            rows: valid.map((row) => ({
+              class: row.class,
+              session_name: row.session_name,
+              topic: row.topic,
+              division: row.division ?? "",
+              status: row.status ?? "pending",
+            })),
+          });
+          await refreshSessionQueries(qc);
+          return `${importMode === "update" ? `Updated ${result.updated} existing session(s) and imported ${result.imported} new session(s)` : `Imported ${result.imported} session(s)`} into ${result.schools} eligible school(s). ${result.skipped} existing duplicate(s) skipped.`;
+        }}
+      />
+    </Card>
+  );
+}
+
 type ParsedSession = ParsedBase & {
   session_name: string;
   class: string;
   topic: string;
+  division?: string;
+  status?: SessionStatus;
 };
 
 function AddSessionDialog({
   open,
   onOpenChange,
-  classOptions,
   defaultClass,
+  initialSession = null,
   onSave,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  classOptions: string[];
   defaultClass: string | null;
+  initialSession?: DivisionSession | null;
   onSave: (row: Omit<NewSession, "school_id" | "unit">) => Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [topic, setTopic] = useState("");
   const [klass, setKlass] = useState(defaultClass ?? "");
 
+  useEffect(() => {
+    if (open) {
+      setKlass(initialSession?.class ?? defaultClass ?? "");
+      setName(initialSession?.session_name ?? "");
+      setTopic(initialSession?.topic ?? "");
+    }
+  }, [open, defaultClass, initialSession]);
+
   const save = useMutation({
     mutationFn: () => onSave({ session_name: name.trim(), class: klass, topic: topic.trim() }),
     onSuccess: () => {
-      toast.success("Session added for every division of this class");
+      toast.success(
+        initialSession
+          ? "Session details updated"
+          : "Session added for every division of this class",
+      );
       setName("");
       setTopic("");
       onOpenChange(false);
@@ -714,10 +1040,11 @@ function AddSessionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add session</DialogTitle>
+          <DialogTitle>{initialSession ? "Edit session" : "Add session"}</DialogTitle>
           <DialogDescription>
-            Saved for the selected school, unit and class. It becomes available to every division
-            (A–F) of that class.
+            {initialSession
+              ? "Update the session name or topic. Changes apply to this session across all divisions of the selected class."
+              : "Saved for the selected school, unit and class. It becomes available to every division present in the student roster for that class."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-1">
@@ -726,19 +1053,13 @@ function AddSessionDialog({
             <Input id="s-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Class</Label>
-            <Select value={klass} onValueChange={setKlass}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select class" />
-              </SelectTrigger>
-              <SelectContent>
-                {classOptions.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Selected Class</Label>
+            <div className="flex h-10 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium">
+              {klass ? `Class ${klass}` : "No class selected"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This session will be added only to the class currently open.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="s-topic">Topic</Label>
@@ -750,7 +1071,7 @@ function AddSessionDialog({
             Cancel
           </Button>
           <Button onClick={() => save.mutate()} disabled={!name.trim() || !klass || save.isPending}>
-            {save.isPending ? "Saving..." : "Save Session"}
+            {save.isPending ? "Saving..." : initialSession ? "Save Changes" : "Save Session"}
           </Button>
         </DialogFooter>
       </DialogContent>
