@@ -140,6 +140,27 @@ export type Database = {
         }
         Relationships: []
       }
+      assessment_code_format_backup: {
+        Row: {
+          assessment_uuid: string
+          changed_at: string
+          new_code: string
+          old_code: string
+        }
+        Insert: {
+          assessment_uuid: string
+          changed_at?: string
+          new_code: string
+          old_code: string
+        }
+        Update: {
+          assessment_uuid?: string
+          changed_at?: string
+          new_code?: string
+          old_code?: string
+        }
+        Relationships: []
+      }
       assessment_results: {
         Row: {
           academic_year: string | null
@@ -248,7 +269,6 @@ export type Database = {
       }
       assessments: {
         Row: {
-          preserved_context: Json | null
           academic_year: string
           assessment_id: string
           class: string | null
@@ -258,6 +278,7 @@ export type Database = {
           id: string
           name: string
           passing_marks: number
+          preserved_context: Json | null
           question_set_version_id: string | null
           question_snapshot: Json | null
           school_id: string | null
@@ -270,7 +291,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          preserved_context?: Json | null
           academic_year: string
           assessment_id: string
           class?: string | null
@@ -280,6 +300,7 @@ export type Database = {
           id?: string
           name: string
           passing_marks?: number
+          preserved_context?: Json | null
           question_set_version_id?: string | null
           question_snapshot?: Json | null
           school_id?: string | null
@@ -292,7 +313,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          preserved_context?: Json | null
           academic_year?: string
           assessment_id?: string
           class?: string | null
@@ -302,6 +322,7 @@ export type Database = {
           id?: string
           name?: string
           passing_marks?: number
+          preserved_context?: Json | null
           question_set_version_id?: string | null
           question_snapshot?: Json | null
           school_id?: string | null
@@ -1319,6 +1340,301 @@ export type Database = {
           },
         ]
       }
+      support_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read_at: string | null
+          ticket_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string
+          read_at?: string | null
+          ticket_id?: string | null
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read_at?: string | null
+          ticket_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_notifications_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_activity: {
+        Row: {
+          action: string
+          actor_id: string
+          actor_name: string
+          created_at: string
+          id: string
+          new_value: string | null
+          previous_value: string | null
+          ticket_id: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          actor_name?: string
+          created_at?: string
+          id?: string
+          new_value?: string | null
+          previous_value?: string | null
+          ticket_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          actor_name?: string
+          created_at?: string
+          id?: string
+          new_value?: string | null
+          previous_value?: string | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_activity_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_activity_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_attachments: {
+        Row: {
+          content_type: string
+          created_at: string
+          filename: string
+          id: string
+          reply_id: string | null
+          size_bytes: number
+          storage_path: string
+          ticket_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          filename: string
+          id?: string
+          reply_id?: string | null
+          size_bytes: number
+          storage_path: string
+          ticket_id: string
+          uploaded_by: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          filename?: string
+          id?: string
+          reply_id?: string | null
+          size_bytes?: number
+          storage_path?: string
+          ticket_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_attachments_reply_id_fkey"
+            columns: ["reply_id"]
+            isOneToOne: false
+            referencedRelation: "support_ticket_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_attachments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_ticket_replies: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          sender_id: string
+          sender_name: string
+          ticket_id: string
+          visibility: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          sender_id: string
+          sender_name?: string
+          ticket_id: string
+          visibility?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          sender_id?: string
+          sender_name?: string
+          ticket_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ticket_replies_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_ticket_replies_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          academic_year: string
+          assigned_to: string | null
+          category: string
+          class: string | null
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          creator_designation: string
+          creator_id: string | null
+          creator_name: string
+          description: string
+          division: string | null
+          full_name: string
+          id: string
+          priority: string
+          resolution_details: string | null
+          resolved_at: string | null
+          role: string
+          school_id: string | null
+          status: string
+          subject: string
+          ticket_id: string | null
+          ticket_number: number | null
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          academic_year?: string
+          assigned_to?: string | null
+          category?: string
+          class?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          creator_designation?: string
+          creator_id?: string | null
+          creator_name?: string
+          description: string
+          division?: string | null
+          full_name?: string
+          id?: string
+          priority?: string
+          resolution_details?: string | null
+          resolved_at?: string | null
+          role?: string
+          school_id?: string | null
+          status?: string
+          subject: string
+          ticket_id?: string | null
+          ticket_number?: number | null
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          academic_year?: string
+          assigned_to?: string | null
+          category?: string
+          class?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          creator_designation?: string
+          creator_id?: string | null
+          creator_name?: string
+          description?: string
+          division?: string | null
+          full_name?: string
+          id?: string
+          priority?: string
+          resolution_details?: string | null
+          resolved_at?: string | null
+          role?: string
+          school_id?: string | null
+          status?: string
+          subject?: string
+          ticket_id?: string | null
+          ticket_number?: number | null
+          updated_at?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       academic_roster: {
@@ -1355,6 +1671,31 @@ export type Database = {
           },
         ]
       }
+      assessment_evaluation_context: {
+        Row: {
+          academic_year: string | null
+          assessment_id: string | null
+          class: string | null
+          created_at: string | null
+          date: string | null
+          exam_type: string | null
+          id: string | null
+          name: string | null
+          passing_marks: number | null
+          preserved_context: Json | null
+          question_set_version_id: string | null
+          question_snapshot: Json | null
+          school_id: string | null
+          school_name: string | null
+          section: string | null
+          status: string | null
+          subject: string | null
+          total_marks: number | null
+          total_questions: number | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       academic_capture_question_set: {
@@ -1386,8 +1727,16 @@ export type Database = {
         Args: { p_schools?: string[]; p_student: string }
         Returns: Json
       }
+      delete_assessments: {
+        Args: { p_ids: string[]; p_schools?: string[] }
+        Returns: number
+      }
       delete_clicker_records: {
         Args: { p_ids: string[]; p_schools?: string[] }
+        Returns: number
+      }
+      delete_students_permanently: {
+        Args: { p_ids: string[]; p_school: string; p_schools?: string[] }
         Returns: number
       }
       performance_master_page: {
@@ -1440,6 +1789,23 @@ export type Database = {
         Returns: undefined
       }
       school_drive_snapshot: { Args: { p_school: string }; Returns: Json }
+      student_details_page: {
+        Args: {
+          p_attendance?: string
+          p_class?: string
+          p_division?: string
+          p_exam?: string
+          p_max?: number
+          p_min?: number
+          p_page?: number
+          p_school: string
+          p_search?: string
+          p_size?: number
+          p_sort?: string
+          p_status?: string
+        }
+        Returns: Json
+      }
       universal_clicker_write: {
         Args: {
           p_ids?: string[]
