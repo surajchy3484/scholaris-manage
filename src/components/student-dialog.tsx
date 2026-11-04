@@ -143,7 +143,7 @@ export function StudentDialog({
         for (let attempt = 1; attempt <= 3; attempt++) {
           try {
             const filename = `${code || rollV}-${nameV.replace(/\s+/g, "_")}.jpg`;
-            const result = await uploadPhoto({ data: { dataUrl: photo, filename } });
+            const result = await uploadPhoto({ data: { token: getAccessToken(), dataUrl: photo, filename } });
             photoUrl = result.url;
             lastErr = null;
             break;
@@ -184,7 +184,7 @@ export function StudentDialog({
         if (prevUrl && prevUrl !== photoUrl) {
           const oldId = extractDriveFileId(prevUrl);
           if (oldId) {
-            deletePhotoFromDrive({ data: { fileId: oldId } }).catch(() => {});
+            deletePhotoFromDrive({ data: { token: getAccessToken(), fileId: oldId } }).catch(() => {});
           }
         }
       }

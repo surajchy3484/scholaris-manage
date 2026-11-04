@@ -25,6 +25,7 @@ import { supabase } from "@/lib/academic-data";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { getAccessToken } from "@/lib/app-access";
 import {
   uploadPhotoToDrive,
   deletePhotoFromDrive,
