@@ -50,6 +50,13 @@
       "when": 1793678105295,
       "tag": "0006_support_tickets_status_check_app_statuses",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793771135675,
+      "tag": "0007_fix_support_notification_broadcast",
+      "breakpoints": true
     }
   ]
 }
