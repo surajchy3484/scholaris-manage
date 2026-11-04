@@ -162,14 +162,14 @@ export const createSupportTicket = createServerFn({ method: "POST" })
       console.error("[support] unable to find ticket notification recipients", recipientsError);
     } else {
       const recipientIds = [...new Set(
-        (recipients ?? [])
-          .filter((user: any) => {
+        ((recipients ?? []) as { id?: string; role?: string; permissions?: any }[])
+          .filter((user) => {
             if (!user.id || user.id === profile.userId) return false;
             if (["admin", "administrator", "super admin", "super_admin"].includes(String(user.role).trim().toLowerCase())) return true;
             const supportActions = user.permissions?.support;
             return Array.isArray(supportActions) && supportActions.includes("manage");
           })
-          .map((user: any) => user.id as string),
+          .map((user) => user.id as string),
       )];
       if (recipientIds.length) {
         const { error: notificationError } = await usersDb.from("support_notifications").insert(

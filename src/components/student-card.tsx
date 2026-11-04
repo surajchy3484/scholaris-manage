@@ -25,6 +25,7 @@ import { supabase } from "@/lib/academic-data";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { getAccessToken } from "@/lib/app-access";
 import {
   uploadPhotoToDrive,
   deletePhotoFromDrive,
@@ -58,7 +59,9 @@ export function StudentCard({
       let photoUrl = dataUrl;
       if (photoUrl && photoUrl.startsWith("data:")) {
         const filename = `${student.student_code}-${student.name.replace(/\s+/g, "_")}.jpg`;
-        const res = await uploadPhoto({ data: { dataUrl: photoUrl, filename } });
+        const res = await uploadPhoto({
+          data: { token: getAccessToken(), dataUrl: photoUrl, filename },
+        });
         photoUrl = res.url;
       }
       const { error } = await supabase
@@ -69,7 +72,8 @@ export function StudentCard({
       // Best-effort: delete previous Drive file if it changed.
       if (prevUrl && prevUrl !== photoUrl) {
         const oldId = extractDriveFileId(prevUrl);
-        if (oldId) deletePhotoFromDrive({ data: { fileId: oldId } }).catch(() => {});
+        if (oldId)
+          deletePhotoFromDrive({ data: { token: getAccessToken(), fileId: oldId } }).catch(() => {});
       }
     },
     onSuccess: () => {
