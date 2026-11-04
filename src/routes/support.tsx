@@ -138,6 +138,8 @@ function SupportPage() {
           priority: (priority || undefined) as TicketPriority | undefined,
         },
       }),
+    // Keep a creator's My Tickets list current when an administrator changes status.
+    refetchInterval: isListTab && !canManage ? 10000 : false,
   });
   const summaryQ = useQuery({
     queryKey: ["support-summary"],
@@ -247,7 +249,7 @@ function SupportPage() {
             Raise a Ticket
           </TabButton>
         )}
-        {(can("support", "view") || canManage) && (
+        {(canRaise || can("support", "view") || canManage) && (
           <TabButton
             active={tab === "mine"}
             onClick={() => {
