@@ -237,7 +237,7 @@ export const listSupportTickets = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => listSchema.parse(data))
   .handler(async ({ data }) => {
     const profile = await resolveAccess(data.token);
-    if (!canAny(profile, "view", "manage")) throw new Error("Support access is required.");
+    if (!canAny(profile, "view", "manage", "raise")) throw new Error("Support access is required.");
     const db = (await academicDb(data.academicYear)) as any;
     const from = (data.page - 1) * data.pageSize;
     const to = from + data.pageSize - 1;
