@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { Bell, CheckCheck, Clock3, Ticket } from "lucide-react";
+import { Bell, CheckCheck, Clock3, Megaphone, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -25,9 +25,14 @@ import {
 
 type NotificationRow = {
   id: string;
+  kind: "support" | "broadcast";
   ticket_id: string | null;
+  broadcast_id: string | null;
   type: string;
   message: string;
+  title: string | null;
+  description: string | null;
+  sender_name: string | null;
   read_at: string | null;
   created_at: string;
   ticket: {
@@ -50,7 +55,7 @@ export function SupportNotificationBell() {
   const { ready, profile, can } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const allowed = can("support", "view") || can("support", "manage");
+  const allowed = profile?.role === "trainer" || can("support", "view") || can("support", "manage");
   const tokenData = () => ({ token: getAccessToken(), academicYear: getAcademicYear() });
   const notifications = useQuery({
     queryKey: ["support-notifications"],
@@ -95,7 +100,7 @@ export function SupportNotificationBell() {
         <Button
           variant="ghost"
           size="icon"
-          aria-label={unread ? `${unread} unread support notifications` : "Support notifications"}
+          aria-label={unread ? `${unread} unread notifications` : "Notifications"}
           className="relative rounded-full"
         >
           <Bell className="h-5 w-5" />
@@ -109,7 +114,7 @@ export function SupportNotificationBell() {
       <DropdownMenuContent align="end" className="w-[min(24rem,calc(100vw-1rem))] p-0">
         <DropdownMenuLabel className="flex items-center justify-between px-4 py-3">
           <span className="flex items-center gap-2">
-            <Ticket className="h-4 w-4 text-primary" /> Support notifications
+            <Ticket className="h-4 w-4 text-primary" /> Notifications
           </span>
           {unread > 0 && (
             <button
@@ -145,7 +150,7 @@ export function SupportNotificationBell() {
               onSelect={(event) => {
                 event.preventDefault();
                 if (!row.read_at) markRead.mutate(row.id);
-                if (row.ticket_id)
+                if (row.kind === "support" && row.ticket_id)
                   void router.navigate({ to: "/support", search: { ticket: row.ticket_id } });
               }}
             >
@@ -154,7 +159,16 @@ export function SupportNotificationBell() {
               />
               <span className="min-w-0 flex-1 space-y-1">
                 <span className="flex items-center justify-between gap-2">
-                  <span className="truncate font-semibold">New Support Ticket</span>
+                  <span className="flex min-w-0 items-center gap-1 truncate font-semibold">
+                    {row.kind === "broadcast" ? (
+                      <Megaphone className="h-3.5 w-3.5 shrink-0 text-primary" />
+                    ) : (
+                      <Ticket className="h-3.5 w-3.5 shrink-0 text-primary" />
+                    )}
+                    <span className="truncate">
+                      {row.kind === "broadcast" ? row.title : "New Support Ticket"}
+                    </span>
+                  </span>
                   {!row.read_at && (
                     <Badge variant="destructive" className="shrink-0 text-[10px]">
                       New
@@ -162,12 +176,19 @@ export function SupportNotificationBell() {
                   )}
                 </span>
                 <span className="block truncate text-xs font-medium text-primary">
-                  {row.ticket?.ticket_id ?? "Support ticket"}
+                  {row.kind === "broadcast"
+                    ? "Announcement"
+                    : (row.ticket?.ticket_id ?? "Support ticket")}
                 </span>
-                <span className="block truncate text-sm">{row.ticket?.subject ?? row.message}</span>
+                <span className="block whitespace-pre-wrap text-sm">
+                  {row.kind === "broadcast"
+                    ? row.description
+                    : (row.ticket?.subject ?? row.message)}
+                </span>
                 <span className="block truncate text-xs text-muted-foreground">
-                  {row.ticket?.creator_name ?? "Support user"}
-                  {row.ticket?.school_name ? ` · ${row.ticket.school_name}` : ""}
+                  {row.kind === "broadcast"
+                    ? (row.sender_name ?? "Administrator")
+                    : `${row.ticket?.creator_name ?? "Support user"}${row.ticket?.school_name ? ` · ${row.ticket.school_name}` : ""}`}
                 </span>
                 <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                   <Clock3 className="h-3 w-3" /> {relativeTime(row.created_at)}

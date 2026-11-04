@@ -161,16 +161,23 @@ export const createSupportTicket = createServerFn({ method: "POST" })
     if (recipientsError) {
       console.error("[support] unable to find ticket notification recipients", recipientsError);
     } else {
-      const recipientIds = [...new Set(
-        ((recipients ?? []) as { id?: string; role?: string; permissions?: any }[])
-          .filter((user) => {
-            if (!user.id || user.id === profile.userId) return false;
-            if (["admin", "administrator", "super admin", "super_admin"].includes(String(user.role).trim().toLowerCase())) return true;
-            const supportActions = user.permissions?.support;
-            return Array.isArray(supportActions) && supportActions.includes("manage");
-          })
-          .map((user) => user.id as string),
-      )];
+      const recipientIds = [
+        ...new Set(
+          ((recipients ?? []) as { id?: string; role?: string; permissions?: any }[])
+            .filter((user) => {
+              if (!user.id || user.id === profile.userId) return false;
+              if (
+                ["admin", "administrator", "super admin", "super_admin"].includes(
+                  String(user.role).trim().toLowerCase(),
+                )
+              )
+                return true;
+              const supportActions = user.permissions?.support;
+              return Array.isArray(supportActions) && supportActions.includes("manage");
+            })
+            .map((user) => user.id as string),
+        ),
+      ];
       if (recipientIds.length) {
         const { error: notificationError } = await usersDb.from("support_notifications").insert(
           recipientIds.map((userId: string) => ({
@@ -187,7 +194,10 @@ export const createSupportTicket = createServerFn({ method: "POST" })
           });
         }
       } else {
-        console.warn("[support] no active admin/support managers found for new ticket", row.ticket_id);
+        console.warn(
+          "[support] no active admin/support managers found for new ticket",
+          row.ticket_id,
+        );
       }
     }
     const files = data.attachments ?? [];
@@ -474,11 +484,15 @@ export const deleteSupportTicket = createServerFn({ method: "POST" })
 
 const notificationIdSchema = token.extend({ id: z.string().uuid() });
 
+function canReceiveNotifications(profile: AccessProfile) {
+  return profile.role === "trainer" || canAny(profile, "view", "manage");
+}
+
 export const listSupportNotifications = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => token.parse(data))
   .handler(async ({ data }) => {
     const profile = await resolveAccess(data.token);
-    if (!canAny(profile, "view", "manage")) throw new Error("Support access is required.");
+    if (!canReceiveNotifications(profile)) throw new Error("Notification access is required.");
     const db = (await academicDb(data.academicYear)) as any;
     let recipientIds: string[] = profile.userId ? [profile.userId] : [];
     // The legacy shared Administrator login has no app_users ID. For that
@@ -491,28 +505,88 @@ export const listSupportNotifications = createServerFn({ method: "POST" })
         .eq("is_active", true);
       if (recipientsError) throw new Error("Unable to load support notification recipients.");
       recipientIds = (recipients ?? [])
-        .filter((user: any) =>
-          ["admin", "administrator", "super admin", "super_admin"].includes(String(user.role).trim().toLowerCase()) ||
-          (Array.isArray(user.permissions?.support) && user.permissions.support.includes("manage")),
+        .filter(
+          (user: any) =>
+            ["admin", "administrator", "super admin", "super_admin"].includes(
+              String(user.role).trim().toLowerCase(),
+            ) ||
+            (Array.isArray(user.permissions?.support) &&
+              user.permissions.support.includes("manage")),
         )
         .map((user: any) => user.id as string);
     }
     if (!recipientIds.length) return { rows: [], unreadCount: 0 };
-    const { data: rows, error } = await db
-      .from("support_notifications")
-      .select("id,ticket_id,type,message,read_at,created_at")
-      .in("user_id", recipientIds)
-      .order("created_at", { ascending: false })
-      .limit(50);
-    if (error) throw new Error("Unable to load support notifications.");
-    const { count: unreadCount, error: unreadError } = await db
-      .from("support_notifications")
-      .select("id", { count: "exact", head: true })
-      .in("user_id", recipientIds)
-      .is("read_at", null);
-    if (unreadError) throw new Error("Unable to count support notifications.");
-    const rawRows = (rows ?? []) as Array<Record<string, unknown>>;
-    const ticketIds = rawRows.map((row) => row.ticket_id).filter(Boolean) as string[];
+    const [supportResult, supportUnreadResult, broadcastResult, broadcastUnreadResult] =
+      await Promise.all([
+        db
+          .from("support_notifications")
+          .select("id,ticket_id,type,message,read_at,created_at")
+          .in("user_id", recipientIds)
+          .order("created_at", { ascending: false })
+          .limit(100),
+        db
+          .from("support_notifications")
+          .select("id", { count: "exact", head: true })
+          .in("user_id", recipientIds)
+          .is("read_at", null),
+        db
+          .from("broadcast_recipients")
+          .select(
+            "id,broadcast_id,read_at,created_at,broadcast:broadcast_messages(id,title,description,sender_name,created_at)",
+          )
+          .in("user_id", recipientIds)
+          .order("created_at", { ascending: false })
+          .limit(100),
+        db
+          .from("broadcast_recipients")
+          .select("id", { count: "exact", head: true })
+          .in("user_id", recipientIds)
+          .is("read_at", null),
+      ]);
+    if (supportResult.error) throw new Error("Unable to load support notifications.");
+    if (supportUnreadResult.error) throw new Error("Unable to count support notifications.");
+    if (broadcastResult.error) throw new Error("Unable to load broadcast notifications.");
+    if (broadcastUnreadResult.error) throw new Error("Unable to count broadcast notifications.");
+    const supportRows = ((supportResult.data ?? []) as Array<Record<string, unknown>>).map(
+      (row) => ({
+        ...row,
+        kind: "support",
+        title: null,
+        description: null,
+        sender_name: null,
+        broadcast_id: null,
+      }),
+    );
+    const broadcastRows = (broadcastResult.data ?? []).flatMap((row: any) => {
+      const broadcast = Array.isArray(row.broadcast) ? row.broadcast[0] : row.broadcast;
+      return broadcast
+        ? [
+            {
+              id: row.id,
+              kind: "broadcast",
+              ticket_id: null,
+              broadcast_id: row.broadcast_id,
+              type: "broadcast",
+              message: broadcast.description,
+              title: broadcast.title,
+              description: broadcast.description,
+              sender_name: broadcast.sender_name,
+              read_at: row.read_at,
+              created_at: row.created_at,
+            },
+          ]
+        : [];
+    });
+    const rawRows = [...supportRows, ...broadcastRows]
+      .sort(
+        (a, b) =>
+          new Date(String(b.created_at)).getTime() - new Date(String(a.created_at)).getTime(),
+      )
+      .slice(0, 50) as Array<Record<string, unknown>>;
+    const ticketIds = rawRows
+      .filter((row) => row.kind === "support")
+      .map((row) => row.ticket_id)
+      .filter(Boolean) as string[];
     const tickets = ticketIds.length
       ? await db
           .from("support_tickets")
@@ -543,7 +617,7 @@ export const listSupportNotifications = createServerFn({ method: "POST" })
             : null,
         };
       }),
-      unreadCount: unreadCount ?? rawRows.filter((row) => !row.read_at).length,
+      unreadCount: (supportUnreadResult.count ?? 0) + (broadcastUnreadResult.count ?? 0),
     };
   });
 
@@ -551,17 +625,27 @@ export const markSupportNotificationRead = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => notificationIdSchema.parse(data))
   .handler(async ({ data }) => {
     const profile = await resolveAccess(data.token);
-    if (!canAny(profile, "view", "manage"))
-      throw new Error("Support access is required.");
+    if (!canReceiveNotifications(profile)) throw new Error("Notification access is required.");
     const db = (await academicDb(data.academicYear)) as any;
-    let query = db
+    if (!profile.userId && profile.role !== "admin")
+      throw new Error("Notification access is required.");
+    let supportQuery = db
       .from("support_notifications")
       .update({ read_at: new Date().toISOString() })
       .eq("id", data.id);
-    if (profile.userId) query = query.eq("user_id", profile.userId);
-    else if (profile.role !== "admin") throw new Error("Support access is required.");
-    const { error } = await query;
-    if (error) throw new Error("Unable to mark notification as read.");
+    if (profile.userId) supportQuery = supportQuery.eq("user_id", profile.userId);
+    const { error: supportError, count: supportCount } = await supportQuery.select("id", {
+      count: "exact",
+    });
+    if (supportError) throw new Error("Unable to mark notification as read.");
+    if (!supportCount && profile.userId) {
+      const { error: broadcastError } = await db
+        .from("broadcast_recipients")
+        .update({ read_at: new Date().toISOString() })
+        .eq("id", data.id)
+        .eq("user_id", profile.userId);
+      if (broadcastError) throw new Error("Unable to mark notification as read.");
+    }
     return { ok: true };
   });
 
@@ -569,8 +653,7 @@ export const markAllSupportNotificationsRead = createServerFn({ method: "POST" }
   .inputValidator((data: unknown) => token.parse(data))
   .handler(async ({ data }) => {
     const profile = await resolveAccess(data.token);
-    if (!canAny(profile, "view", "manage"))
-      throw new Error("Support access is required.");
+    if (!canReceiveNotifications(profile)) throw new Error("Notification access is required.");
     const db = (await academicDb(data.academicYear)) as any;
     let recipientIds: string[] = profile.userId ? [profile.userId] : [];
     if (!profile.userId && profile.role === "admin") {
@@ -581,9 +664,11 @@ export const markAllSupportNotificationsRead = createServerFn({ method: "POST" }
         .eq("is_active", true);
       if (recipientsError) throw new Error("Unable to load support notification recipients.");
       recipientIds = (recipients ?? [])
-        .filter((user: any) =>
-          String(user.role).toLowerCase() === "admin" ||
-          (Array.isArray(user.permissions?.support) && user.permissions.support.includes("manage")),
+        .filter(
+          (user: any) =>
+            String(user.role).toLowerCase() === "admin" ||
+            (Array.isArray(user.permissions?.support) &&
+              user.permissions.support.includes("manage")),
         )
         .map((user: any) => user.id as string);
     }
@@ -594,5 +679,11 @@ export const markAllSupportNotificationsRead = createServerFn({ method: "POST" }
       .in("user_id", recipientIds)
       .is("read_at", null);
     if (error) throw new Error("Unable to mark notifications as read.");
+    const { error: broadcastError } = await db
+      .from("broadcast_recipients")
+      .update({ read_at: new Date().toISOString() })
+      .in("user_id", recipientIds)
+      .is("read_at", null);
+    if (broadcastError) throw new Error("Unable to mark notifications as read.");
     return { ok: true };
   });
