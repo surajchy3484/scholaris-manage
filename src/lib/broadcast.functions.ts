@@ -70,7 +70,32 @@ export const createBroadcast = createServerFn({ method: "POST" })
           details: recipientError.details,
           hint: recipientError.hint,
         });
-        throw new Error("Broadcast created, but delivery could not be scheduled.");
+        // Compatibility path for deployments where the broadcast migration
+        // has not been applied yet. The existing notification table is already
+        // used by the bell and supports user-specific read state.
+        const fallbackRows = (trainers ?? []).map((trainer: { id: string }) => ({
+          user_id: trainer.id,
+          ticket_id: null,
+          type: "broadcast",
+          message: JSON.stringify({
+            broadcast_id: broadcast.id,
+            title: broadcast.title,
+            description: broadcast.description,
+            sender_name: broadcast.sender_name,
+          }),
+        }));
+        const { error: fallbackError } = await db
+          .from("support_notifications")
+          .insert(fallbackRows);
+        if (fallbackError) {
+          console.error("[broadcast] compatibility delivery also failed", {
+            code: fallbackError.code,
+            message: fallbackError.message,
+            details: fallbackError.details,
+            hint: fallbackError.hint,
+          });
+          throw new Error("Broadcast created, but delivery could not be scheduled.");
+        }
       }
     }
     return broadcast;
