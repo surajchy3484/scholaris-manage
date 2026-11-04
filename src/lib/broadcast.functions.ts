@@ -60,9 +60,18 @@ export const createBroadcast = createServerFn({ method: "POST" })
     if (recipients.length) {
       const { error: recipientError } = await db
         .from("broadcast_recipients")
-        .upsert(recipients, { onConflict: "broadcast_id,user_id", ignoreDuplicates: true });
-      if (recipientError)
+        // This is a new broadcast, so recipient rows cannot exist yet. A plain
+        // insert avoids relying on PostgREST's conflict-target schema cache.
+        .insert(recipients);
+      if (recipientError) {
+        console.error("[broadcast] unable to deliver broadcast", {
+          code: recipientError.code,
+          message: recipientError.message,
+          details: recipientError.details,
+          hint: recipientError.hint,
+        });
         throw new Error("Broadcast created, but delivery could not be scheduled.");
+      }
     }
     return broadcast;
   });
