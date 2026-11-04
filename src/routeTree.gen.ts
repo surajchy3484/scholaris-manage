@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AcademicYearsRouteImport } from './routes/academic-years'
 import { Route as AssessmentsRouteImport } from './routes/assessments'
+import { Route as BroadcastRouteImport } from './routes/broadcast'
 import { Route as ClickerRouteImport } from './routes/clicker'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
@@ -45,6 +46,11 @@ const AcademicYearsRoute = AcademicYearsRouteImport.update({
 const AssessmentsRoute = AssessmentsRouteImport.update({
   id: '/assessments',
   path: '/assessments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BroadcastRoute = BroadcastRouteImport.update({
+  id: '/broadcast',
+  path: '/broadcast',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClickerRoute = ClickerRouteImport.update({
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/academic-years': typeof AcademicYearsRoute
   '/assessments': typeof AssessmentsRoute
+  '/broadcast': typeof BroadcastRoute
   '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/academic-years': typeof AcademicYearsRoute
   '/assessments': typeof AssessmentsRoute
+  '/broadcast': typeof BroadcastRoute
   '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
@@ -200,6 +208,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/academic-years': typeof AcademicYearsRoute
   '/assessments': typeof AssessmentsRoute
+  '/broadcast': typeof BroadcastRoute
   '/clicker': typeof ClickerRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
@@ -226,6 +235,7 @@ export interface FileRouteTypes {
     | '/'
     | '/academic-years'
     | '/assessments'
+    | '/broadcast'
     | '/clicker'
     | '/login'
     | '/mcp'
@@ -250,6 +260,7 @@ export interface FileRouteTypes {
     | '/'
     | '/academic-years'
     | '/assessments'
+    | '/broadcast'
     | '/clicker'
     | '/login'
     | '/mcp'
@@ -274,6 +285,7 @@ export interface FileRouteTypes {
     | '/'
     | '/academic-years'
     | '/assessments'
+    | '/broadcast'
     | '/clicker'
     | '/login'
     | '/mcp'
@@ -299,6 +311,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcademicYearsRoute: typeof AcademicYearsRoute
   AssessmentsRoute: typeof AssessmentsRoute
+  BroadcastRoute: typeof BroadcastRoute
   ClickerRoute: typeof ClickerRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
@@ -341,6 +354,13 @@ declare module '@tanstack/react-router' {
       path: '/assessments'
       fullPath: '/assessments'
       preLoaderRoute: typeof AssessmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/broadcast': {
+      id: '/broadcast'
+      path: '/broadcast'
+      fullPath: '/broadcast'
+      preLoaderRoute: typeof BroadcastRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clicker': {
@@ -483,6 +503,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcademicYearsRoute: AcademicYearsRoute,
   AssessmentsRoute: AssessmentsRoute,
+  BroadcastRoute: BroadcastRoute,
   ClickerRoute: ClickerRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,

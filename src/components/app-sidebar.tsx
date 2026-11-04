@@ -13,6 +13,7 @@ import {
   HelpCircle,
   LayoutDashboard,
   LifeBuoy,
+  Megaphone,
   School,
   LogOut,
   Moon,
@@ -135,7 +136,7 @@ export function AppSidebar() {
   const { setOpenMobile, isMobile } = useSidebar();
   const { installed, canInstall, isIos, promptInstall } = usePwaInstall();
   const [scholarsOpen, setScholarsOpen] = useState(true);
-  const { can } = useAuth();
+  const { can, profile } = useAuth();
   const scholarsItems = SCHOLARS_ITEMS.filter((i) => can(i.module));
 
   useEffect(() => {
@@ -314,6 +315,21 @@ export function AppSidebar() {
                     <Link to="/support" search={{ ticket: undefined }} onClick={close}>
                       <LifeBuoy />
                       <span>Help &amp; Support</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+
+              {profile?.role === "admin" && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith("/broadcast")}
+                    tooltip="Broadcast"
+                  >
+                    <Link to="/broadcast" onClick={close}>
+                      <Megaphone />
+                      <span>Broadcast</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
