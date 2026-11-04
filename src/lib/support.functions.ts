@@ -247,9 +247,13 @@ export const listSupportTickets = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .range(from, to);
     if (!canManage(profile)) {
-      if (profile.userId) q = q.eq("creator_id", profile.userId);
-      if (profile.role !== "admin" && !profile.allSchools && profile.schoolIds.length)
+      if (profile.userId) {
+        // My Tickets must include general tickets with no school_id. Once the
+        // query is restricted to the creator, do not apply school scoping.
+        q = q.eq("creator_id", profile.userId);
+      } else if (profile.role !== "admin" && !profile.allSchools && profile.schoolIds.length) {
         q = q.in("school_id", profile.schoolIds);
+      }
     } else if (data.schoolId) q = q.eq("school_id", data.schoolId);
     if (data.status) q = q.eq("status", data.status);
     if (data.category) q = q.eq("category", data.category);
