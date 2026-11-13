@@ -195,6 +195,7 @@ export function ExamImportDialog({
     onSuccess: ({ created, updated }) => {
       qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["students"] });
+      qc.invalidateQueries({ queryKey: ["student-history"] });
       setSummary(
         `${created} student(s) added, ${updated} updated, ${invalid.length} row(s) skipped due to errors.`,
       );

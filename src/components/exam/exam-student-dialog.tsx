@@ -164,7 +164,9 @@ export function ExamStudentDialog({
         setStatus("Uploading photo...");
         const filename = `${values.student_code}-${values.name.replace(/\s+/g, "_")}.jpg`;
         try {
-          photoUrl = (await uploadPhoto({ data: { token: getAccessToken(), dataUrl: photo, filename } })).url;
+          photoUrl = (
+            await uploadPhoto({ data: { token: getAccessToken(), dataUrl: photo, filename } })
+          ).url;
         } catch (err) {
           throw new Error(
             `Photo upload failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -199,6 +201,7 @@ export function ExamStudentDialog({
       setStatus("");
       qc.invalidateQueries({ queryKey: ["exam-data"] });
       qc.invalidateQueries({ queryKey: ["students"] });
+      qc.invalidateQueries({ queryKey: ["student-history"] });
       qc.invalidateQueries({ queryKey: ["schools"] });
       toast.success(isEdit ? "Student updated" : "Student added");
       onOpenChange(false);

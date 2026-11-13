@@ -84,6 +84,7 @@ export const saveExamScore = createServerFn({ method: "POST" })
         .from("exam_scores")
         .delete()
         .eq("student_id", studentId)
+        .eq("school_id", schoolId)
         .eq("exam_type", examType);
       if (error) throw new Error("Failed to remove score");
       return { ok: true };
@@ -93,7 +94,9 @@ export const saveExamScore = createServerFn({ method: "POST" })
       .from("exam_scores")
       .select("id")
       .eq("student_id", studentId)
+      .eq("school_id", schoolId)
       .eq("exam_type", examType)
+      .is("subject", null)
       .limit(1);
     if (selErr) throw new Error("Failed to save score");
 
@@ -101,7 +104,10 @@ export const saveExamScore = createServerFn({ method: "POST" })
       const { error } = await db
         .from("exam_scores")
         .update({ score, remarks: remarks ?? null })
-        .eq("id", existing[0].id);
+        .eq("student_id", studentId)
+        .eq("school_id", schoolId)
+        .eq("exam_type", examType)
+        .is("subject", null);
       if (error) throw new Error("Failed to save score");
     } else {
       const { error } = await db.from("exam_scores").insert((<never>{
