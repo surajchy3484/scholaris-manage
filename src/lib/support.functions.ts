@@ -552,14 +552,44 @@ export const listSupportNotifications = createServerFn({ method: "POST" })
     if (broadcastResult.error) throw new Error("Unable to load broadcast notifications.");
     if (broadcastUnreadResult.error) throw new Error("Unable to count broadcast notifications.");
     const supportRows = ((supportResult.data ?? []) as Array<Record<string, unknown>>).map(
-      (row) => ({
-        ...row,
-        kind: "support",
-        title: null,
-        description: null,
-        sender_name: null,
-        broadcast_id: null,
-      }),
+      (row) => {
+        if (row.type === "broadcast") {
+          try {
+            const payload = JSON.parse(String(row.message)) as {
+              broadcast_id?: string;
+              title?: string;
+              description?: string;
+              sender_name?: string;
+            };
+            return {
+              ...row,
+              kind: "broadcast",
+              title: payload.title ?? "Announcement",
+              description: payload.description ?? row.message,
+              sender_name: payload.sender_name ?? "Administrator",
+              broadcast_id: payload.broadcast_id ?? null,
+            };
+          } catch {
+            // Keep malformed legacy rows visible instead of dropping them.
+            return {
+              ...row,
+              kind: "broadcast",
+              title: "Announcement",
+              description: row.message,
+              sender_name: "Administrator",
+              broadcast_id: null,
+            };
+          }
+        }
+        return {
+          ...row,
+          kind: "support",
+          title: null,
+          description: null,
+          sender_name: null,
+          broadcast_id: null,
+        };
+      },
     );
     const broadcastRows = (broadcastResult.data ?? []).flatMap((row: any) => {
       const broadcast = Array.isArray(row.broadcast) ? row.broadcast[0] : row.broadcast;
