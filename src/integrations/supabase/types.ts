@@ -403,6 +403,83 @@ export type Database = {
           },
         ]
       }
+      broadcast_messages: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          sender_id: string | null
+          sender_name: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          sender_id?: string | null
+          sender_name?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          sender_id?: string | null
+          sender_name?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broadcast_recipients: {
+        Row: {
+          broadcast_id: string
+          created_at: string
+          id: string
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          broadcast_id: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          broadcast_id?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_recipients_broadcast_id_fkey"
+            columns: ["broadcast_id"]
+            isOneToOne: false
+            referencedRelation: "broadcast_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broadcast_recipients_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_session_plans: {
         Row: {
           academic_year: string
