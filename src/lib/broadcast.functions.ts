@@ -101,6 +101,14 @@ export const createBroadcast = createServerFn({ method: "POST" })
     return broadcast;
   });
 
+export const rewriteBroadcastAnnouncement = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => token.extend({ message: z.string().trim().min(1).max(20_000) }).parse(data))
+  .handler(async ({ data }) => {
+    await requireAdmin(data.token);
+    const { rewriteAnnouncement } = await import("./broadcast-ai.server");
+    return { message: await rewriteAnnouncement(data.message) };
+  });
+
 export const updateBroadcast = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => token.extend({ id, ...messageFields }).parse(data))
   .handler(async ({ data }) => {
