@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Megaphone, Pencil, Plus, Send, Trash2, X } from "lucide-react";
+import { Megaphone, Pencil, Plus, Send, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   createBroadcast,
   deleteBroadcast,
   listBroadcasts,
+  rewriteBroadcastAnnouncement,
   updateBroadcast,
 } from "@/lib/broadcast.functions";
 
@@ -184,6 +185,24 @@ function BroadcastForm({
 }) {
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description);
+  const [rewriting, setRewriting] = useState(false);
+
+  const rewriteWithAi = async () => {
+    if (!description.trim() || rewriting) return;
+    setRewriting(true);
+    try {
+      const result = await rewriteBroadcastAnnouncement({
+        data: { ...tokenData(), message: description.trim() },
+      });
+      setDescription(result.message);
+      toast.success("Announcement rewritten. Review it before sending.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to rewrite the announcement.");
+    } finally {
+      setRewriting(false);
+    }
+  };
+
   return (
     <Card className="space-y-4 border-primary/30 p-5">
       <div className="flex items-center justify-between">
@@ -205,20 +224,37 @@ function BroadcastForm({
         />
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="broadcast-description">Description</Label>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Label htmlFor="broadcast-description">Description</Label>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-2"
+            disabled={pending || rewriting || !description.trim()}
+            onClick={() => void rewriteWithAi()}
+          >
+            <Sparkles className="h-4 w-4" />
+            {rewriting ? "Rewriting…" : "Rewrite with AI"}
+          </Button>
+        </div>
         <Textarea
           id="broadcast-description"
           value={description}
           maxLength={20000}
           rows={6}
+          disabled={pending || rewriting}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Write the full announcement…"
         />
+        <p className="text-xs text-muted-foreground">
+          Review the rewritten message before sending. Your original details are preserved.
+        </p>
       </div>
       <div className="flex justify-end">
         <Button
           className="gap-2"
-          disabled={pending || title.trim().length < 3 || !description.trim()}
+          disabled={pending || rewriting || title.trim().length < 3 || !description.trim()}
           onClick={() => onSubmit({ title: title.trim(), description: description.trim() })}
         >
           <Send className="h-4 w-4" />
