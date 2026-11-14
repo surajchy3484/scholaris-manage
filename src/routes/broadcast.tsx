@@ -24,6 +24,12 @@ export const Route = createFileRoute("/broadcast")({
     meta: [
       { title: "Broadcast — SchoolRise" },
       { name: "description", content: "Send announcements to all trainers." },
+      { property: "og:title", content: "Broadcast — SchoolRise" },
+      { property: "og:description", content: "Send announcements to all trainers." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Broadcast — SchoolRise" },
+      { name: "twitter:description", content: "Send announcements to all trainers." },
     ],
   }),
   component: BroadcastPage,
