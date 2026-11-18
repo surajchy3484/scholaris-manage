@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
+  Ban,
   CalendarCheck,
   CheckCircle2,
   Clock,
@@ -93,6 +94,13 @@ export const Route = createFileRoute("/session-status")({
 });
 
 function StatusBadge({ status }: { status: SessionStatus }) {
+  if (status === "na") {
+    return (
+      <Badge className="gap-1 border-0 bg-muted text-muted-foreground hover:bg-muted/80">
+        <Ban className="h-3 w-3" /> NA
+      </Badge>
+    );
+  }
   return status === "complete" ? (
     <Badge className="gap-1 border-0 bg-success/15 text-success hover:bg-success/25">
       <CheckCircle2 className="h-3 w-3" /> Complete
@@ -119,7 +127,9 @@ function StatusSelect({
         className={`h-9 w-[140px] font-medium ${
           value === "complete"
             ? "border-success/40 bg-success/10 text-success"
-            : "border-warning/40 bg-warning/10 text-warning"
+            : value === "na"
+              ? "border-border bg-muted text-muted-foreground"
+              : "border-warning/40 bg-warning/10 text-warning"
         }`}
       >
         <SelectValue />
@@ -127,6 +137,7 @@ function StatusSelect({
       <SelectContent>
         <SelectItem value="pending">🟠 Pending</SelectItem>
         <SelectItem value="complete">🟢 Complete</SelectItem>
+        <SelectItem value="na">⚪ NA (Not Applicable)</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -435,9 +446,11 @@ function SessionStatusPage() {
       </Card>
 
       <Card className="p-4 shadow-soft">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-4">
           <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Total sessions</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Applicable sessions
+            </p>
             <p className="font-display text-2xl font-bold">{summary.total}</p>
           </div>
           <div>
@@ -447,6 +460,10 @@ function SessionStatusPage() {
           <div>
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Pending</p>
             <p className="font-display text-2xl font-bold text-warning">{summary.pending}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">NA</p>
+            <p className="font-display text-2xl font-bold text-muted-foreground">{summary.na}</p>
           </div>
         </div>
         <div className="mt-4">
@@ -483,6 +500,7 @@ function SessionStatusPage() {
                 <SelectItem value="all">All statuses</SelectItem>
                 <SelectItem value="pending">🟠 Pending</SelectItem>
                 <SelectItem value="complete">🟢 Complete</SelectItem>
+                <SelectItem value="na">⚪ NA (Not Applicable)</SelectItem>
               </SelectContent>
             </Select>
             {can("session_status", "add") && (
@@ -507,7 +525,12 @@ function SessionStatusPage() {
                       Class: r.class,
                       Topic: r.topic,
                       Division: division,
-                      Status: r.status === "complete" ? "Complete" : "Pending",
+                      Status:
+                        r.status === "complete"
+                          ? "Complete"
+                          : r.status === "na"
+                            ? "NA (Not Applicable)"
+                            : "Pending",
                     })),
                   )
                 }
@@ -538,6 +561,14 @@ function SessionStatusPage() {
               onClick={() => setStatus.mutate({ ids: selected, status: "pending" })}
             >
               Mark Pending
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={setStatus.isPending || !can("session_status", "status")}
+              onClick={() => setStatus.mutate({ ids: selected, status: "na" })}
+            >
+              Mark NA
             </Button>
             {can("session_status", "delete") && (
               <Button
@@ -649,16 +680,19 @@ function SessionStatusPage() {
                   <Button
                     size="lg"
                     className="h-11 flex-1"
-                    variant={r.status === "complete" ? "outline" : "default"}
+                    variant={r.status === "complete" || r.status === "na" ? "outline" : "default"}
                     disabled={setStatus.isPending || !can("session_status", "status")}
                     onClick={() =>
                       setStatus.mutate({
                         ids: [r.id],
-                        status: r.status === "complete" ? "pending" : "complete",
+                        status:
+                          r.status === "complete" || r.status === "na" ? "pending" : "complete",
                       })
                     }
                   >
-                    {r.status === "complete" ? "Mark Pending" : "Mark Complete"}
+                    {r.status === "complete" || r.status === "na"
+                      ? "Mark Pending"
+                      : "Mark Complete"}
                   </Button>
                 </div>
               </Card>
@@ -679,7 +713,9 @@ function SessionStatusPage() {
 
       <AddSessionDialog
         open={!!editingSession}
-        onOpenChange={(open) => { if (!open) setEditingSession(null); }}
+        onOpenChange={(open) => {
+          if (!open) setEditingSession(null);
+        }}
         defaultClass={klass}
         initialSession={editingSession}
         onSave={async (row) => {
@@ -943,7 +979,7 @@ function AssignmentPlanner() {
             if (!rowClass) errors.push("Class is required");
             if (classScope !== "all" && rowClass !== classScope)
               errors.push(`Class must be ${classScope}`);
-            if (rawStatus && !parsedStatus) errors.push("Status must be Pending or Complete");
+            if (rawStatus && !parsedStatus) errors.push("Status must be Pending, Complete or NA");
             const duplicate = seen.has(key);
             if (duplicate) errors.push("Duplicate session in this file");
             seen.add(key);

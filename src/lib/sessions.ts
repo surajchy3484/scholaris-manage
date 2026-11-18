@@ -32,7 +32,7 @@ export type Unit = (typeof UNITS)[number];
 export const DIVISIONS = ["A", "B", "C", "D", "E", "F"] as const;
 export type Division = (typeof DIVISIONS)[number];
 
-export const SESSION_STATUSES = ["pending", "complete"] as const;
+export const SESSION_STATUSES = ["pending", "complete", "na"] as const;
 export type SessionStatus = (typeof SESSION_STATUSES)[number];
 
 export type SessionMaster = {
@@ -71,6 +71,7 @@ export function normalizeStatus(value: string): SessionStatus | null {
   const v = value.trim().toLowerCase();
   if (!v || v === "pending") return "pending";
   if (v === "complete" || v === "completed" || v === "done") return "complete";
+  if (v === "na" || v === "n/a" || v === "not applicable" || v === "not-applicable") return "na";
   return null;
 }
 
@@ -200,12 +201,13 @@ export async function removeSessions(ids: string[]) {
 
 /** Completed ÷ total × 100, rounded to a whole percent. */
 export function unitProgress(rows: { status: SessionStatus }[]) {
-  const total = rows.length;
+  const total = rows.filter((r) => r.status !== "na").length;
   const complete = rows.filter((r) => r.status === "complete").length;
   return {
     total,
     complete,
-    pending: total - complete,
+    pending: rows.filter((r) => r.status === "pending").length,
+    na: rows.filter((r) => r.status === "na").length,
     percent: total ? Math.round((complete / total) * 100) : 0,
   };
 }

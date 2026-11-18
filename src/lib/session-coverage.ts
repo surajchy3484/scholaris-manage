@@ -11,6 +11,7 @@ export type CoverageMetric = {
   completed: number;
   pending: number;
   not_recorded: number;
+  not_applicable: number;
 };
 export type CoverageDetail = {
   id: string;
@@ -18,6 +19,7 @@ export type CoverageDetail = {
   status: string;
   missing_divisions: number;
   completion_updated_at: string | null;
+  applicable_divisions?: number;
   divisions: {
     division: string;
     status: string;
@@ -29,6 +31,7 @@ export function coveragePercentage(row: CoverageMetric) {
   return row.eligible ? (row.completed / row.eligible) * 100 : null;
 }
 export function coverageCategory(row: CoverageMetric, thresholds = DEFAULT_COVERAGE_THRESHOLDS) {
+  if (row.not_applicable > 0 && row.eligible === 0) return "Not Applicable";
   const percent = coveragePercentage(row);
   if (percent === null) return "N/A";
   if (row.completed === row.eligible) return "Fully Covered";

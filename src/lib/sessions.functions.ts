@@ -7,7 +7,7 @@ import { fetchAllRows } from "./fetch-all";
 import { adminDb, requirePermission } from "./app-access.server";
 
 const token = z.object({ academicYear: z.string().max(80).optional(), token: z.string().min(1) });
-const status = z.enum(["pending", "complete"]);
+const status = z.enum(["pending", "complete", "na"]);
 const unit = z.enum(["Unit-1", "Unit-2", "Unit-3", "Unit-4"]);
 // Divisions / batches are admin-defined free text ("A", "Batch 1", "Morning Batch").
 const division = z.string().max(60);
