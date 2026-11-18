@@ -31,6 +31,12 @@ const statuses = [
 const pct = (n: number | null) => (n === null ? "—" : `${n}%`);
 const trainerPct = (completed: number, planned: number) =>
   planned ? `${((completed / planned) * 100).toFixed(2).replace(/\.00$/, "")}%` : "Not Planned";
+const trainerCardAccents = [
+  "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-950/20",
+  "border-blue-200 bg-blue-50/40 dark:border-blue-900 dark:bg-blue-950/20",
+  "border-violet-200 bg-violet-50/40 dark:border-violet-900 dark:bg-violet-950/20",
+  "border-amber-200 bg-amber-50/40 dark:border-amber-900 dark:bg-amber-950/20",
+];
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -206,6 +212,7 @@ export function MainDashboard() {
     retry: false,
   });
   const d = query.data;
+  const visibleTrainerMetrics = d?.trainerMetrics.filter((t) => !trainer || t.id === trainer) ?? [];
   const daily = Array.from({ length: 7 }, (_, i) => {
     const date = addDays(week, i),
       rows = d?.attendance.filter((r) => r.date === date) ?? [];
@@ -651,50 +658,57 @@ export function MainDashboard() {
                   excluded from planned and completion calculations. Shared schools may appear for
                   multiple trainers; these rows are not additive.
                 </p>
-                <div className="overflow-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr>
-                        <th>Trainer</th>
-                        <th>Unit</th>
-                        <th>Planned</th>
-                        <th>Completed</th>
-                        <th>Completion</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {d.trainerMetrics
-                        .filter((t) => !trainer || t.id === trainer)
-                        .flatMap((t) =>
-                          t.units
-                            .filter((u) => !unit || u.unit === unit)
-                            .map((u, index) => (
-                              <tr key={`${t.id}-${u.unit}`} className="border-t">
-                                <td className="py-3">
-                                  {index === 0 ? (
-                                    <button
-                                      className="text-blue-700 dark:text-blue-300 hover:underline"
-                                      onClick={() => setTrainer(t.id)}
-                                    >
-                                      {t.name}
-                                    </button>
-                                  ) : null}
-                                </td>
-                                <td className="font-medium">{u.unit}</td>
-                                <td>{u.planned}</td>
-                                <td>{u.completed}</td>
-                                <td>{trainerPct(u.completed, u.planned)}</td>
-                              </tr>
-                            )),
-                        )}
-                    </tbody>
-                  </table>
-                  {!d.trainerMetrics.length && (
-                    <p className="py-5 text-muted-foreground">
-                      No active trainers in the authorized scope.
-                    </p>
-                  )}
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {visibleTrainerMetrics.map((t, trainerIndex) => (
+                    <article
+                      key={t.id}
+                      className={`overflow-hidden rounded-2xl border p-4 shadow-sm ${trainerCardAccents[trainerIndex % trainerCardAccents.length]}`}
+                    >
+                      <div className="mb-3 flex items-center justify-between gap-3 border-b border-current/10 pb-3">
+                        <button
+                          className="truncate text-left text-base font-semibold text-blue-700 hover:underline dark:text-blue-300"
+                          onClick={() => setTrainer(t.id)}
+                        >
+                          {t.name}
+                        </button>
+                        <span className="shrink-0 rounded-full bg-background/70 px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                          {t.units.filter((u) => !unit || u.unit === unit).length} units
+                        </span>
+                      </div>
+                      <div className="overflow-hidden rounded-xl border border-border/70 bg-background/75">
+                        <table className="w-full text-left text-sm">
+                          <thead className="bg-muted/60 text-xs text-muted-foreground">
+                            <tr>
+                              <th className="px-3 py-2 font-medium">Unit</th>
+                              <th className="px-3 py-2 text-right font-medium">Planned</th>
+                              <th className="px-3 py-2 text-right font-medium">Completed</th>
+                              <th className="px-3 py-2 text-right font-medium">Completion</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {t.units
+                              .filter((u) => !unit || u.unit === unit)
+                              .map((u) => (
+                                <tr key={`${t.id}-${u.unit}`} className="border-t border-border/60">
+                                  <td className="px-3 py-2.5 font-medium">{u.unit}</td>
+                                  <td className="px-3 py-2.5 text-right">{u.planned}</td>
+                                  <td className="px-3 py-2.5 text-right">{u.completed}</td>
+                                  <td className="px-3 py-2.5 text-right font-medium">
+                                    {trainerPct(u.completed, u.planned)}
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </article>
+                  ))}
                 </div>
+                {!visibleTrainerMetrics.length && (
+                  <p className="py-5 text-muted-foreground">
+                    No active trainers in the authorized scope.
+                  </p>
+                )}
               </Panel>
               <details className="rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 p-4 text-xs text-muted-foreground">
                 <summary className="cursor-pointer font-semibold">
