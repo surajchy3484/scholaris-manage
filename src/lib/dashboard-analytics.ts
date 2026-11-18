@@ -75,8 +75,9 @@ export function sessionMetrics(
     };
     m.ids.push(s.id);
     for (const division of divisions.get(JSON.stringify([s.school_id, s.class])) ?? []) {
-      m.planned++;
       const status = latest.get(JSON.stringify([s.id, s.school_id, division]));
+      if (status?.status === "na") continue;
+      m.planned++;
       const date = status?.updated_at.slice(0, 10);
       if (
         status?.status === "complete" &&

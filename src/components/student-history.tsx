@@ -185,7 +185,8 @@ export function StudentHistory({
         .filter((r) => !selected.length || selected.includes(r.academic_year))
         .map((r) => (
           <p key={`${r.academic_year}-${r.unit}`}>
-            {r.academic_year} · {r.unit}: {r.complete}/{r.total} complete ·{" "}
+            {r.academic_year} · {r.unit}: {r.complete}/{r.total} applicable complete
+            {r.not_applicable > 0 ? ` · ${r.not_applicable} NA` : ""} ·{" "}
             {r.total > 0 && r.complete === r.total
               ? "Completed"
               : r.complete

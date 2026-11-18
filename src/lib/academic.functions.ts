@@ -200,7 +200,13 @@ export const studentAcademicHistory = createServerFn({ method: "POST" })
       results: HistoryResult[];
       scores: { academic_year: string; exam_type: string; score: number }[];
       attendance: { academic_year: string; percentage: number }[];
-      sessions: { academic_year: string; unit: string; total: number; complete: number }[];
+      sessions: {
+        academic_year: string;
+        unit: string;
+        total: number;
+        complete: number;
+        not_applicable: number;
+      }[];
     };
   });
 export type HistoryResult = {

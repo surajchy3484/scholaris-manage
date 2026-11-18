@@ -17,6 +17,7 @@ const categories = [
   "Low Coverage",
   "Not Started",
   "Not Recorded",
+  "Not Applicable",
 ];
 const selectStyle = "rounded-md border bg-background px-3 py-2 text-sm";
 const dateText = (date: string | null) =>
@@ -119,7 +120,9 @@ export function ClassSessionCoverage({
       (!category ||
         (category === "Not Recorded"
           ? r.not_recorded > 0
-          : coverageCategory(r, d?.thresholds) === category)),
+          : category === "Not Applicable"
+            ? r.not_applicable > 0
+            : coverageCategory(r, d?.thresholds) === category)),
   );
   const selected = d?.metrics.find((r) => r.id === session);
   const changeClass = (value: string) => {
@@ -274,10 +277,11 @@ export function ClassSessionCoverage({
         </form>
       )}
       <p className="text-xs text-muted-foreground">
-        Green: schools completed · Blue: not completed · Grey: not recorded. Each school counts
-        once. All roster divisions must be Complete for a school to count as completed. Cancelled
-        assignments are excluded. Dashboard class, centre, school and trainer selections apply here
-        too. The school filter inside the details panel only filters that panel.
+        Green: schools completed · Blue: not completed · Grey: not recorded · White: not applicable.
+        Each school counts once. NA divisions are excluded from applicable totals. All applicable
+        roster divisions must be Complete for a school to count as completed. Cancelled assignments
+        are excluded. Dashboard class, centre, school and trainer selections apply here too. The
+        school filter inside the details panel only filters that panel.
       </p>
       <p className="rounded-lg bg-blue-50 dark:bg-blue-950/40 p-3 text-sm text-blue-900 dark:text-blue-200">
         High coverage can guide ICA, MCA or FCA topic selection. It measures topic delivery, not
@@ -351,9 +355,11 @@ export function ClassSessionCoverage({
                         <span className="block text-xs">
                           {label}
                           {r.not_recorded > 0 ? ` · Not Recorded: ${r.not_recorded} schools` : ""}
+                          {r.not_applicable > 0 ? ` · NA: ${r.not_applicable} schools` : ""}
                         </span>
                         <span className="block text-xs text-muted-foreground">
-                          Not completed: {r.pending} · Not recorded: {r.not_recorded}
+                          Not completed: {r.pending} · Not recorded: {r.not_recorded} · NA:{" "}
+                          {r.not_applicable}
                         </span>
                         <span className="mt-1 block break-all text-[10px] text-muted-foreground">
                           Session ID: {r.id}
@@ -435,9 +441,11 @@ export function ClassSessionCoverage({
                               Division {v.division || "Unspecified"}:{" "}
                               {v.status === "complete"
                                 ? "Complete"
-                                : v.status === "pending"
-                                  ? "Pending"
-                                  : "Not Recorded"}
+                                : v.status === "na"
+                                  ? "NA (Not Applicable)"
+                                  : v.status === "pending"
+                                    ? "Pending"
+                                    : "Not Recorded"}
                             </span>
                           ))}
                         </td>
