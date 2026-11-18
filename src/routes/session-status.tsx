@@ -146,6 +146,9 @@ function StatusSelect({
 function SessionStatusPage() {
   const qc = useQueryClient();
   const { profile, can } = useAuth();
+  const canChangeStatus =
+    can("session_status", "status") ||
+    (profile?.role === "trainer" && can("session_status", "view"));
   const accessKey = JSON.stringify([
     profile?.userId,
     profile?.role,
@@ -677,23 +680,13 @@ function SessionStatusPage() {
                       <Pencil className="h-4 w-4" /> Edit Session
                     </Button>
                   )}
-                  <Button
-                    size="lg"
-                    className="h-11 flex-1"
-                    variant={r.status === "complete" || r.status === "na" ? "outline" : "default"}
-                    disabled={setStatus.isPending || !can("session_status", "status")}
-                    onClick={() =>
-                      setStatus.mutate({
-                        ids: [r.id],
-                        status:
-                          r.status === "complete" || r.status === "na" ? "pending" : "complete",
-                      })
-                    }
-                  >
-                    {r.status === "complete" || r.status === "na"
-                      ? "Mark Pending"
-                      : "Mark Complete"}
-                  </Button>
+                  {canChangeStatus && (
+                    <StatusSelect
+                      value={r.status}
+                      disabled={setStatus.isPending}
+                      onChange={(status) => setStatus.mutate({ ids: [r.id], status })}
+                    />
+                  )}
                 </div>
               </Card>
             ))}

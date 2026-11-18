@@ -460,7 +460,13 @@ export const setDivisionStatus = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data }) => {
-    const profile = await requirePermission(data.token, "session_status", "status");
+    const profile = await requirePermission(data.token, "session_status", "view");
+    if (
+      profile.role !== "admin" &&
+      profile.role !== "trainer" &&
+      !can(profile, "session_status", "status")
+    )
+      throw new Error("Session status change access is required");
     checkSchool(profile, data.schoolId);
     const db = await academicDb(data.academicYear);
     await checkRosterPair(db, data.schoolId, data.class, data.division);
