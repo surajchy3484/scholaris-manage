@@ -29,6 +29,8 @@ const statuses = [
   "Completed",
 ];
 const pct = (n: number | null) => (n === null ? "—" : `${n}%`);
+const trainerPct = (completed: number, planned: number) =>
+  planned ? `${((completed / planned) * 100).toFixed(2).replace(/\.00$/, "")}%` : "Not Planned";
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="min-w-0 rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -645,14 +647,16 @@ export function MainDashboard() {
               />
               <Panel title="Trainer-wise Session Completion">
                 <p className="mb-3 text-xs text-muted-foreground">
-                  Based on current school assignments, not who last edited a status. Shared schools
-                  may appear for multiple trainers; these rows are not additive.
+                  Based on current school assignments, not who last edited a status. NA sessions are
+                  excluded from planned and completion calculations. Shared schools may appear for
+                  multiple trainers; these rows are not additive.
                 </p>
                 <div className="overflow-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr>
                         <th>Trainer</th>
+                        <th>Unit</th>
                         <th>Planned</th>
                         <th>Completed</th>
                         <th>Completion</th>
@@ -661,23 +665,28 @@ export function MainDashboard() {
                     <tbody>
                       {d.trainerMetrics
                         .filter((t) => !trainer || t.id === trainer)
-                        .map((t) => (
-                          <tr key={t.id} className="border-t">
-                            <td className="py-3">
-                              <button
-                                className="text-blue-700 dark:text-blue-300 hover:underline"
-                                onClick={() => setTrainer(t.id)}
-                              >
-                                {t.name}
-                              </button>
-                            </td>
-                            <td>{t.planned}</td>
-                            <td>{t.completed}</td>
-                            <td>
-                              {t.planned ? pct(percentage(t.completed, t.planned)) : "Not Planned"}
-                            </td>
-                          </tr>
-                        ))}
+                        .flatMap((t) =>
+                          t.units
+                            .filter((u) => !unit || u.unit === unit)
+                            .map((u, index) => (
+                              <tr key={`${t.id}-${u.unit}`} className="border-t">
+                                <td className="py-3">
+                                  {index === 0 ? (
+                                    <button
+                                      className="text-blue-700 dark:text-blue-300 hover:underline"
+                                      onClick={() => setTrainer(t.id)}
+                                    >
+                                      {t.name}
+                                    </button>
+                                  ) : null}
+                                </td>
+                                <td className="font-medium">{u.unit}</td>
+                                <td>{u.planned}</td>
+                                <td>{u.completed}</td>
+                                <td>{trainerPct(u.completed, u.planned)}</td>
+                              </tr>
+                            )),
+                        )}
                     </tbody>
                   </table>
                   {!d.trainerMetrics.length && (

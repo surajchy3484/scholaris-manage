@@ -41,6 +41,7 @@ type Trainer = {
   school_ids: string[];
   all_schools: boolean;
 };
+const SESSION_UNITS = ["Unit-1", "Unit-2", "Unit-3", "Unit-4"] as const;
 export const getMainDashboard = createServerFn({ method: "POST" })
   .inputValidator((value: unknown) =>
     z
@@ -219,8 +220,14 @@ export const getMainDashboard = createServerFn({ method: "POST" })
       return {
         id: t.id,
         name: t.full_name || t.username,
-        planned: rows.reduce((n, s) => n + s.planned, 0),
-        completed: rows.reduce((n, s) => n + s.completed, 0),
+        units: SESSION_UNITS.map((unit) => {
+          const unitRows = rows.filter((s) => s.unit === unit);
+          return {
+            unit,
+            planned: unitRows.reduce((n, s) => n + s.planned, 0),
+            completed: unitRows.reduce((n, s) => n + s.completed, 0),
+          };
+        }),
       };
     });
     return {
