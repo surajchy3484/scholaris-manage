@@ -31,6 +31,12 @@ export type SessionMetric = {
 };
 export const percentage = (completed: number, planned: number) =>
   planned > 0 ? Math.round((completed / planned) * 1000) / 10 : null;
+function normalizeDashboardStatus(value: string | null | undefined) {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "na" || normalized === "n/a" || normalized === "not applicable") return "na";
+  if (normalized === "complete" || normalized === "completed") return "complete";
+  return normalized;
+}
 export function completionStatus(completed: number, planned: number) {
   if (!planned) return "Not Planned";
   if (!completed) return "Not Conducted";
@@ -76,11 +82,12 @@ export function sessionMetrics(
     m.ids.push(s.id);
     for (const division of divisions.get(JSON.stringify([s.school_id, s.class])) ?? []) {
       const status = latest.get(JSON.stringify([s.id, s.school_id, division]));
-      if (status?.status === "na") continue;
+      const statusValue = normalizeDashboardStatus(status?.status);
+      if (statusValue === "na") continue;
       m.planned++;
       const date = status?.updated_at.slice(0, 10);
       if (
-        status?.status === "complete" &&
+        statusValue === "complete" &&
         (!range.from || date! >= range.from) &&
         (!range.to || date! <= range.to)
       ) {
