@@ -5,7 +5,7 @@ import { z } from "zod";
 import { canSeeSchool, type AccessProfile } from "./access-control";
 import { fetchAllRows } from "./fetch-all";
 import { adminDb, requirePermission } from "./app-access.server";
-import { schoolOrganizationGroup } from "./organization-groups";
+import { isSessionStatusExcludedSchool } from "./organization-groups";
 
 const token = z.object({ academicYear: z.string().max(80).optional(), token: z.string().min(1) });
 const status = z.enum(["pending", "complete", "na"]);
@@ -21,15 +21,6 @@ function checkSchool(profile: AccessProfile, schoolId: string) {
 
 function requireAdmin(profile: AccessProfile) {
   if (profile.role !== "admin") throw new Error("Admin access required");
-}
-
-function isExcludedSessionSchool(school: {
-  name: string;
-  location?: string | null;
-  cluster_name?: string | null;
-}) {
-  const group = schoolOrganizationGroup(school);
-  return group === "Manmad Cluster" || group === "Palghar Cluster";
 }
 
 async function checkedSessions(
@@ -91,7 +82,7 @@ export const listSessionSchools = createServerFn({ method: "POST" })
         query = query.in("id", profile.schoolIds);
       return query.range(from, to);
     });
-    return schools.filter((school) => !isExcludedSessionSchool(school));
+    return schools.filter((school) => !isSessionStatusExcludedSchool(school));
   });
 
 export const listSessionRoster = createServerFn({ method: "POST" })
@@ -560,7 +551,7 @@ async function eligibleSchools(
       .order("name")
       .range(from, to),
   );
-  const includedSchools = schools.filter((school) => !isExcludedSessionSchool(school));
+  const includedSchools = schools.filter((school) => !isSessionStatusExcludedSchool(school));
   const names = new Map(includedSchools.map((school) => [school.id, school.name]));
   return ids
     .filter((school_id) => names.has(school_id))
@@ -639,7 +630,7 @@ export const listAssignmentContext = createServerFn({ method: "POST" })
         query = query.in("id", profile.schoolIds);
       return query;
     });
-    const includedSchools = schools.filter((school) => !isExcludedSessionSchool(school));
+    const includedSchools = schools.filter((school) => !isSessionStatusExcludedSchool(school));
     const rows = await fetchAllRows<{ school_id: string; class: string }>((from, to) => {
       let query = db.from("students").select("school_id,class").order("school_id").range(from, to);
       if (profile.role !== "admin" && !profile.allSchools)
