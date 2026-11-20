@@ -21,6 +21,8 @@ export type SessionMetric = {
   ids: string[];
   name: string;
   unit: string;
+  totalPlanned: number;
+  na: number;
   planned: number;
   completed: number;
   pending: number;
@@ -70,6 +72,8 @@ export function sessionMetrics(
       ids: [],
       name: s.session_name,
       unit: s.unit,
+      totalPlanned: 0,
+      na: 0,
       planned: 0,
       completed: 0,
       pending: 0,
@@ -83,7 +87,11 @@ export function sessionMetrics(
     for (const division of divisions.get(JSON.stringify([s.school_id, s.class])) ?? []) {
       const status = latest.get(JSON.stringify([s.id, s.school_id, division]));
       const statusValue = normalizeDashboardStatus(status?.status);
-      if (statusValue === "na") continue;
+      m.totalPlanned++;
+      if (statusValue === "na") {
+        m.na++;
+        continue;
+      }
       m.planned++;
       const date = status?.updated_at.slice(0, 10);
       if (
@@ -99,7 +107,7 @@ export function sessionMetrics(
   }
   return [...groups.values()].map(({ schoolSet, ...m }) => ({
     ...m,
-    pending: m.planned - m.completed,
+    pending: m.totalPlanned - m.completed - m.na,
     schools: schoolSet.size,
     percentage: percentage(m.completed, m.planned),
     status: completionStatus(m.completed, m.planned),
