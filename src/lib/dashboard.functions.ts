@@ -1,6 +1,7 @@
 import {
   countGroups,
   countOrganizationGroups,
+  isSessionStatusExcludedSchool,
   normalizeOrganizationGroup,
   schoolOrganizationGroup,
 } from "./organization-groups";
@@ -122,6 +123,9 @@ export const getMainDashboard = createServerFn({ method: "POST" })
         (!trainer || trainer.all_schools || trainer.school_ids.includes(s.id)),
     );
     const ids = selected.map((s) => s.id);
+    const sessionIds = selected
+      .filter((school) => !isSessionStatusExcludedSchool(school))
+      .map((school) => school.id);
     const end = new Date(`${data.week}T12:00:00Z`);
     end.setUTCDate(end.getUTCDate() + 6);
     let cohorts: Cohort[] = [];
@@ -143,7 +147,7 @@ export const getMainDashboard = createServerFn({ method: "POST" })
       });
       cohorts = result.cohorts;
       if (attendanceAllowed) attendance = result.attendance;
-      if (sessionsAllowed) {
+      if (sessionsAllowed && sessionIds.length) {
         const readSessions = (withActivity: boolean) =>
           fetchAllRows<SessionRow>((from, to) => {
             let q = db
@@ -153,7 +157,7 @@ export const getMainDashboard = createServerFn({ method: "POST" })
                   ? "id,activity_id,school_id,unit,class,session_name,topic"
                   : "id,school_id,unit,class,session_name,topic",
               )
-              .in("school_id", ids)
+              .in("school_id", sessionIds)
               .order("id");
             if (data.unit) q = q.eq("unit", data.unit);
             if (data.class) q = q.eq("class", data.class);
@@ -172,7 +176,7 @@ export const getMainDashboard = createServerFn({ method: "POST" })
             let q = db
               .from("session_division_status")
               .select("session_id,school_id,division,status,updated_at")
-              .in("school_id", ids)
+              .in("school_id", sessionIds)
               .order("id");
             if (data.unit) q = q.eq("unit", data.unit);
             if (data.class) q = q.eq("class", data.class);
@@ -184,7 +188,7 @@ export const getMainDashboard = createServerFn({ method: "POST" })
               .from("session_assignment_targets")
               .select("id,school_id,unit,class,division,session_count")
               .eq("academic_year", year)
-              .in("school_id", ids)
+              .in("school_id", sessionIds)
               .order("id");
             if (data.unit) q = q.eq("unit", data.unit);
             if (data.class) q = q.eq("class", data.class);

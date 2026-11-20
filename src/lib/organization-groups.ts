@@ -36,6 +36,14 @@ export function schoolOrganizationGroup(school: {
     return "Shahapur Cluster";
   return "Other / Unassigned";
 }
+export function isSessionStatusExcludedSchool(school: {
+  name: string;
+  location?: string | null;
+  cluster_name?: string | null;
+}) {
+  const group = schoolOrganizationGroup(school);
+  return group === "Manmad Cluster" || group === "Palghar Cluster";
+}
 /** Groups whose name identifies them as centres (not clusters). */
 export function isCentreGroup(name: string) {
   return /cent(?:er|re)/.test(name.toLowerCase());
