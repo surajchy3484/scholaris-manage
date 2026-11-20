@@ -605,7 +605,7 @@ export function MainDashboard() {
                       {units
                         .filter((u) => !unit || u === unit)
                         .map((u) => {
-                          const rows = d.metrics.filter((s) => s.unit === u),
+                          const rows = d.metrics.filter((s) => s.unit === u && s.planned > 0),
                             planned = rows.reduce((n, s) => n + s.planned, 0),
                             completed = rows.reduce((n, s) => n + s.completed, 0);
                           return (
