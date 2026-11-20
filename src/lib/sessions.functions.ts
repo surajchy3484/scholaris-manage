@@ -5,6 +5,7 @@ import { z } from "zod";
 import { canSeeSchool, type AccessProfile } from "./access-control";
 import { fetchAllRows } from "./fetch-all";
 import { adminDb, requirePermission } from "./app-access.server";
+import { schoolOrganizationGroup } from "./organization-groups";
 
 const token = z.object({ academicYear: z.string().max(80).optional(), token: z.string().min(1) });
 const status = z.enum(["pending", "complete", "na"]);
@@ -20,6 +21,15 @@ function checkSchool(profile: AccessProfile, schoolId: string) {
 
 function requireAdmin(profile: AccessProfile) {
   if (profile.role !== "admin") throw new Error("Admin access required");
+}
+
+function isExcludedSessionSchool(school: {
+  name: string;
+  location?: string | null;
+  cluster_name?: string | null;
+}) {
+  const group = schoolOrganizationGroup(school);
+  return group === "Manmad Cluster" || group === "Palghar Cluster";
 }
 
 async function checkedSessions(
@@ -65,14 +75,23 @@ export const listSessionSchools = createServerFn({ method: "POST" })
     const profile = await requirePermission(data.token, "session_status", "view");
     if (profile.role !== "admin" && !profile.allSchools && !profile.schoolIds.length) return [];
     const db = await academicDb(data.academicYear);
-    return fetchAllRows<{ id: string; name: string; code: string; location: string }>(
-      (from, to) => {
-        let query = db.from("schools").select("id,name,code,location").order("code").order("id");
-        if (profile.role !== "admin" && !profile.allSchools)
-          query = query.in("id", profile.schoolIds);
-        return query.range(from, to);
-      },
-    );
+    const schools = await fetchAllRows<{
+      id: string;
+      name: string;
+      code: string;
+      location: string;
+      cluster_name: string | null;
+    }>((from, to) => {
+      let query = db
+        .from("schools")
+        .select("id,name,code,location,cluster_name")
+        .order("code")
+        .order("id");
+      if (profile.role !== "admin" && !profile.allSchools)
+        query = query.in("id", profile.schoolIds);
+      return query.range(from, to);
+    });
+    return schools.filter((school) => !isExcludedSessionSchool(school));
   });
 
 export const listSessionRoster = createServerFn({ method: "POST" })
@@ -528,11 +547,23 @@ async function eligibleSchools(
   });
   const ids = [...new Set(students.map((row) => row.school_id))];
   if (!ids.length) return [];
-  const schools = await fetchAllRows<{ id: string; name: string }>((from, to) =>
-    db.from("schools").select("id,name").in("id", ids).order("name").range(from, to),
+  const schools = await fetchAllRows<{
+    id: string;
+    name: string;
+    location: string | null;
+    cluster_name: string | null;
+  }>((from, to) =>
+    db
+      .from("schools")
+      .select("id,name,location,cluster_name")
+      .in("id", ids)
+      .order("name")
+      .range(from, to),
   );
-  const names = new Map(schools.map((school) => [school.id, school.name]));
+  const includedSchools = schools.filter((school) => !isExcludedSessionSchool(school));
+  const names = new Map(includedSchools.map((school) => [school.id, school.name]));
   return ids
+    .filter((school_id) => names.has(school_id))
     .sort((a, b) => (names.get(a) ?? "").localeCompare(names.get(b) ?? ""))
     .map((school_id) => ({
       school_id,
@@ -593,12 +624,22 @@ export const listAssignmentContext = createServerFn({ method: "POST" })
     const profile = await requirePermission(data.token, "session_status", "view");
     requireAdmin(profile);
     const db = await academicDb(data.academicYear);
-    const schools = await fetchAllRows<{ id: string; name: string }>((from, to) => {
-      let query = db.from("schools").select("id,name").order("name").range(from, to);
+    const schools = await fetchAllRows<{
+      id: string;
+      name: string;
+      location: string | null;
+      cluster_name: string | null;
+    }>((from, to) => {
+      let query = db
+        .from("schools")
+        .select("id,name,location,cluster_name")
+        .order("name")
+        .range(from, to);
       if (profile.role !== "admin" && !profile.allSchools)
         query = query.in("id", profile.schoolIds);
       return query;
     });
+    const includedSchools = schools.filter((school) => !isExcludedSessionSchool(school));
     const rows = await fetchAllRows<{ school_id: string; class: string }>((from, to) => {
       let query = db.from("students").select("school_id,class").order("school_id").range(from, to);
       if (profile.role !== "admin" && !profile.allSchools)
@@ -614,7 +655,7 @@ export const listAssignmentContext = createServerFn({ method: "POST" })
       .order("id", { ascending: false });
     if (yearError) throw new Error("Academic Year setup required");
     return {
-      schools,
+      schools: includedSchools.map(({ id, name }) => ({ id, name })),
       classes: [...new Set(rows.map((row) => row.class).filter(Boolean))].sort((a, b) =>
         a.localeCompare(b, undefined, { numeric: true }),
       ),
