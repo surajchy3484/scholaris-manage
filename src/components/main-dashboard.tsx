@@ -594,27 +594,28 @@ export function MainDashboard() {
                     <thead>
                       <tr className="text-muted-foreground">
                         <th>Unit</th>
-                        <th>Activities / records</th>
-                        <th>Planned deliveries</th>
+                        <th>Total Sessions Planned</th>
                         <th>Completed</th>
                         <th>Remaining</th>
-                        <th>Completion</th>
+                        <th>Completion (%)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {units
                         .filter((u) => !unit || u === unit)
                         .map((u) => {
-                          const rows = d.metrics.filter((s) => s.unit === u && s.planned > 0),
-                            planned = rows.reduce((n, s) => n + s.planned, 0),
-                            completed = rows.reduce((n, s) => n + s.completed, 0);
+                          const rows = d.metrics.filter((s) => s.unit === u),
+                            totalPlanned = rows.reduce((n, s) => n + s.totalPlanned, 0),
+                            na = rows.reduce((n, s) => n + s.na, 0),
+                            planned = totalPlanned - na,
+                            completed = rows.reduce((n, s) => n + s.completed, 0),
+                            remaining = totalPlanned - completed - na;
                           return (
                             <tr key={u} className="border-t">
                               <td className="py-3 font-medium">{u}</td>
-                              <td>{rows.length}</td>
                               <td>{planned}</td>
                               <td>{completed}</td>
-                              <td>{planned - completed}</td>
+                              <td>{remaining}</td>
                               <td>
                                 {planned ? pct(percentage(completed, planned)) : "Not Planned"}
                               </td>
