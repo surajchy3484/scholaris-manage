@@ -18,7 +18,7 @@ export function normalizeOrganizationGroup(value: string) {
 }
 export function schoolOrganizationGroup(school: {
   name: string;
-  location?: string;
+  location?: string | null;
   cluster_name?: string | null;
 }) {
   const value = `${school.name} ${school.location ?? ""}`.toLowerCase();

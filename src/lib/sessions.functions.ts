@@ -2,7 +2,7 @@ import { academicDb } from "./academic-db.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { canSeeSchool, type AccessProfile } from "./access-control";
+import { can, canSeeSchool, type AccessProfile } from "./access-control";
 import { fetchAllRows } from "./fetch-all";
 import { adminDb, requirePermission } from "./app-access.server";
 import { isSessionStatusExcludedSchool } from "./organization-groups";

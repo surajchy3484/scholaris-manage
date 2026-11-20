@@ -358,7 +358,7 @@ function QuestionsPage() {
         onOpenChange={setImportOpen}
         title="Import universal questions"
         sample={QUESTION_SAMPLE}
-        description="Columns: Exam Type, Class, Question Number, Question, Correct Answer Key, Parameter, Chapter, Topic. No School or Assessment ID needed."
+        description="Required: Exam Type, Class, Question Number and Correct Answer Key. Optional: Question, Subject, Parameter, Chapter and Topic. No School or Assessment ID is needed."
         parse={async (raw) => {
           const existing = new Set(
             (await fetchBankQuestions()).map((q) => bankKey(q.exam_type, q.class, q.question_no)),

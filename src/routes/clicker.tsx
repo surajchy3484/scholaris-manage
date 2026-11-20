@@ -780,7 +780,7 @@ function ClickerPage() {
         title="Import clicker data"
         sample={clickerSample(questionCols)}
         multiple
-        description="Include Exam Type, Class, Section, Roll and Student Name. Missing students are created in the assessment school without a photo. Include Assessment ID to identify the school/session; ambiguous matches are rejected. Use S1 or 1-S1 answer columns. Scores and rankings are calculated on the server; uploaded totals are ignored."
+        description="Columns: Assessment ID, Exam Type, Keypad ID, Student ID, Student Name, Roll Number, Class, Section, Team and one answer column per question (for example, 1-S1). Student ID is optional; Student Name, Class and the student’s roll/section identify the student. Assessment ID is required unless one assessment is selected. Scores and rankings are calculated automatically."
         parse={(raw) => {
           const known = new Set([
             "assessment id",

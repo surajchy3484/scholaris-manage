@@ -45,7 +45,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SheetImportDialog, pick, type ParsedBase } from "@/components/master/sheet-import-dialog";
-import { SESSION_SAMPLE } from "@/lib/sample-templates";
+import { SESSION_MASTER_SAMPLE, SESSION_STATUS_SAMPLE } from "@/lib/sample-templates";
 import { exportRowsToExcel } from "@/lib/exam-export";
 import {
   UNITS,
@@ -725,8 +725,8 @@ function SessionStatusPage() {
         open={importOpen}
         onOpenChange={setImportOpen}
         title={`Import sessions — ${unit}`}
-        description="Session Name, Class and Topic are imported into this school and unit. Sessions apply to every division of the class; status starts as Pending."
-        sample={SESSION_SAMPLE}
+        description="Required: Session Name and Class. Topic is optional. Sessions are added to this school and unit, apply to every division of the class and start as Pending."
+        sample={SESSION_MASTER_SAMPLE}
         parse={(rows2) =>
           rows2.map((raw, i) => {
             const name = pick(raw, "Session Name", "Session", "Name");
@@ -954,9 +954,9 @@ function AssignmentPlanner() {
         description={
           importMode === "update"
             ? "Update existing sessions by Session Name for the selected school scope, unit, academic year and class. New workbook rows are added; matching topics and statuses are updated without creating duplicates."
-            : "Required columns: Session Name, Class, Topic, Division and Status. All Schools and All Classes are selected by default; choose a specific class to import only that class. Each row is assigned only where its Class exists."
+            : "Columns: Session Name, Class, Topic, Division and Status. Session Name and Class are required; Status defaults to Pending. Use Completed, Pending or NA. All Schools and All Classes are selected by default; each row is assigned only where its Class exists."
         }
-        sample={SESSION_SAMPLE}
+        sample={SESSION_STATUS_SAMPLE}
         parse={(rows) => {
           const seen = new Set<string>();
           return rows.map((raw, index) => {

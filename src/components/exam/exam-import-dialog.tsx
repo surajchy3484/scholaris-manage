@@ -219,9 +219,9 @@ export function ExamImportDialog({
         <DialogHeader>
           <DialogTitle>Import exam data</DialogTitle>
           <DialogDescription>
-            Columns: Student ID, Student Name, Class, Division, Roll No, Attendance, Photo,
-            Enrollment Date, Update Date, ICA Score, MCA Score, FCA Score. Existing Student IDs are
-            updated.
+            Required: Student Name, Class, Division and Roll Number. Optional: Student ID,
+            Enrollment Date, Attendance %, ICA Score, MCA Score, FCA Score and Photo URL. Existing
+            Student IDs are updated; blank IDs are generated automatically.
           </DialogDescription>
         </DialogHeader>
 

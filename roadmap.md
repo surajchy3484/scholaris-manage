@@ -7,6 +7,7 @@
 - Session Status uses each school's configured division names
 - Assessment Master import: spec columns (ID, Name, School Name, Class, Section, Exam Type, Exam Date, Total Question, Status), order-independent headers, date/number/status validation, duplicate detection, batched insert, progress, error report, template download
 - Question Master import: "Question No." / "Correct Ans (A,B,C,D)" headers, A–D validation, duplicate detection, batched insert, progress, error report, template download
+- [x] Updated downloadable templates in every spreadsheet-import section to match accepted columns, including separate Session Master and Session Status formats
 
 - User Access: individual accounts (admin / STEM Trainer), per-module and per-action permissions, assigned schools, enable/disable, admin password reset, last-login + sign-in count; enforced server-side via signed session tokens
 
